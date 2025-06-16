@@ -19,10 +19,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-MAX_RETRIES = 1
-RETRY_DELAY = 120
-POSTS_PER_ACCOUNT = 1
-ACCOUNT_DELAY = 120
+MAX_RETRIES = 3
+RETRY_DELAY = 10
+POSTS_PER_ACCOUNT = 5
+ACCOUNT_DELAY = 10
 
 
 class InstagramFetcher:
