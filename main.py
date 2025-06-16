@@ -9,9 +9,9 @@ def main():
     fetcher = InstagramFetcher()
 
     logger.info("Fetching recent posts...")
-    new_posts = fetcher.get_recent_posts()
+    recent_posts = fetcher.get_recent_posts()
 
-    display_posts(new_posts)
+    display_posts(recent_posts)
     logger.info("Done!")
 
   except Exception as e:

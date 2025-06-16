@@ -47,20 +47,20 @@ def format_post_date(date_str: str) -> str:
 def display_summary(posts: Dict[str, List[Dict[str, str]]]) -> None:
   """Display minimal summary information."""
   if not posts:
-    print("No new posts found in the last 7 days.")
+    print("No posts found in the last 7 days.")
     return
 
   total_posts = sum(len(account_posts) for account_posts in posts.values())
   total_accounts = len(posts)
 
-  print(f"Found {total_posts} new posts from {total_accounts} accounts.")
+  print(f"Found {total_posts} recent posts from {total_accounts} accounts.")
 
   for account, account_posts in posts.items():
     print(f"  @{account}: {len(account_posts)} posts")
 
 
-def _get_css_styles() -> str:
-  """Get CSS styles for the HTML report."""
+def _get_base_styles() -> str:
+  """Get base CSS styles for layout and typography."""
   return """
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -76,7 +76,12 @@ def _get_css_styles() -> str:
             border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             overflow: hidden;
         }
+    """
 
+
+def _get_header_styles() -> str:
+  """Get CSS styles for the header section."""
+  return """
         .header {
             background: linear-gradient(135deg, #E91E63, #9C27B0);
             color: white; padding: 30px 40px; text-align: center;
@@ -84,7 +89,12 @@ def _get_css_styles() -> str:
 
         .header h1 { font-size: 2.5em; font-weight: 300; margin-bottom: 10px; }
         .header .subtitle { opacity: 0.9; font-size: 1.1em; }
+    """
 
+
+def _get_summary_styles() -> str:
+  """Get CSS styles for the summary section."""
+  return """
         .summary {
             background: #f8f9fa; padding: 20px 40px;
             border-bottom: 1px solid #e9ecef;
@@ -94,7 +104,12 @@ def _get_css_styles() -> str:
         .stat { flex: 1; }
         .stat-number { font-size: 2em; font-weight: bold; color: #E91E63; display: block; }
         .stat-label { color: #666; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
+    """
 
+
+def _get_account_styles() -> str:
+  """Get CSS styles for account sections."""
+  return """
         .account-section { margin: 30px 0; padding: 0 40px; }
 
         .account-header {
@@ -105,8 +120,16 @@ def _get_css_styles() -> str:
         }
 
         .account-name { font-size: 1.5em; font-weight: 500; }
-        .post-count { background: rgba(255, 255, 255, 0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.9em; }
+        .post-count {
+            background: rgba(255, 255, 255, 0.2); padding: 5px 15px;
+            border-radius: 20px; font-size: 0.9em;
+        }
+    """
 
+
+def _get_post_styles() -> str:
+  """Get CSS styles for individual posts."""
+  return """
         .post {
             background: white; border: 1px solid #e9ecef; border-radius: 12px;
             margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
@@ -134,7 +157,16 @@ def _get_css_styles() -> str:
         .post-url:hover { background: #C2185B; }
         .caption { color: #495057; line-height: 1.8; font-size: 1.05em; }
         .no-caption { color: #6c757d; font-style: italic; }
-        .footer { background: #f8f9fa; text-align: center; padding: 20px; color: #6c757d; font-size: 0.9em; }
+    """
+
+
+def _get_footer_and_responsive_styles() -> str:
+  """Get CSS styles for footer and responsive design."""
+  return """
+        .footer {
+            background: #f8f9fa; text-align: center; padding: 20px;
+            color: #6c757d; font-size: 0.9em;
+        }
 
         @media (max-width: 768px) {
             .container { margin: 10px; border-radius: 10px; }
@@ -145,15 +177,28 @@ def _get_css_styles() -> str:
     """
 
 
+def _get_css_styles() -> str:
+  """Combine all CSS styles for the HTML report."""
+  return (
+      _get_base_styles() +
+      _get_header_styles() +
+      _get_summary_styles() +
+      _get_account_styles() +
+      _get_post_styles() +
+      _get_footer_and_responsive_styles()
+  )
+
+
 def _generate_post_html(post: Dict[str, str], post_num: int, total_posts: int) -> str:
   """Generate HTML for a single post."""
   formatted_date = format_post_date(post['date'])
   cleaned_caption = clean_caption(post['caption'])
 
-  if not cleaned_caption or cleaned_caption == "No caption":
-    caption_html = '<div class="no-caption">No caption available</div>'
-  else:
-    caption_html = f'<div class="caption">{cleaned_caption.replace(chr(10), "<br>")}</div>'
+  caption_html = (
+      '<div class="no-caption">No caption available</div>'
+      if not cleaned_caption or cleaned_caption == "No caption"
+      else f'<div class="caption">{cleaned_caption.replace(chr(10), "<br>")}</div>'
+  )
 
   return f"""
             <div class="post">
@@ -167,6 +212,57 @@ def _generate_post_html(post: Dict[str, str], post_num: int, total_posts: int) -
                     {caption_html}
                 </div>
             </div>"""
+
+
+def _generate_summary_section(posts: Dict[str, List[Dict[str, str]]]) -> str:
+  """Generate HTML for the summary section."""
+  if not posts:
+    return """
+        <div class="summary">
+            <div style="text-align: center; padding: 40px;">
+                <h2 style="color: #6c757d;">🕐 No recent posts found in the last 7 days</h2>
+            </div>
+        </div>"""
+
+  total_posts = sum(len(account_posts) for account_posts in posts.values())
+  total_accounts = len(posts)
+
+  return f"""
+        <div class="summary">
+            <div class="summary-stats">
+                <div class="stat">
+                    <span class="stat-number">{total_accounts}</span>
+                    <span class="stat-label">Account{'s' if total_accounts != 1 else ''}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">{total_posts}</span>
+                    <span class="stat-label">Post{'s' if total_posts != 1 else ''}</span>
+                </div>
+            </div>
+        </div>"""
+
+
+def _generate_account_sections(posts: Dict[str, List[Dict[str, str]]]) -> str:
+  """Generate HTML for all account sections."""
+  if not posts:
+    return ""
+
+  sections = []
+  for account, account_posts in posts.items():
+    section = f"""
+        <div class="account-section">
+            <div class="account-header">
+                <div class="account-name">👤 @{account}</div>
+                <div class="post-count">{len(account_posts)} recent post{'s' if len(account_posts) != 1 else ''}</div>
+            </div>"""
+
+    for i, post in enumerate(account_posts, 1):
+      section += _generate_post_html(post, i, len(account_posts))
+
+    section += "        </div>"
+    sections.append(section)
+
+  return ''.join(sections)
 
 
 def generate_html_report(posts: Dict[str, List[Dict[str, str]]], output_file: str = "instagram_posts.html") -> None:
@@ -184,47 +280,7 @@ def generate_html_report(posts: Dict[str, List[Dict[str, str]]], output_file: st
         <div class="header">
             <h1>📸 Instagram Posts Summary</h1>
             <div class="subtitle">Beautiful overview of your recent Instagram activity</div>
-        </div>"""
-
-  if not posts:
-    html_content += """
-        <div class="summary">
-            <div style="text-align: center; padding: 40px;">
-                <h2 style="color: #6c757d;">🕐 No new posts found in the last 7 days</h2>
-            </div>
-        </div>"""
-  else:
-    total_posts = sum(len(account_posts) for account_posts in posts.values())
-    total_accounts = len(posts)
-
-    html_content += f"""
-        <div class="summary">
-            <div class="summary-stats">
-                <div class="stat">
-                    <span class="stat-number">{total_accounts}</span>
-                    <span class="stat-label">Account{'s' if total_accounts != 1 else ''}</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-number">{total_posts}</span>
-                    <span class="stat-label">New Post{'s' if total_posts != 1 else ''}</span>
-                </div>
-            </div>
-        </div>"""
-
-    for account, account_posts in posts.items():
-      html_content += f"""
-        <div class="account-section">
-            <div class="account-header">
-                <div class="account-name">👤 @{account}</div>
-                <div class="post-count">{len(account_posts)} new post{'s' if len(account_posts) != 1 else ''}</div>
-            </div>"""
-
-      for i, post in enumerate(account_posts, 1):
-        html_content += _generate_post_html(post, i, len(account_posts))
-
-      html_content += "        </div>"
-
-  html_content += f"""
+        </div>{_generate_summary_section(posts)}{_generate_account_sections(posts)}
         <div class="footer">
             Generated on {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}
         </div>
