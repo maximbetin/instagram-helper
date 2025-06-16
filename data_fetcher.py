@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import instaloader
+import pytz
 
 from config import DAYS_TO_LOOK_BACK, INSTAGRAM_ACCOUNTS, LAST_RUN_FILE, POSTS_HISTORY_FILE
 
@@ -38,6 +39,7 @@ class InstagramFetcher:
     )
     self.posts_history = self._load_posts_history()
     self.last_run = self._load_last_run()
+    self.madrid_tz = pytz.timezone('Europe/Madrid')
     self._login()
 
   def _login(self):
@@ -93,7 +95,7 @@ class InstagramFetcher:
   def get_recent_posts(self) -> Dict[str, List[Dict]]:
     """Fetch recent posts from configured Instagram accounts."""
     new_posts = {}
-    cutoff_date = datetime.now() - timedelta(days=DAYS_TO_LOOK_BACK)
+    cutoff_date = datetime.now(self.madrid_tz) - timedelta(days=DAYS_TO_LOOK_BACK)
 
     for account in INSTAGRAM_ACCOUNTS:
       for attempt in range(1, MAX_RETRIES + 1):
@@ -103,12 +105,15 @@ class InstagramFetcher:
           for idx, post in enumerate(profile.get_posts()):
             if idx >= POSTS_PER_ACCOUNT:
               break
-            if post.date_utc < cutoff_date:
+            # Convert post date to Madrid timezone
+            post_date_madrid = post.date_utc.astimezone(self.madrid_tz)
+            if post_date_madrid < cutoff_date:
               break
             post_data = {
                 'url': f"https://www.instagram.com/p/{post.shortcode}/",
-                'date': post.date_utc.isoformat(),
-                'shortcode': post.shortcode
+                'date': post_date_madrid.isoformat(),
+                'shortcode': post.shortcode,
+                'caption': post.caption if post.caption else "No caption"
             }
             if account not in self.posts_history or \
                     post_data['shortcode'] not in [p['shortcode'] for p in self.posts_history[account]]:

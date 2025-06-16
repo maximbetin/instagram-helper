@@ -1,7 +1,6 @@
 pytz==2025.2
 pytest==8.4.0
 coverage==7.9.1
-instaloader==4.13.2
+instaloader==4.10
 python-dotenv==1.0.1
 python-dateutil==2.9.0.post0
-logging==0.4.9.6
