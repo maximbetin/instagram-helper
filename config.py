@@ -1,21 +1,15 @@
-from pathlib import Path
-
-# Base directory for storing data
-BASE_DIR = Path(__file__).parent / "data"
+from typing import List
 
 # Instagram accounts to track
-INSTAGRAM_ACCOUNTS = [
+INSTAGRAM_ACCOUNTS: List[str] = [
     "aytoviedo",
 ]
 
-# How far back to look for posts
-DAYS_TO_LOOK_BACK = 7
+# How far back to look for posts (in days)
+DAYS_TO_LOOK_BACK: int = 7
 
-# File to store the last run timestamp
-LAST_RUN_FILE = BASE_DIR / "last_run.txt"
-
-# File to store post history
-POSTS_HISTORY_FILE = BASE_DIR / "posts_history.json"
-
-# Create data directory if it doesn't exist
-BASE_DIR.mkdir(exist_ok=True)
+# Fetcher configuration
+MAX_RETRIES: int = 3
+RETRY_DELAY: int = 10  # seconds
+POSTS_PER_ACCOUNT: int = 5
+ACCOUNT_DELAY: int = 10  # seconds
