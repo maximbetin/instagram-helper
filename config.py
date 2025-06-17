@@ -17,7 +17,6 @@ INSTAGRAM_ACCOUNTS = [
 ]
 
 # Post fetching settings
-DAYS_TO_LOOK_BACK = 7
 POSTS_PER_ACCOUNT = 5
 DELAY_BETWEEN_ACCOUNTS = 3  # seconds
 

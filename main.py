@@ -2,13 +2,12 @@
 
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 
 from playwright.sync_api import sync_playwright
 
-from config import (BROWSER_ARGS, BROWSER_VIEWPORT, DAYS_TO_LOOK_BACK, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, POSTS_PER_ACCOUNT,
-                    TIMEZONE, USER_AGENT)
+from config import BROWSER_ARGS, BROWSER_VIEWPORT, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, POSTS_PER_ACCOUNT, TIMEZONE, USER_AGENT
 from utils import logger
 
 
@@ -69,7 +68,7 @@ def check_if_logged_in(page) -> bool:
 def wait_for_page_load(page, timeout: int = 3000):
   """Wait for page to load with better error handling."""
   try:
-      # Wait for DOM to be ready instead of network idle
+    # Wait for DOM to be ready instead of network idle
     page.wait_for_load_state("domcontentloaded", timeout=timeout)
     # Small additional wait for dynamic content
     time.sleep(1)
@@ -110,7 +109,7 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
         'timestamp': datetime.now().isoformat()
     }
 
-    # Extract caption using stable selectors with timeout
+    # Extract caption using stable selectors
     caption_selectors = [
         'h1[dir="auto"]',
         'div[data-testid="post-caption"] span',
@@ -128,12 +127,12 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
         caption_element = page.query_selector(selector)
         if caption_element:
           caption_text = caption_element.inner_text().strip()
-          if caption_text and len(caption_text) > 5:  # Reduced minimum length
+          if caption_text and len(caption_text) > 5:
             post_data['caption'] = caption_text
             break
       except Exception as e:
         if "Execution context was destroyed" in str(e):
-          logger.warning(f"Execution context destroyed while extracting caption")
+          logger.warning("Execution context destroyed while extracting caption")
           break
         continue
 
@@ -158,7 +157,6 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
               # Parse ISO datetime and convert to Europe/Madrid time
               dt = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
               # Convert to Europe/Madrid timezone
-              from datetime import timezone
               madrid_tz = timezone(timedelta(hours=1))  # CET/CEST
               dt_madrid = dt.astimezone(madrid_tz)
               post_data['date_posted'] = dt_madrid.strftime('%Y-%m-%d %H:%M:%S %Z')
@@ -178,7 +176,7 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
             break
       except Exception as e:
         if "Execution context was destroyed" in str(e):
-          logger.warning(f"Execution context destroyed while extracting date")
+          logger.warning("Execution context destroyed while extracting date")
           break
         continue
 
@@ -203,7 +201,7 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
             break
       except Exception as e:
         if "Execution context was destroyed" in str(e):
-          logger.warning(f"Execution context destroyed while extracting image")
+          logger.warning("Execution context destroyed while extracting image")
           break
         continue
 
@@ -248,9 +246,7 @@ def fetch_posts_from_account(page, account: str) -> List[Dict]:
       logger.error("Not properly logged in to Instagram")
       return []
 
-    posts = []
-
-    # Use only stable selectors for post links - no dynamic classes
+    # Use only stable selectors for post links
     post_selectors = [
         'a[href*="/p/"]',
         'article a[href*="/p/"]',
@@ -289,6 +285,7 @@ def fetch_posts_from_account(page, account: str) -> List[Dict]:
     logger.info(f"Extracted {len(post_urls)} post URLs to process")
 
     # Now process each URL individually
+    posts = []
     for i, post_url in enumerate(post_urls):
       try:
         logger.info(f"Processing post {i + 1}/{len(post_urls)}: {post_url}")
@@ -316,7 +313,7 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]):
   """Display a summary of fetched posts."""
   total_posts = sum(len(posts) for posts in posts_by_account.values())
 
-  logger.info(f"=== POST FETCHING SUMMARY ===")
+  logger.info("=== POST FETCHING SUMMARY ===")
   logger.info(f"Total accounts checked: {len(INSTAGRAM_ACCOUNTS)}")
   logger.info(f"Accounts with posts: {len(posts_by_account)}")
   logger.info(f"Total posts found: {total_posts}")
