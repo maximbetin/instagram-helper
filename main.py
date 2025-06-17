@@ -11,16 +11,18 @@ from config import (BROWSER_ARGS, BROWSER_VIEWPORT, DAYS_BACK_TO_FETCH, DELAY_BE
                     TIMEZONE, USER_AGENT)
 from utils import logger
 
-# Page navigation timeouts
+# Constants
+MADRID_TZ = timezone(timedelta(hours=1))  # CET/CEST
+EXECUTION_CONTEXT_ERROR = "Execution context was destroyed"
+LOGIN_RETRY_ATTEMPTS = 3
+
+# Timeouts (milliseconds)
 TIMEOUTS = {
     'page_load': 3000,
     'post_navigation': 8000,
     'account_navigation': 12000,
     'main_page': 30000,
 }
-
-# Login verification
-LOGIN_RETRY_ATTEMPTS = 3
 
 # Element selectors
 SELECTORS = {
@@ -56,20 +58,6 @@ SELECTORS = {
         'a[title*="202"]',
         'time[title*="202"]'
     ],
-    'image': [
-        'article img[crossorigin="anonymous"]',
-        'img[src*="scontent"]',
-        'img[src*="instagram"]',
-        'article img',
-        'img[alt*="Photo"]',
-        'img[alt*="Image"]',
-        'img[src*="cdninstagram"]',
-        'img[src*="fbcdn"]',
-        'img[src*="akamai"]',
-        'img[src*="cdn"]',
-        'img[src*="media"]',
-        'img'
-    ],
     'post': [
         'a[href*="/p/"]',
         'article a[href*="/p/"]',
@@ -79,18 +67,15 @@ SELECTORS = {
     ]
 }
 
-# Image validation
+# Image validation keywords
 IMG_KEYWORDS = ['scontent', 'instagram', 'cdn', 'fbcdn', 'akamai', 'media']
-MIN_IMG_SIZE = 100
-
-# Error messages
-EXECUTION_CONTEXT_ERROR = "Execution context was destroyed"
+IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
+MIN_IMAGE_SIZE = 50  # Minimum image dimensions in pixels
 
 
 def get_cutoff_date() -> datetime:
-  """Get the cutoff date for filtering posts (7 days ago)."""
-  madrid_tz = timezone(timedelta(hours=1))  # CET/CEST
-  return datetime.now(madrid_tz) - timedelta(days=DAYS_BACK_TO_FETCH)
+  """Get the cutoff date for filtering posts."""
+  return datetime.now(MADRID_TZ) - timedelta(days=DAYS_BACK_TO_FETCH)
 
 
 def parse_post_date(date_str: str) -> Optional[datetime]:
@@ -102,8 +87,7 @@ def parse_post_date(date_str: str) -> Optional[datetime]:
     # Try parsing ISO format first (from datetime attribute)
     if 'T' in date_str and ('Z' in date_str or '+' in date_str):
       dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-      madrid_tz = timezone(timedelta(hours=1))
-      return dt.astimezone(madrid_tz)
+      return dt.astimezone(MADRID_TZ)
 
     # Try parsing other common formats
     formats = [
@@ -131,7 +115,6 @@ def is_post_recent(date_str: str, cutoff_date: datetime) -> bool:
   if not post_date:
     # If we can't parse the date, assume it might be recent and check it
     return True
-
   return post_date >= cutoff_date
 
 
@@ -207,7 +190,7 @@ def check_if_logged_in(page: Page) -> bool:
       try:
         page.wait_for_selector('body', timeout=5000)
         return True
-      except:
+      except Exception:
         return False
     return False
 
@@ -253,10 +236,9 @@ def extract_date_posted(page: Page) -> str:
       if datetime_attr:
         try:
           dt = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
-          madrid_tz = timezone(timedelta(hours=1))  # CET/CEST
-          dt_madrid = dt.astimezone(madrid_tz)
+          dt_madrid = dt.astimezone(MADRID_TZ)
           return dt_madrid.strftime('%Y-%m-%d %H:%M:%S %Z')
-        except:
+        except Exception:
           pass
 
       # Fallback to title attribute or inner text
@@ -273,21 +255,18 @@ def extract_date_posted(page: Page) -> str:
         logger.warning("Execution context destroyed while extracting date")
         break
       continue
+
   return ''
 
 
 def is_valid_image(img_src: str, width: Optional[str], height: Optional[str]) -> bool:
   """Check if image is valid based on URL and dimensions."""
-  if not img_src:
-    return False
-
-  # Check for basic image format
-  if not (img_src.startswith('http') or img_src.startswith('data:')):
+  if not img_src or not (img_src.startswith('http') or img_src.startswith('data:')):
     return False
 
   # Accept images that contain Instagram-related keywords OR look like valid image URLs
   has_instagram_keywords = any(keyword in img_src.lower() for keyword in IMG_KEYWORDS)
-  looks_like_image = any(ext in img_src.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp'])
+  looks_like_image = any(ext in img_src.lower() for ext in IMG_EXTENSIONS)
 
   if not (has_instagram_keywords or looks_like_image):
     return False
@@ -296,9 +275,8 @@ def is_valid_image(img_src: str, width: Optional[str], height: Optional[str]) ->
   if width and height:
     try:
       w, h = int(width), int(height)
-      # Accept images that are at least 50x50 (was 100x100)
-      return w >= 50 and h >= 50
-    except:
+      return w >= MIN_IMAGE_SIZE and h >= MIN_IMAGE_SIZE
+    except ValueError:
       # If we can't parse dimensions, accept the image anyway
       return True
 
@@ -307,30 +285,25 @@ def is_valid_image(img_src: str, width: Optional[str], height: Optional[str]) ->
 
 def extract_image_url(page: Page) -> Optional[str]:
   """Extract image URL from Instagram post."""
-  # Wait a bit more for images to load
+  # Wait for images to load
   time.sleep(2)
 
-  # Try more specific selectors first, then broader ones
+  # Image selectors in priority order (most specific first)
   image_selectors = [
-      # Most specific - main post images
-      'article img[crossorigin="anonymous"]',
-      '[role="img"] img',
+      'article img[crossorigin="anonymous"]',  # Main post images
+      '[role="img"] img',                      # Modern Instagram layouts
       'div[role="img"] img',
-      # CDN-specific selectors
-      'img[src*="scontent"]',
+      'img[src*="scontent"]',                  # CDN-specific selectors
       'img[src*="cdninstagram"]',
       'img[src*="fbcdn"]',
-      # General post images
-      'article img',
+      'article img',                           # General post images
       'img[alt*="Photo"]',
       'img[alt*="Image"]',
-      # Fallback selectors
-      'img[src*="instagram"]',
+      'img[src*="instagram"]',                 # Fallback selectors
       'img[src*="cdn"]',
       'img[src*="akamai"]',
       'img[src*="media"]',
-      # Last resort
-      'img'
+      'img'                                    # Last resort
   ]
 
   found_images = []
@@ -348,11 +321,11 @@ def extract_image_url(page: Page) -> Optional[str]:
 
           if img_src:
             found_images.append({
-              'src': img_src,
-              'width': width,
-              'height': height,
-              'selector': selector,
-              'valid': is_valid_image(img_src, width, height)
+                'src': img_src,
+                'width': width,
+                'height': height,
+                'selector': selector,
+                'valid': is_valid_image(img_src, width, height)
             })
 
         except Exception as e:
@@ -370,19 +343,23 @@ def extract_image_url(page: Page) -> Optional[str]:
   if found_images:
     logger.debug(f"Found {len(found_images)} total images:")
     for i, img in enumerate(found_images[:5]):  # Show first 5
-      logger.debug(f"  {i + 1}. {img['src'][:80]}{'...' if len(img['src']) > 80 else ''} (valid: {img['valid']}, selector: {img['selector'][:30]})")
+      src_preview = img['src'][:80] + ('...' if len(img['src']) > 80 else '')
+      selector_preview = img['selector'][:30]
+      logger.debug(f"  {i + 1}. {src_preview} (valid: {img['valid']}, selector: {selector_preview})")
   else:
     logger.debug("No images found with any selector")
 
   # Return the first valid image
   for img in found_images:
     if img['valid']:
-      logger.debug(f"Using image: {img['src'][:80]}{'...' if len(img['src']) > 80 else ''}")
+      src_preview = img['src'][:80] + ('...' if len(img['src']) > 80 else '')
+      logger.debug(f"Using image: {src_preview}")
       return img['src']
 
   # If no valid images, return the first one anyway (let the browser handle it)
   if found_images:
-    logger.debug(f"No valid images found, using first available: {found_images[0]['src'][:80]}{'...' if len(found_images[0]['src']) > 80 else ''}")
+    src_preview = found_images[0]['src'][:80] + ('...' if len(found_images[0]['src']) > 80 else '')
+    logger.debug(f"No valid images found, using first available: {src_preview}")
     return found_images[0]['src']
 
   return None
@@ -407,34 +384,6 @@ def create_error_post_data(account: str, post_url: str, error: str) -> Dict:
   return post_data
 
 
-def extract_post_details(page: Page, post_url: str, account: str) -> Dict:
-  """Extract detailed information from a single Instagram post."""
-  try:
-    logger.debug(f"Opening post: {post_url}")
-
-    # Navigate to post
-    try:
-      page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
-      wait_for_page_load(page)
-    except Exception as e:
-      logger.warning(f"Navigation to post failed: {e}")
-      return create_error_post_data(account, post_url, f"Navigation failed: {str(e)}")
-
-    post_data = create_base_post_data(account, post_url)
-
-    # Extract all post details
-    post_data['caption'] = extract_caption(page)
-    post_data['date_posted'] = extract_date_posted(page)
-    post_data['image_url'] = extract_image_url(page)
-
-    logger.debug(f"Extracted: caption={len(post_data['caption'])}chars, date={post_data['date_posted'][:10] if post_data['date_posted'] else 'None'}")
-    return post_data
-
-  except Exception as e:
-    logger.error(f"Error extracting details from {post_url}: {e}")
-    return create_error_post_data(account, post_url, str(e))
-
-
 def extract_post_urls(page: Page, account: str) -> List[str]:
   """Extract post URLs from account page."""
   for selector in SELECTORS['post']:
@@ -456,14 +405,14 @@ def extract_post_urls(page: Page, account: str) -> List[str]:
             continue
 
         return post_urls
-    except:
+    except Exception:
       continue
 
   return []
 
 
 def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
-  """Fetch recent posts from a specific Instagram account (past 7 days only)."""
+  """Fetch recent posts from a specific Instagram account."""
   try:
     url = f"https://www.instagram.com/{account}/"
     logger.info(f"Fetching recent posts from @{account}")
@@ -502,7 +451,7 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
     posts_checked = 0
     posts_too_old = 0
 
-    for i, post_url in enumerate(post_urls):
+    for post_url in post_urls:
       if posts_checked >= MAX_POSTS_TO_CHECK:
         logger.debug(f"Reached maximum post check limit for @{account}")
         break
@@ -522,8 +471,7 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
           break
 
         # Post seems recent or date unclear, process it fully
-        # NOTE: We're already on the post page from extract_post_date_quick,
-        # so we don't need to navigate again
+        # NOTE: We're already on the post page from extract_post_date_quick
         logger.debug(f"Post appears recent, extracting details...")
 
         # Extract details from current page (already navigated by extract_post_date_quick)
