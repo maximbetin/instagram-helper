@@ -1,75 +1,56 @@
-# Instagram Updates Tracker
+# Instagram Post Fetcher
 
-A simple Python application that displays recent posts from specified Instagram accounts in a human-readable format.
+A tool that opens Instagram for manual login, then automatically fetches recent posts from specified accounts.
 
 ## Features
 
-- Shows posts from specified Instagram accounts
-- Displays posts from the last specified number of days
-- Shows post URLs, dates, and captions
-- Clean and readable output format
+- **Manual login**: Opens Instagram for you to log in manually
+- **Automatic fetching**: After login, fetches posts from specified accounts
+- **Clean interface**: Simple, focused functionality
+- **Configurable**: Easy to modify account list and settings
 
 ## Installation
 
-1. Clone this repository
-2. Create a virtual environment (recommended):
-```bash
-python -m venv venv
-venv\Scripts\activate # On Linux/macOS: source venv/bin/activate
-```
-3. Install dependencies:
+1. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Authentication
-
-To avoid rate limiting and access restrictions, you should authenticate with Instagram:
-
-1. Set up environment variables for your Instagram credentials:
+2. Install Playwright browsers:
 ```bash
-# On Windows PowerShell:
-$env:INSTAGRAM_USERNAME="your_username"
-$env:INSTAGRAM_PASSWORD="your_password"
-
-# On Windows Command Prompt:
-set INSTAGRAM_USERNAME=your_username
-set INSTAGRAM_PASSWORD=your_password
-
-# On Linux/macOS:
-export INSTAGRAM_USERNAME="your_username"
-export INSTAGRAM_PASSWORD="your_password"
+playwright install chromium
 ```
-
-2. For security, you can create a `.env` file in the project root and add it to `.gitignore`:
-```
-INSTAGRAM_USERNAME=your_username
-INSTAGRAM_PASSWORD=your_password
-```
-Then install python-dotenv and load it in your script.
-
-Note: Using your Instagram credentials is optional but recommended to avoid rate limiting.
 
 ## Usage
 
-1. Configure the accounts to track in `config.py`
-2. Run the script:
+1. Run the script:
 ```bash
 python main.py
 ```
 
-The script will:
-- Fetch recent posts from the configured accounts
-- Display posts from the last 7 days
+2. The script will:
+- Open a Chrome browser window
+- Navigate to Instagram's main page
+- Wait for you to log in manually
+- After you press Enter, start fetching posts from specified accounts
+- Display a summary of fetched posts
+- Wait for you to press Enter again to close
 
 ## Configuration
 
-Edit `config.py` to:
-- Add or remove Instagram accounts to track
-- Modify the number of days to look back
+Edit `config.py` to modify:
+- `INSTAGRAM_ACCOUNTS`: List of Instagram usernames to fetch posts from
+- `POSTS_PER_ACCOUNT`: Number of posts to fetch per account (default: 5)
+- `DELAY_BETWEEN_ACCOUNTS`: Delay between checking accounts in seconds (default: 3)
+- `BROWSER_VIEWPORT`: Browser window size
+- `USER_AGENT`: Browser user agent string
+
+## Files
+
+- `main.py` - Entry point with login and post fetching logic
+- `config.py` - Configuration settings
+- `utils.py` - Logging utilities
 
 ## Notes
 
-- The application uses the `instaloader` library to fetch Instagram data
-- Authentication is recommended to avoid rate limiting
-- Be mindful of Instagram's rate limits and terms of service
+This tool requires manual login to access Instagram content. After logging in, it will automatically fetch recent posts from the specified accounts. The browser remains open throughout the process for transparency and debugging.
