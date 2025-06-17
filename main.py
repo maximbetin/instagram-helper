@@ -10,73 +10,79 @@ from playwright.sync_api import Page, sync_playwright
 from config import BROWSER_ARGS, BROWSER_VIEWPORT, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, POSTS_PER_ACCOUNT, TIMEZONE, USER_AGENT
 from utils import logger
 
-# Constants
-LOGIN_INDICATORS = [
-    'nav[role="navigation"]',
-    'a[href="/"]',
-    'a[href="/explore/"]',
-    'a[href="/reels/"]',
-    'a[href="/direct/inbox/"]'
-]
+# Page navigation timeouts
+TIMEOUTS = {
+    'page_load': 3000,
+    'post_navigation': 8000,
+    'account_navigation': 12000,
+    'main_page': 30000,
+}
 
-LOGIN_PAGE_INDICATORS = [
-    'input[name="username"]',
-    'input[name="password"]',
-    'button[type="submit"]',
-    'form[method="post"]'
-]
+# Login verification
+LOGIN_RETRY_ATTEMPTS = 3
 
-CAPTION_SELECTORS = [
-    'h1[dir="auto"]',
-    'div[data-testid="post-caption"] span',
-    'article h1',
-    'span[dir="auto"]',
-    'div[data-testid="post-caption"]',
-    'article div[dir="auto"]',
-    'article span',
-    'h1',
-    'p'
-]
+# Element selectors
+SELECTORS = {
+    'login_indicators': [
+        'nav[role="navigation"]',
+        'a[href="/"]',
+        'a[href="/explore/"]',
+        'a[href="/reels/"]',
+        'a[href="/direct/inbox/"]'
+    ],
+    'login_page_indicators': [
+        'input[name="username"]',
+        'input[name="password"]',
+        'button[type="submit"]',
+        'form[method="post"]'
+    ],
+    'caption': [
+        'h1[dir="auto"]',
+        'div[data-testid="post-caption"] span',
+        'article h1',
+        'span[dir="auto"]',
+        'div[data-testid="post-caption"]',
+        'article div[dir="auto"]',
+        'article span',
+        'h1',
+        'p'
+    ],
+    'date': [
+        'time[datetime]',
+        'a time',
+        'time',
+        'span[title*="202"]',
+        'a[title*="202"]',
+        'time[title*="202"]'
+    ],
+    'image': [
+        'article img[crossorigin="anonymous"]',
+        'img[src*="scontent"]',
+        'img[src*="instagram"]',
+        'article img',
+        'img[alt*="Photo"]',
+        'img[alt*="Image"]',
+        'img[src*="cdninstagram"]',
+        'img[src*="fbcdn"]',
+        'img[src*="akamai"]',
+        'img[src*="cdn"]',
+        'img[src*="media"]',
+        'img'
+    ],
+    'post': [
+        'a[href*="/p/"]',
+        'article a[href*="/p/"]',
+        'a[href*="/p/"]:not([href*="/p/explore/"])',
+        'a[href*="/reel/"]',
+        'a[href*="/tv/"]'
+    ]
+}
 
-DATE_SELECTORS = [
-    'time[datetime]',
-    'a time',
-    'time',
-    'span[title*="202"]',
-    'a[title*="202"]',
-    'time[title*="202"]'
-]
-
-IMG_SELECTORS = [
-    'article img[crossorigin="anonymous"]',
-    'img[src*="scontent"]',
-    'img[src*="instagram"]',
-    'article img',
-    'img[alt*="Photo"]',
-    'img[alt*="Image"]',
-    'img[src*="cdninstagram"]',
-    'img[src*="fbcdn"]',
-    'img[src*="akamai"]',
-    'img[src*="cdn"]',
-    'img[src*="media"]',
-    'img'
-]
-
-POST_SELECTORS = [
-    'a[href*="/p/"]',
-    'article a[href*="/p/"]',
-    'a[href*="/p/"]:not([href*="/p/explore/"])',
-    'a[href*="/reel/"]',
-    'a[href*="/tv/"]'
-]
-
+# Image validation
 IMG_KEYWORDS = ['scontent', 'instagram', 'cdn', 'fbcdn', 'akamai', 'media']
 MIN_IMG_SIZE = 100
-PAGE_LOAD_TIMEOUT = 3000
-POST_NAVIGATION_TIMEOUT = 8000
-ACCOUNT_NAVIGATION_TIMEOUT = 12000
-MAIN_PAGE_TIMEOUT = 30000
-LOGIN_RETRY_ATTEMPTS = 3
+
+# Error messages
 EXECUTION_CONTEXT_ERROR = "Execution context was destroyed"
 
 
@@ -86,7 +92,7 @@ def check_if_logged_in(page: Page) -> bool:
     time.sleep(2)  # Wait for page to stabilize
 
     # Check for logged-in indicators
-    for selector in LOGIN_INDICATORS:
+    for selector in SELECTORS['login_indicators']:
       try:
         if page.query_selector(selector):
           return True
@@ -94,7 +100,7 @@ def check_if_logged_in(page: Page) -> bool:
         continue
 
     # Check if we're on the login page
-    for selector in LOGIN_PAGE_INDICATORS:
+    for selector in SELECTORS['login_page_indicators']:
       try:
         if page.query_selector(selector):
           return False
@@ -116,8 +122,9 @@ def check_if_logged_in(page: Page) -> bool:
     return False
 
 
-def wait_for_page_load(page: Page, timeout: int = PAGE_LOAD_TIMEOUT) -> None:
+def wait_for_page_load(page: Page, timeout: Optional[int] = None) -> None:
   """Wait for page to load with better error handling."""
+  timeout = timeout or TIMEOUTS['page_load']
   try:
     page.wait_for_load_state("domcontentloaded", timeout=timeout)
     time.sleep(1)  # Small additional wait for dynamic content
@@ -128,7 +135,7 @@ def wait_for_page_load(page: Page, timeout: int = PAGE_LOAD_TIMEOUT) -> None:
 
 def extract_caption(page: Page) -> str:
   """Extract caption from Instagram post."""
-  for selector in CAPTION_SELECTORS:
+  for selector in SELECTORS['caption']:
     try:
       caption_element = page.query_selector(selector)
       if caption_element:
@@ -145,7 +152,7 @@ def extract_caption(page: Page) -> str:
 
 def extract_date_posted(page: Page) -> str:
   """Extract date posted from Instagram post."""
-  for selector in DATE_SELECTORS:
+  for selector in SELECTORS['date']:
     try:
       date_element = page.query_selector(selector)
       if not date_element:
@@ -194,7 +201,7 @@ def is_valid_image(img_src: str, width: Optional[str], height: Optional[str]) ->
 
 def extract_image_url(page: Page) -> Optional[str]:
   """Extract image URL from Instagram post."""
-  for selector in IMG_SELECTORS:
+  for selector in SELECTORS['image']:
     try:
       img_elements = page.query_selector_all(selector)
       for img_element in img_elements:
@@ -212,6 +219,25 @@ def extract_image_url(page: Page) -> Optional[str]:
   return None
 
 
+def create_base_post_data(account: str, post_url: str) -> Dict:
+  """Create base post data structure."""
+  return {
+      'account': account,
+      'url': post_url,
+      'caption': '',
+      'date_posted': '',
+      'image_url': None,
+      'timestamp': datetime.now().isoformat()
+  }
+
+
+def create_error_post_data(account: str, post_url: str, error: str) -> Dict:
+  """Create post data structure for errors."""
+  post_data = create_base_post_data(account, post_url)
+  post_data['error'] = error
+  return post_data
+
+
 def extract_post_details(page: Page, post_url: str, account: str) -> Dict:
   """Extract detailed information from a single Instagram post."""
   try:
@@ -219,8 +245,8 @@ def extract_post_details(page: Page, post_url: str, account: str) -> Dict:
 
     # Navigate to post
     try:
-      page.goto(post_url, wait_until="domcontentloaded", timeout=POST_NAVIGATION_TIMEOUT)
-      wait_for_page_load(page, PAGE_LOAD_TIMEOUT)
+      page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
+      wait_for_page_load(page)
     except Exception as e:
       logger.warning(f"Navigation to post failed: {e}")
       return create_error_post_data(account, post_url, f"Navigation failed: {str(e)}")
@@ -244,28 +270,9 @@ def extract_post_details(page: Page, post_url: str, account: str) -> Dict:
     return create_error_post_data(account, post_url, str(e))
 
 
-def create_base_post_data(account: str, post_url: str) -> Dict:
-  """Create base post data structure."""
-  return {
-      'account': account,
-      'url': post_url,
-      'caption': '',
-      'date_posted': '',
-      'image_url': None,
-      'timestamp': datetime.now().isoformat()
-  }
-
-
-def create_error_post_data(account: str, post_url: str, error: str) -> Dict:
-  """Create post data structure for errors."""
-  post_data = create_base_post_data(account, post_url)
-  post_data['error'] = error
-  return post_data
-
-
 def extract_post_urls(page: Page, account: str) -> List[str]:
   """Extract post URLs from account page."""
-  for selector in POST_SELECTORS:
+  for selector in SELECTORS['post']:
     try:
       links = page.query_selector_all(selector)
       if links:
@@ -298,8 +305,8 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 
     # Navigate to account
     try:
-      page.goto(url, wait_until="domcontentloaded", timeout=ACCOUNT_NAVIGATION_TIMEOUT)
-      wait_for_page_load(page, PAGE_LOAD_TIMEOUT)
+      page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUTS['account_navigation'])
+      wait_for_page_load(page)
     except Exception as e:
       logger.error(f"Failed to navigate to @{account}: {e}")
       return []
@@ -536,26 +543,59 @@ def verify_login_with_retries(page: Page) -> bool:
   return False
 
 
+def setup_browser_context(playwright_instance):
+  """Set up browser and context with proper configuration."""
+  browser = playwright_instance.chromium.launch(headless=False, args=BROWSER_ARGS)
+
+  context = browser.new_context(
+      viewport=BROWSER_VIEWPORT,
+      user_agent=USER_AGENT,
+      locale=LOCALE,
+      timezone_id=TIMEZONE
+  )
+
+  return browser, context
+
+
+def navigate_to_instagram(page: Page) -> bool:
+  """Navigate to Instagram main page."""
+  try:
+    logger.info("Navigating to Instagram...")
+    page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUTS['main_page'])
+    return True
+  except Exception as e:
+    logger.error(f"Failed to navigate to Instagram: {e}")
+    return False
+
+
+def fetch_all_posts(page: Page) -> Dict[str, List[Dict]]:
+  """Fetch posts from all configured accounts."""
+  posts_by_account = {}
+
+  for account in INSTAGRAM_ACCOUNTS:
+    posts = fetch_posts_from_account(page, account)
+    if posts:
+      posts_by_account[account] = posts
+
+    # Delay between accounts (except last one)
+    if account != INSTAGRAM_ACCOUNTS[-1]:
+      time.sleep(DELAY_BETWEEN_ACCOUNTS)
+
+  return posts_by_account
+
+
 def main():
   """Open Instagram for login, then fetch posts from specified accounts."""
   try:
     logger.info("Opening Instagram main page...")
 
     with sync_playwright() as p:
-      browser = p.chromium.launch(headless=False, args=BROWSER_ARGS)
-
-      context = browser.new_context(
-          viewport=BROWSER_VIEWPORT,
-          user_agent=USER_AGENT,
-          locale=LOCALE,
-          timezone_id=TIMEZONE
-      )
-
+      browser, context = setup_browser_context(p)
       page = context.new_page()
 
       # Navigate to Instagram
-      logger.info("Navigating to Instagram...")
-      page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=MAIN_PAGE_TIMEOUT)
+      if not navigate_to_instagram(page):
+        return
 
       logger.info("Instagram page opened! Please log in manually.")
       logger.info("After logging in, press Enter to start fetching posts...")
@@ -571,18 +611,10 @@ def main():
 
       logger.info("Login verified! Starting to fetch posts from specified accounts...")
 
-      # Fetch posts from each account
-      posts_by_account = {}
-      for account in INSTAGRAM_ACCOUNTS:
-        posts = fetch_posts_from_account(page, account)
-        if posts:
-          posts_by_account[account] = posts
+      # Fetch posts from all accounts
+      posts_by_account = fetch_all_posts(page)
 
-        # Delay between accounts (except last one)
-        if account != INSTAGRAM_ACCOUNTS[-1]:
-          time.sleep(DELAY_BETWEEN_ACCOUNTS)
-
-      # Display results
+      # Display results and generate report
       display_posts_summary(posts_by_account)
       html_file = generate_html_report(posts_by_account)
       logger.info(f"HTML report saved to: {html_file}")
