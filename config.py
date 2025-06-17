@@ -11,9 +11,40 @@ TIMEZONE = 'Europe/Madrid'
 # Instagram URL
 INSTAGRAM_URL = "https://www.instagram.com/"
 
-# Instagram accounts to fetch posts from
+# Instagram accounts to track
 INSTAGRAM_ACCOUNTS = [
-    "aytoviedo"
+    "aytoviedo",
+    "biodevas",
+    "ausevagm",
+    "nortes.me",
+    "paramo_bar",
+    "crjasturias",
+    "agendagijon",
+    "sala_niagara",
+    "rocketoviedo",
+    "prestosofest",
+    "meidinerzclub",
+    "exprime.gijon",
+    "mierescultura",
+    "cultura.gijon",
+    "conectaoviedo",
+    "gonggalaxyclub",
+    "juventudoviedo",
+    "cinesfoncalada",
+    "oviedo.turismo",
+    "oviedo_secrets",
+    "patioh_laboral",
+    "centroniemeyer",
+    "conocerasturias",
+    "kuivi_almacenes",
+    "asturias_en_vena",
+    "museosgijonxixon",
+    "lasalvaje.oviedo",
+    "laboralcinemateca",
+    "youropia_asociacion",
+    "laboralciudadcultura",
+    "asturiesculturaenrede",
+    "chigreculturallatadezinc"
 ]
 
 # Post fetching settings

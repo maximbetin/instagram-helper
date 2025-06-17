@@ -226,7 +226,7 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
         continue
 
     logger.info(
-      f"Extracted data: Caption length={len(post_data['caption'])}, Date={post_data['date_posted']}, Image={'Yes' if post_data['image_url'] else 'No'}")
+        f"Extracted data: Caption length={len(post_data['caption'])}, Date={post_data['date_posted']}, Image={'Yes' if post_data['image_url'] else 'No'}")
     return post_data
 
   except Exception as e:
@@ -418,7 +418,7 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: s
 
     if posts:
       for post in posts:
-          # Clean caption
+        # Clean caption
         caption = post.get('caption', '').replace('"', '&quot;').replace("'", '&#39;')
 
         # Format date
