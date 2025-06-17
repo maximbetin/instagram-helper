@@ -15,7 +15,8 @@ TIMEZONE = 'Europe/Madrid'
 INSTAGRAM_URL = "https://www.instagram.com/"
 
 # Post fetching settings
-POSTS_PER_ACCOUNT = 5
+DAYS_BACK_TO_FETCH = 3  # Only fetch posts from this many days ago
+MAX_POSTS_TO_CHECK = 5  # Maximum posts to check per account before giving up
 DELAY_BETWEEN_ACCOUNTS = 3  # seconds
 
 # Instagram accounts to track

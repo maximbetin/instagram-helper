@@ -7,7 +7,8 @@ from typing import Dict, List, Optional
 
 from playwright.sync_api import Page, sync_playwright
 
-from config import BROWSER_ARGS, BROWSER_VIEWPORT, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, POSTS_PER_ACCOUNT, TIMEZONE, USER_AGENT
+from config import (BROWSER_ARGS, BROWSER_VIEWPORT, DAYS_BACK_TO_FETCH, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, MAX_POSTS_TO_CHECK,
+                    TIMEZONE, USER_AGENT)
 from utils import logger
 
 # Page navigation timeouts
@@ -84,6 +85,95 @@ MIN_IMG_SIZE = 100
 
 # Error messages
 EXECUTION_CONTEXT_ERROR = "Execution context was destroyed"
+
+
+def get_cutoff_date() -> datetime:
+  """Get the cutoff date for filtering posts (7 days ago)."""
+  madrid_tz = timezone(timedelta(hours=1))  # CET/CEST
+  return datetime.now(madrid_tz) - timedelta(days=DAYS_BACK_TO_FETCH)
+
+
+def parse_post_date(date_str: str) -> Optional[datetime]:
+  """Parse a post date string into a datetime object."""
+  if not date_str:
+    return None
+
+  try:
+    # Try parsing ISO format first (from datetime attribute)
+    if 'T' in date_str and ('Z' in date_str or '+' in date_str):
+      dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+      madrid_tz = timezone(timedelta(hours=1))
+      return dt.astimezone(madrid_tz)
+
+    # Try parsing other common formats
+    formats = [
+        '%Y-%m-%d %H:%M:%S %Z',
+        '%Y-%m-%d %H:%M:%S',
+        '%B %d, %Y',
+        '%d %B %Y',
+    ]
+
+    for fmt in formats:
+      try:
+        return datetime.strptime(date_str, fmt)
+      except ValueError:
+        continue
+
+  except Exception as e:
+    logger.debug(f"Could not parse date '{date_str}': {e}")
+
+  return None
+
+
+def is_post_recent(date_str: str, cutoff_date: datetime) -> bool:
+  """Check if a post date is within the recent timeframe."""
+  post_date = parse_post_date(date_str)
+  if not post_date:
+    # If we can't parse the date, assume it might be recent and check it
+    return True
+
+  return post_date >= cutoff_date
+
+
+def extract_post_date_quick(page: Page, post_url: str) -> Optional[str]:
+  """Quick extraction of post date without full page processing."""
+  try:
+    logger.debug(f"Quick date check for: {post_url}")
+
+    # Navigate to post quickly
+    page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
+    time.sleep(1)  # Brief wait for content
+
+    # Try to extract date quickly
+    for selector in SELECTORS['date']:
+      try:
+        date_element = page.query_selector(selector)
+        if not date_element:
+          continue
+
+        # Try datetime attribute first
+        datetime_attr = date_element.get_attribute('datetime')
+        if datetime_attr:
+          return datetime_attr
+
+        # Try title attribute
+        title_attr = date_element.get_attribute('title')
+        if title_attr:
+          return title_attr
+
+        # Try inner text
+        inner_text = date_element.inner_text().strip()
+        if inner_text and re.search(r'\d{4}', inner_text):
+          return inner_text
+
+      except Exception:
+        continue
+
+    return None
+
+  except Exception as e:
+    logger.debug(f"Quick date extraction failed for {post_url}: {e}")
+    return None
 
 
 def check_if_logged_in(page: Page) -> bool:
@@ -279,7 +369,7 @@ def extract_post_urls(page: Page, account: str) -> List[str]:
         logger.info(f"Found {len(links)} posts using selector: {selector}")
 
         post_urls = []
-        for link in links[:POSTS_PER_ACCOUNT]:
+        for link in links[:MAX_POSTS_TO_CHECK]:
           try:
             post_url = link.get_attribute('href')
             if post_url and any(path in post_url for path in ['/p/', '/reel/', '/tv/']):
@@ -298,10 +388,13 @@ def extract_post_urls(page: Page, account: str) -> List[str]:
 
 
 def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
-  """Fetch recent posts from a specific Instagram account."""
+  """Fetch recent posts from a specific Instagram account (past 7 days only)."""
   try:
     url = f"https://www.instagram.com/{account}/"
-    logger.info(f"Fetching posts from @{account}...")
+    logger.info(f"Fetching posts from @{account} (past {DAYS_BACK_TO_FETCH} days)...")
+
+    cutoff_date = get_cutoff_date()
+    logger.info(f"Only fetching posts newer than: {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Navigate to account
     try:
@@ -327,22 +420,55 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
       logger.warning(f"No post links found for @{account}")
       return []
 
-    logger.info(f"Extracted {len(post_urls)} post URLs to process")
+    logger.info(f"Found {len(post_urls)} post URLs to check for recency")
 
-    # Process each URL
-    posts = []
+    # Process posts with date filtering
+    recent_posts = []
+    posts_checked = 0
+    posts_too_old = 0
+
     for i, post_url in enumerate(post_urls):
+      if posts_checked >= MAX_POSTS_TO_CHECK:
+        logger.info(f"Reached maximum post check limit ({MAX_POSTS_TO_CHECK}) for @{account}")
+        break
+
       try:
-        logger.info(f"Processing post {i + 1}/{len(post_urls)}: {post_url}")
+        posts_checked += 1
+        logger.info(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}: {post_url}")
+
+        # Quick date check first
+        post_date_str = extract_post_date_quick(page, post_url)
+
+        if post_date_str and not is_post_recent(post_date_str, cutoff_date):
+          posts_too_old += 1
+          logger.info(f"Post too old ({post_date_str}), stopping check for @{account} as posts are ordered by date...")
+          # Since posts are usually ordered by date (newest first),
+          # if one post is outside our {DAYS_BACK_TO_FETCH}-day range, all subsequent posts will be too
+          break
+
+        # Post seems recent or date unclear, process it fully
+        logger.info(f"Post appears recent, processing fully...")
         post_data = extract_post_details(page, post_url, account)
-        posts.append(post_data)
+
+        # Double-check the date after full processing
+        if post_data.get('date_posted'):
+          if not is_post_recent(post_data['date_posted'], cutoff_date):
+            logger.info(f"Post confirmed too old after full processing ({post_data['date_posted']}), stopping check for @{account}...")
+            posts_too_old += 1
+            # Since posts are usually ordered by date, stop checking remaining posts
+            break
+
+        recent_posts.append(post_data)
+        logger.info(f"Added recent post (total: {len(recent_posts)} recent posts found)")
+
         time.sleep(1)  # Small delay between posts
+
       except Exception as e:
-        logger.warning(f"Error processing post {i + 1} from @{account}: {e}")
+        logger.warning(f"Error processing post {posts_checked} from @{account}: {e}")
         continue
 
-    logger.info(f"Successfully processed {len(posts)} posts from @{account}")
-    return posts
+    logger.info(f"Completed @{account}: {len(recent_posts)} recent posts found, {posts_checked} posts checked, {posts_too_old} posts too old")
+    return recent_posts
 
   except Exception as e:
     logger.error(f"Error fetching posts from @{account}: {e}")
@@ -352,15 +478,17 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
   """Display a summary of fetched posts."""
   total_posts = sum(len(posts) for posts in posts_by_account.values())
+  cutoff_date = get_cutoff_date()
 
   logger.info("=== POST FETCHING SUMMARY ===")
+  logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')} ({DAYS_BACK_TO_FETCH} days)")
   logger.info(f"Total accounts checked: {len(INSTAGRAM_ACCOUNTS)}")
-  logger.info(f"Accounts with posts: {len(posts_by_account)}")
-  logger.info(f"Total posts found: {total_posts}")
+  logger.info(f"Accounts with recent posts: {len(posts_by_account)}")
+  logger.info(f"Total recent posts found: {total_posts}")
   logger.info("")
 
   for account, posts in posts_by_account.items():
-    logger.info(f"@{account}: {len(posts)} posts")
+    logger.info(f"@{account}: {len(posts)} recent posts")
 
   logger.info("=" * 30)
 
@@ -398,19 +526,24 @@ def generate_html_styles() -> str:
 
 def generate_html_header(timestamp: str) -> str:
   """Generate HTML header section."""
+  cutoff_date = get_cutoff_date()
+  date_range = f"{cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}"
+
   return f"""<!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Instagram Posts Report</title>
+    <title>Instagram Posts Report - Recent Posts ({DAYS_BACK_TO_FETCH} days)</title>
     <style>{generate_html_styles()}</style>
 </head>
 <body>
     <div class='container'>
         <div class='header'>
             <h1>📸 Instagram Posts Report</h1>
-            <p>Fetched on {timestamp}</p>
+            <p>Recent posts from the past {DAYS_BACK_TO_FETCH} days</p>
+            <p>Date range: {date_range}</p>
+            <p>Generated on {timestamp}</p>
         </div>"""
 
 
