@@ -3,9 +3,9 @@
 import logging
 from typing import Optional
 
-# Logging configuration
+# Logging configuration - simplified for less verbose output
 LOG_LEVEL = logging.INFO
-LOG_FORMAT = '[%(levelname)s] [%(asctime)s] %(message)s'
+LOG_FORMAT = '[%(levelname)s] %(message)s'
 LOG_DATE_FORMAT = '%H:%M:%S'
 
 

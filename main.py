@@ -138,7 +138,7 @@ def is_post_recent(date_str: str, cutoff_date: datetime) -> bool:
 def extract_post_date_quick(page: Page, post_url: str) -> Optional[str]:
   """Quick extraction of post date without full page processing."""
   try:
-    logger.debug(f"Quick date check for: {post_url}")
+    logger.debug(f"Quick date check: {post_url}")
 
     # Navigate to post quickly
     page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
@@ -172,7 +172,7 @@ def extract_post_date_quick(page: Page, post_url: str) -> Optional[str]:
     return None
 
   except Exception as e:
-    logger.debug(f"Quick date extraction failed for {post_url}: {e}")
+    logger.debug(f"Quick date extraction failed: {e}")
     return None
 
 
@@ -278,34 +278,113 @@ def extract_date_posted(page: Page) -> str:
 
 def is_valid_image(img_src: str, width: Optional[str], height: Optional[str]) -> bool:
   """Check if image is valid based on URL and dimensions."""
-  if not img_src or not any(keyword in img_src.lower() for keyword in IMG_KEYWORDS):
+  if not img_src:
     return False
 
+  # Check for basic image format
+  if not (img_src.startswith('http') or img_src.startswith('data:')):
+    return False
+
+  # Accept images that contain Instagram-related keywords OR look like valid image URLs
+  has_instagram_keywords = any(keyword in img_src.lower() for keyword in IMG_KEYWORDS)
+  looks_like_image = any(ext in img_src.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp'])
+
+  if not (has_instagram_keywords or looks_like_image):
+    return False
+
+  # More lenient dimension check - accept if no dimensions or reasonable size
   if width and height:
     try:
-      return int(width) > MIN_IMG_SIZE and int(height) > MIN_IMG_SIZE
+      w, h = int(width), int(height)
+      # Accept images that are at least 50x50 (was 100x100)
+      return w >= 50 and h >= 50
     except:
-      pass
+      # If we can't parse dimensions, accept the image anyway
+      return True
+
   return True
 
 
 def extract_image_url(page: Page) -> Optional[str]:
   """Extract image URL from Instagram post."""
-  for selector in SELECTORS['image']:
+  # Wait a bit more for images to load
+  time.sleep(2)
+
+  # Try more specific selectors first, then broader ones
+  image_selectors = [
+      # Most specific - main post images
+      'article img[crossorigin="anonymous"]',
+      '[role="img"] img',
+      'div[role="img"] img',
+      # CDN-specific selectors
+      'img[src*="scontent"]',
+      'img[src*="cdninstagram"]',
+      'img[src*="fbcdn"]',
+      # General post images
+      'article img',
+      'img[alt*="Photo"]',
+      'img[alt*="Image"]',
+      # Fallback selectors
+      'img[src*="instagram"]',
+      'img[src*="cdn"]',
+      'img[src*="akamai"]',
+      'img[src*="media"]',
+      # Last resort
+      'img'
+  ]
+
+  found_images = []
+
+  for selector in image_selectors:
     try:
       img_elements = page.query_selector_all(selector)
-      for img_element in img_elements:
-        img_src = img_element.get_attribute('src')
-        width = img_element.get_attribute('width')
-        height = img_element.get_attribute('height')
+      logger.debug(f"Selector '{selector}': found {len(img_elements)} images")
 
-        if img_src and is_valid_image(img_src, width, height):
-          return img_src
+      for img_element in img_elements:
+        try:
+          img_src = img_element.get_attribute('src')
+          width = img_element.get_attribute('width')
+          height = img_element.get_attribute('height')
+
+          if img_src:
+            found_images.append({
+              'src': img_src,
+              'width': width,
+              'height': height,
+              'selector': selector,
+              'valid': is_valid_image(img_src, width, height)
+            })
+
+        except Exception as e:
+          logger.debug(f"Error extracting from image element: {e}")
+          continue
+
     except Exception as e:
       if EXECUTION_CONTEXT_ERROR in str(e):
         logger.warning("Execution context destroyed while extracting image")
         break
+      logger.debug(f"Error with selector '{selector}': {e}")
       continue
+
+  # Log what we found for debugging
+  if found_images:
+    logger.debug(f"Found {len(found_images)} total images:")
+    for i, img in enumerate(found_images[:5]):  # Show first 5
+      logger.debug(f"  {i + 1}. {img['src'][:80]}{'...' if len(img['src']) > 80 else ''} (valid: {img['valid']}, selector: {img['selector'][:30]})")
+  else:
+    logger.debug("No images found with any selector")
+
+  # Return the first valid image
+  for img in found_images:
+    if img['valid']:
+      logger.debug(f"Using image: {img['src'][:80]}{'...' if len(img['src']) > 80 else ''}")
+      return img['src']
+
+  # If no valid images, return the first one anyway (let the browser handle it)
+  if found_images:
+    logger.debug(f"No valid images found, using first available: {found_images[0]['src'][:80]}{'...' if len(found_images[0]['src']) > 80 else ''}")
+    return found_images[0]['src']
+
   return None
 
 
@@ -331,7 +410,7 @@ def create_error_post_data(account: str, post_url: str, error: str) -> Dict:
 def extract_post_details(page: Page, post_url: str, account: str) -> Dict:
   """Extract detailed information from a single Instagram post."""
   try:
-    logger.info(f"Opening post: {post_url}")
+    logger.debug(f"Opening post: {post_url}")
 
     # Navigate to post
     try:
@@ -348,11 +427,7 @@ def extract_post_details(page: Page, post_url: str, account: str) -> Dict:
     post_data['date_posted'] = extract_date_posted(page)
     post_data['image_url'] = extract_image_url(page)
 
-    logger.info(
-        f"Extracted data: Caption length={len(post_data['caption'])}, "
-        f"Date={post_data['date_posted']}, "
-        f"Image={'Yes' if post_data['image_url'] else 'No'}"
-    )
+    logger.debug(f"Extracted: caption={len(post_data['caption'])}chars, date={post_data['date_posted'][:10] if post_data['date_posted'] else 'None'}")
     return post_data
 
   except Exception as e:
@@ -366,7 +441,7 @@ def extract_post_urls(page: Page, account: str) -> List[str]:
     try:
       links = page.query_selector_all(selector)
       if links:
-        logger.info(f"Found {len(links)} posts using selector: {selector}")
+        logger.debug(f"Found {len(links)} posts using selector: {selector}")
 
         post_urls = []
         for link in links[:MAX_POSTS_TO_CHECK]:
@@ -377,7 +452,7 @@ def extract_post_urls(page: Page, account: str) -> List[str]:
                           if post_url.startswith('/') else post_url)
               post_urls.append(full_url)
           except Exception as e:
-            logger.warning(f"Error extracting URL from post: {e}")
+            logger.debug(f"Error extracting URL from post: {e}")
             continue
 
         return post_urls
@@ -391,10 +466,10 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
   """Fetch recent posts from a specific Instagram account (past 7 days only)."""
   try:
     url = f"https://www.instagram.com/{account}/"
-    logger.info(f"Fetching posts from @{account} (past {DAYS_BACK_TO_FETCH} days)...")
+    logger.info(f"Fetching recent posts from @{account}")
 
     cutoff_date = get_cutoff_date()
-    logger.info(f"Only fetching posts newer than: {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.debug(f"Cutoff date: {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Navigate to account
     try:
@@ -420,7 +495,7 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
       logger.warning(f"No post links found for @{account}")
       return []
 
-    logger.info(f"Found {len(post_urls)} post URLs to check for recency")
+    logger.info(f"Found {len(post_urls)} posts to check")
 
     # Process posts with date filtering
     recent_posts = []
@@ -429,45 +504,58 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 
     for i, post_url in enumerate(post_urls):
       if posts_checked >= MAX_POSTS_TO_CHECK:
-        logger.info(f"Reached maximum post check limit ({MAX_POSTS_TO_CHECK}) for @{account}")
+        logger.debug(f"Reached maximum post check limit for @{account}")
         break
 
       try:
         posts_checked += 1
-        logger.info(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}: {post_url}")
+        logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}")
 
         # Quick date check first
         post_date_str = extract_post_date_quick(page, post_url)
 
         if post_date_str and not is_post_recent(post_date_str, cutoff_date):
           posts_too_old += 1
-          logger.info(f"Post too old ({post_date_str}), stopping check for @{account} as posts are ordered by date...")
+          logger.debug(f"Post too old ({post_date_str}), stopping check")
           # Since posts are usually ordered by date (newest first),
-          # if one post is outside our {DAYS_BACK_TO_FETCH}-day range, all subsequent posts will be too
+          # if one post is outside our range, all subsequent posts will be too
           break
 
         # Post seems recent or date unclear, process it fully
-        logger.info(f"Post appears recent, processing fully...")
-        post_data = extract_post_details(page, post_url, account)
+        # NOTE: We're already on the post page from extract_post_date_quick,
+        # so we don't need to navigate again
+        logger.debug(f"Post appears recent, extracting details...")
+
+        # Extract details from current page (already navigated by extract_post_date_quick)
+        post_data = create_base_post_data(account, post_url)
+        post_data['caption'] = extract_caption(page)
+        post_data['date_posted'] = post_date_str or extract_date_posted(page)
+        post_data['image_url'] = extract_image_url(page)
+
+        # Log image extraction result
+        if post_data['image_url']:
+          logger.debug(f"✓ Image extracted successfully")
+        else:
+          logger.debug(f"✗ No image found for post")
 
         # Double-check the date after full processing
         if post_data.get('date_posted'):
           if not is_post_recent(post_data['date_posted'], cutoff_date):
-            logger.info(f"Post confirmed too old after full processing ({post_data['date_posted']}), stopping check for @{account}...")
+            logger.debug(f"Post confirmed too old after full processing, stopping check")
             posts_too_old += 1
             # Since posts are usually ordered by date, stop checking remaining posts
             break
 
         recent_posts.append(post_data)
-        logger.info(f"Added recent post (total: {len(recent_posts)} recent posts found)")
+        logger.debug(f"Added recent post (total: {len(recent_posts)})")
 
         time.sleep(1)  # Small delay between posts
 
       except Exception as e:
-        logger.warning(f"Error processing post {posts_checked} from @{account}: {e}")
+        logger.warning(f"Error processing post {posts_checked}: {e}")
         continue
 
-    logger.info(f"Completed @{account}: {len(recent_posts)} recent posts found, {posts_checked} posts checked, {posts_too_old} posts too old")
+    logger.info(f"@{account}: {len(recent_posts)} recent posts found ({posts_checked} checked, {posts_too_old} too old)")
     return recent_posts
 
   except Exception as e:
@@ -480,17 +568,28 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
   total_posts = sum(len(posts) for posts in posts_by_account.values())
   cutoff_date = get_cutoff_date()
 
-  logger.info("=== POST FETCHING SUMMARY ===")
+  # Calculate image statistics
+  posts_with_images = 0
+  posts_without_images = 0
+  for posts in posts_by_account.values():
+    for post in posts:
+      if post.get('image_url'):
+        posts_with_images += 1
+      else:
+        posts_without_images += 1
+
+  logger.info("=== SUMMARY ===")
   logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')} ({DAYS_BACK_TO_FETCH} days)")
-  logger.info(f"Total accounts checked: {len(INSTAGRAM_ACCOUNTS)}")
-  logger.info(f"Accounts with recent posts: {len(posts_by_account)}")
-  logger.info(f"Total recent posts found: {total_posts}")
-  logger.info("")
+  logger.info(f"Accounts: {len(posts_by_account)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
+  logger.info(f"Images: {posts_with_images} with images, {posts_without_images} without images")
 
-  for account, posts in posts_by_account.items():
-    logger.info(f"@{account}: {len(posts)} recent posts")
+  if posts_by_account:
+    logger.info("Posts by account:")
+    for account, posts in posts_by_account.items():
+      account_with_images = sum(1 for post in posts if post.get('image_url'))
+      logger.info(f"  @{account}: {len(posts)} posts ({account_with_images} with images)")
 
-  logger.info("=" * 30)
+  logger.info("=" * 15)
 
 
 def generate_html_styles() -> str:
