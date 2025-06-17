@@ -1,10 +1,10 @@
-from typing import List
+"""Configuration settings for Instagram post fetcher."""
 
 # Instagram accounts to track
-INSTAGRAM_ACCOUNTS: List[str] = [
+INSTAGRAM_ACCOUNTS = [
+    "aytoviedo",
     "biodevas",
     "ausevagm",
-    "aytoviedo",
     "nortes.me",
     "paramo_bar",
     "crjasturias",
@@ -33,14 +33,15 @@ INSTAGRAM_ACCOUNTS: List[str] = [
     "youropia_asociacion",
     "laboralciudadcultura",
     "asturiesculturaenrede",
-    "chigreculturallatadezinc",
+    "chigreculturallatadezinc"
 ]
 
-# How far back to look for posts (in days)
-DAYS_TO_LOOK_BACK: int = 3
+# How far back to look for posts
+DAYS_TO_LOOK_BACK = 7
 
 # Fetcher configuration
-MAX_RETRIES: int = 1
-RETRY_DELAY: int = 5  # seconds
-POSTS_PER_ACCOUNT: int = 10
-ACCOUNT_DELAY: int = 5  # seconds
+MAX_RETRIES = 2
+POSTS_PER_ACCOUNT = 3
+
+# Timezone
+TIMEZONE = 'Europe/Madrid'

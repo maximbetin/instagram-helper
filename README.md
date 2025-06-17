@@ -5,7 +5,7 @@ A simple Python application that displays recent posts from specified Instagram 
 ## Features
 
 - Shows posts from specified Instagram accounts
-- Displays posts from the last 7 days
+- Displays posts from the last specified number of days
 - Shows post URLs, dates, and captions
 - Clean and readable output format
 
@@ -13,38 +13,50 @@ A simple Python application that displays recent posts from specified Instagram 
 
 1. Clone this repository
 2. Create a virtual environment (recommended):
-   ```markdown
-   python -m venv venv
-   venv\Scripts\activate
-   ```
+```bash
+python -m venv venv
+venv\Scripts\activate # On Linux/macOS: source venv/bin/activate
+```
 3. Install dependencies:
-   ```markdown
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
 ## Authentication
 
 To avoid rate limiting and access restrictions, you should authenticate with Instagram:
 
 1. Set up environment variables for your Instagram credentials:
-   ```markdown
-   $env:INSTAGRAM_USERNAME="your_username"
-   $env:INSTAGRAM_PASSWORD="your_password"
-   ```
+```bash
+# On Windows PowerShell:
+$env:INSTAGRAM_USERNAME="your_username"
+$env:INSTAGRAM_PASSWORD="your_password"
+
+# On Windows Command Prompt:
+set INSTAGRAM_USERNAME=your_username
+set INSTAGRAM_PASSWORD=your_password
+
+# On Linux/macOS:
+export INSTAGRAM_USERNAME="your_username"
+export INSTAGRAM_PASSWORD="your_password"
+```
 
 2. For security, you can create a `.env` file in the project root and add it to `.gitignore`:
-   ```markdown
-   INSTAGRAM_USERNAME=your_username
-   INSTAGRAM_PASSWORD=your_password
-   ```
+```
+INSTAGRAM_USERNAME=your_username
+INSTAGRAM_PASSWORD=your_password
+```
+Then install python-dotenv and load it in your script.
+
+Note: Using your Instagram credentials is optional but recommended to avoid rate limiting.
 
 ## Usage
 
 1. Configure the accounts to track in `config.py`
 2. Run the script:
-   ```markdown
-   python main.py
-   ```
+```bash
+python main.py
+```
 
 The script will:
 - Fetch recent posts from the configured accounts

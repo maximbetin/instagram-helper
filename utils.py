@@ -1,3 +1,5 @@
+"""Utility functions and shared logger configuration."""
+
 import logging
 from typing import Optional
 
