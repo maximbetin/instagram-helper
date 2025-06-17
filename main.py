@@ -180,7 +180,7 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
           break
         continue
 
-    # Extract image URL using stable selectors
+    # Extract image URL using more comprehensive selectors
     img_selectors = [
         'article img[crossorigin="anonymous"]',
         'img[src*="scontent"]',
@@ -188,24 +188,45 @@ def extract_post_details(page, post_url: str, account: str) -> Dict:
         'article img',
         'img[alt*="Photo"]',
         'img[alt*="Image"]',
+        'img[src*="cdninstagram"]',
+        'img[src*="fbcdn"]',
+        'img[src*="akamai"]',
+        'img[src*="instagram"]',
+        'img[src*="cdn"]',
+        'img[src*="media"]',
         'img'
     ]
 
     for selector in img_selectors:
       try:
-        img_element = page.query_selector(selector)
-        if img_element:
+        img_elements = page.query_selector_all(selector)
+        for img_element in img_elements:
           img_src = img_element.get_attribute('src')
-          if img_src and ('scontent' in img_src or 'instagram' in img_src):
-            post_data['image_url'] = img_src
-            break
+          if img_src and any(keyword in img_src.lower() for keyword in ['scontent', 'instagram', 'cdn', 'fbcdn', 'akamai', 'media']):
+            # Skip very small images (likely icons)
+            width = img_element.get_attribute('width')
+            height = img_element.get_attribute('height')
+            if width and height:
+              try:
+                if int(width) > 100 and int(height) > 100:
+                  post_data['image_url'] = img_src
+                  break
+              except:
+                post_data['image_url'] = img_src
+                break
+            else:
+              post_data['image_url'] = img_src
+              break
+        if post_data['image_url']:
+          break
       except Exception as e:
         if "Execution context was destroyed" in str(e):
           logger.warning("Execution context destroyed while extracting image")
           break
         continue
 
-    logger.info(f"Extracted data: Caption length={len(post_data['caption'])}, Date={post_data['date_posted']}")
+    logger.info(
+      f"Extracted data: Caption length={len(post_data['caption'])}, Date={post_data['date_posted']}, Image={'Yes' if post_data['image_url'] else 'No'}")
     return post_data
 
   except Exception as e:
@@ -325,6 +346,126 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]):
   logger.info("=" * 30)
 
 
+def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: str = "instagram_posts.html"):
+  """Generate a beautiful HTML report of fetched posts."""
+
+  # Start building HTML content
+  lines = []
+
+  # Add HTML header
+  lines.append("<!DOCTYPE html>")
+  lines.append("<html lang='en'>")
+  lines.append("<head>")
+  lines.append("    <meta charset='UTF-8'>")
+  lines.append("    <meta name='viewport' content='width=device-width, initial-scale=1.0'>")
+  lines.append("    <title>Instagram Posts Report</title>")
+  lines.append("    <style>")
+  lines.append("        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }")
+  lines.append("        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }")
+  lines.append("        .header { background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }")
+  lines.append("        .header h1 { margin: 0; font-size: 2.5rem; }")
+  lines.append("        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 25px; }")
+  lines.append("        .stat-item { text-align: center; background: #f8f9fa; padding: 20px; border-radius: 8px; }")
+  lines.append("        .stat-number { font-size: 2rem; font-weight: bold; color: #667eea; }")
+  lines.append("        .stat-label { color: #666; font-size: 0.9rem; text-transform: uppercase; }")
+  lines.append("        .account-section { margin: 20px; border: 1px solid #e1e5e9; border-radius: 8px; overflow: hidden; }")
+  lines.append(
+    "        .account-header { background: #667eea; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }")
+  lines.append("        .account-name { font-size: 1.3rem; font-weight: bold; }")
+  lines.append("        .post-count { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 15px; font-size: 0.9rem; }")
+  lines.append("        .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; padding: 20px; }")
+  lines.append("        .post-card { border: 1px solid #e1e5e9; border-radius: 8px; overflow: hidden; transition: transform 0.2s; }")
+  lines.append("        .post-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }")
+  lines.append(
+    "        .post-image { width: 100%; height: 180px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; color: #666; }")
+  lines.append("        .post-image img { width: 100%; height: 100%; object-fit: cover; }")
+  lines.append("        .post-content { padding: 15px; }")
+  lines.append("        .post-date { color: #667eea; font-size: 0.8rem; font-weight: 500; margin-bottom: 8px; }")
+  lines.append("        .post-caption { color: #333; line-height: 1.4; margin-bottom: 12px; white-space: pre-wrap; word-wrap: break-word; }")
+  lines.append(
+    "        .post-link { display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; }")
+  lines.append("        .post-link:hover { background: #5a6fd8; }")
+  lines.append("        .no-posts { text-align: center; padding: 30px; color: #666; font-style: italic; }")
+  lines.append("        .footer { text-align: center; padding: 20px; color: #666; border-top: 1px solid #e1e5e9; }")
+  lines.append("        @media (max-width: 768px) { .posts-grid { grid-template-columns: 1fr; } .header h1 { font-size: 2rem; } }")
+  lines.append("    </style>")
+  lines.append("</head>")
+  lines.append("<body>")
+  lines.append("    <div class='container'>")
+  lines.append("        <div class='header'>")
+  lines.append("            <h1>📸 Instagram Posts Report</h1>")
+  lines.append(f"            <p>Fetched on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>")
+  lines.append("        </div>")
+
+  # Add stats
+  lines.append("        <div class='stats'>")
+  lines.append(
+    f"            <div class='stat-item'><div class='stat-number'>{len(INSTAGRAM_ACCOUNTS)}</div><div class='stat-label'>Accounts Checked</div></div>")
+  lines.append(
+    f"            <div class='stat-item'><div class='stat-number'>{len(posts_by_account)}</div><div class='stat-label'>Accounts with Posts</div></div>")
+  lines.append(
+    f"            <div class='stat-item'><div class='stat-number'>{sum(len(posts) for posts in posts_by_account.values())}</div><div class='stat-label'>Total Posts Found</div></div>")
+  lines.append("        </div>")
+
+  # Generate content for each account
+  for account, posts in posts_by_account.items():
+    lines.append(f"        <div class='account-section'>")
+    lines.append(f"            <div class='account-header'>")
+    lines.append(f"                <div class='account-name'>@{account}</div>")
+    lines.append(f"                <div class='post-count'>{len(posts)} posts</div>")
+    lines.append("            </div>")
+    lines.append("            <div class='posts-grid'>")
+
+    if posts:
+      for post in posts:
+          # Clean caption
+        caption = post.get('caption', '').replace('"', '&quot;').replace("'", '&#39;')
+
+        # Format date
+        date_posted = post.get('date_posted', 'Unknown date')
+
+        # Handle image
+        image_url = post.get('image_url')
+        if image_url:
+          image_html = f"<img src='{image_url}' alt='Post image' onerror='this.parentElement.innerHTML=\"<span>No image available</span>\"' />"
+        else:
+          image_html = "<span>No image available</span>"
+
+        lines.append("                <div class='post-card'>")
+        lines.append("                    <div class='post-image'>")
+        lines.append(f"                        {image_html}")
+        lines.append("                    </div>")
+        lines.append("                    <div class='post-content'>")
+        lines.append(f"                        <div class='post-date'>📅 {date_posted}</div>")
+        lines.append(f"                        <div class='post-caption'>{caption}</div>")
+        lines.append(f"                        <a href='{post['url']}' target='_blank' class='post-link'>View on Instagram →</a>")
+        lines.append("                    </div>")
+        lines.append("                </div>")
+    else:
+      lines.append("                <div class='no-posts'>")
+      lines.append("                    <p>No posts found for this account</p>")
+      lines.append("                </div>")
+
+    lines.append("            </div>")
+    lines.append("        </div>")
+
+  # Add footer
+  lines.append("        <div class='footer'>")
+  lines.append("            <p>Generated by Instagram Posts Fetcher</p>")
+  lines.append("        </div>")
+  lines.append("    </div>")
+  lines.append("</body>")
+  lines.append("</html>")
+
+  # Write to file
+  html_content = '\n'.join(lines)
+  with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+  logger.info(f"HTML report generated: {output_file}")
+  return output_file
+
+
 def main():
   """Open Instagram for login, then fetch posts from specified accounts."""
   try:
@@ -404,6 +545,10 @@ def main():
 
       # Display summary
       display_posts_summary(posts_by_account)
+
+      # Generate HTML report
+      html_file = generate_html_report(posts_by_account)
+      logger.info(f"HTML report saved to: {html_file}")
 
       logger.info("Post fetching complete! Press Enter to close the browser...")
       input()
