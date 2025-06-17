@@ -4,12 +4,19 @@ from playwright.sync_api import ViewportSize
 
 # Browser settings
 BROWSER_VIEWPORT: ViewportSize = {'width': 1366, 'height': 768}
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+USER_AGENT = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+)
 LOCALE = 'en-US'
 TIMEZONE = 'Europe/Madrid'
 
-# Instagram URL
+# Instagram settings
 INSTAGRAM_URL = "https://www.instagram.com/"
+
+# Post fetching settings
+POSTS_PER_ACCOUNT = 5
+DELAY_BETWEEN_ACCOUNTS = 3  # seconds
 
 # Instagram accounts to track
 INSTAGRAM_ACCOUNTS = [
@@ -46,10 +53,6 @@ INSTAGRAM_ACCOUNTS = [
     "asturiesculturaenrede",
     "chigreculturallatadezinc"
 ]
-
-# Post fetching settings
-POSTS_PER_ACCOUNT = 5
-DELAY_BETWEEN_ACCOUNTS = 3  # seconds
 
 # Browser launch arguments
 BROWSER_ARGS = [
