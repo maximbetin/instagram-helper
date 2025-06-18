@@ -10,13 +10,13 @@ LOG_DATE_FORMAT = '%H:%M:%S'
 
 
 def setup_logging(name: Optional[str] = None) -> logging.Logger:
-  """Configure and return a logger instance with consistent formatting."""
-  logging.basicConfig(
-      level=LOG_LEVEL,
-      format=LOG_FORMAT,
-      datefmt=LOG_DATE_FORMAT
-  )
-  return logging.getLogger(name or __name__)
+    """Configure and return a logger instance with consistent formatting."""
+    logging.basicConfig(
+        level=LOG_LEVEL,
+        format=LOG_FORMAT,
+        datefmt=LOG_DATE_FORMAT
+    )
+    return logging.getLogger(name or __name__)
 
 
 # Create a default logger instance
