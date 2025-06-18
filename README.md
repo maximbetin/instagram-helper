@@ -1,14 +1,18 @@
 # Instagram Posts Fetcher
 
-A tool that opens Instagram for manual login, then automatically fetches recent posts from specified accounts and generates a stylized HTML report.
+A tool that opens Instagram for manual login, then automatically fetches recent posts from specified accounts and generates a stylized HTML report with global date sorting and corresponding links.
 
 ## Features
 
 - **Manual login**: Opens Instagram for you to log in manually
 - **Automatic fetching**: After login, fetches posts from specified accounts
 - **Date filtering**: Only fetches posts from the last few days (configurable)
+- **Global post sorting**: All posts sorted by published date (newest first) regardless of account
 - **HTML report generation**: Creates a stylized, responsive HTML report with all fetched posts
-- **Image extraction**: Captures post images and captions
+- **Clean link copying**: One-click copy of clean Instagram URLs without tracking parameters
+- **Desktop integration**: Automatically saves reports to Desktop with date-based naming
+- **Auto-browser opening**: Automatically opens the generated HTML report in your default browser
+- **Text-focused**: Captures post captions and dates (image fetching disabled for performance)
 - **Clean interface**: Simple, focused functionality
 - **Configurable**: Easy to modify account list and settings
 
@@ -38,8 +42,9 @@ python main.py
 - After you press Enter, verify your login status
 - Start fetching posts from specified accounts
 - Display a summary of fetched posts in the console
-- Generate a stylized HTML report (`instagram_posts.html`)
-- Wait for you to press Enter again to close
+- Generate a stylized HTML report on your Desktop (`instagram_updates_YYYYMMDD.html`)
+- Automatically close the browser
+- Open the HTML report in your default browser
 
 ## Configuration
 
@@ -65,35 +70,44 @@ Edit `config.py` to modify:
 The tool generates two types of output:
 
 1. **Console Summary**: Shows statistics and basic information about fetched posts
-2. **HTML Report**: A stylized, responsive HTML file (`instagram_posts.html`) containing:
+2. **HTML Report**: A stylized, responsive HTML file saved to Desktop containing:
 - Summary statistics
-- Post cards with images, captions, and dates
+- All posts sorted globally by date (newest first)
+- Post cards with captions, dates, and account information
 - Direct links to original Instagram posts
-- Organized by account
+- Clean copy buttons for sharing links without tracking parameters
+- Responsive design that works on mobile and desktop
+
+## File Naming
+
+Reports are automatically saved to your Desktop folder with the format:
+- `instagram_updates_YYYYMMDD.html` (e.g., `instagram_updates_20241220.html`)
 
 ## Files
 
-- `main.py` - Main script with login, post fetching, and HTML generation logic
+- `main.py` - Main script with login, post fetching, HTML generation, and browser automation
 - `config.py` - Configuration settings for accounts, browser, and fetching behavior
 - `utils.py` - Logging utilities and shared functions
 - `requirements.txt` - Python dependencies (Playwright)
 
-## Notes
+## Key Features
 
-- This tool requires manual login to access Instagram content
-- After logging in, it will automatically fetch recent posts from the specified accounts
-- The browser remains open throughout the process for transparency and debugging
-- The HTML report is self-contained and can be opened in any web browser
-- Posts are filtered by date to only show recent content
-- The tool is currently configured for Asturias (Spain) cultural and event accounts
+### Global Post Sorting
+- All posts from all accounts are sorted by published date
+- Newest posts appear first regardless of which account posted them
+- Provides a unified timeline view of recent activity
 
-## Known Issues
+### Clean Link Sharing
+- Each post has a "📋 Copy Link" button
+- Copies clean Instagram URLs without tracking parameters or query strings
+- Perfect for sharing in WhatsApp, Telegram, or other messaging apps
+- Visual feedback shows when link is successfully copied
 
-- Sometimes the image is not extracted / displayed properly in the HTML report.
-- Some posts captions or descriptions are not extracted / displayed properly in the HTML report.
-- No need to keep the browser open after the script finishes.
-- Would be nice to collapse updates per account in the HTML report.
-- Even better would be to have the most recent posts displayed first, regardless of the account.
+### Desktop Integration
+- Reports automatically save to your Desktop folder
+- Cross-platform support (Windows, macOS, Linux)
+- Date-based naming for easy organization
+- Automatic browser opening after generation
 
 ## License
 

@@ -70,11 +70,6 @@ SELECTORS = {
     ]
 }
 
-# Image validation keywords
-IMG_KEYWORDS = ['scontent', 'instagram', 'cdn', 'fbcdn', 'akamai', 'media']
-IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
-MIN_IMAGE_SIZE = 50  # Minimum image dimensions in pixels
-
 
 def get_cutoff_date() -> datetime:
   """Get the cutoff date for filtering posts."""
@@ -112,54 +107,17 @@ def parse_post_date(date_str: str) -> Optional[datetime]:
   return None
 
 
-def is_post_recent(date_str: str, cutoff_date: datetime) -> bool:
+def is_post_recent(date_str: Optional[str], cutoff_date: datetime) -> bool:
   """Check if a post date is within the recent timeframe."""
+  if not date_str:
+    # If we can't parse the date, assume it might be recent and check it
+    return True
+
   post_date = parse_post_date(date_str)
   if not post_date:
     # If we can't parse the date, assume it might be recent and check it
     return True
   return post_date >= cutoff_date
-
-
-def extract_post_date_quick(page: Page, post_url: str) -> Optional[str]:
-  """Quick extraction of post date without full page processing."""
-  try:
-    logger.debug(f"Quick date check: {post_url}")
-
-    # Navigate to post quickly
-    page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
-    time.sleep(1)  # Brief wait for content
-
-    # Try to extract date quickly
-    for selector in SELECTORS['date']:
-      try:
-        date_element = page.query_selector(selector)
-        if not date_element:
-          continue
-
-        # Try datetime attribute first
-        datetime_attr = date_element.get_attribute('datetime')
-        if datetime_attr:
-          return datetime_attr
-
-        # Try title attribute
-        title_attr = date_element.get_attribute('title')
-        if title_attr:
-          return title_attr
-
-        # Try inner text
-        inner_text = date_element.inner_text().strip()
-        if inner_text and re.search(r'\d{4}', inner_text):
-          return inner_text
-
-      except Exception:
-        continue
-
-    return None
-
-  except Exception as e:
-    logger.debug(f"Quick date extraction failed: {e}")
-    return None
 
 
 def check_if_logged_in(page: Page) -> bool:
@@ -226,146 +184,53 @@ def extract_caption(page: Page) -> str:
   return ''
 
 
-def extract_date_posted(page: Page) -> str:
-  """Extract date posted from Instagram post."""
-  for selector in SELECTORS['date']:
-    try:
-      date_element = page.query_selector(selector)
-      if not date_element:
-        continue
+def extract_post_date(page: Page, post_url: Optional[str] = None) -> Optional[str]:
+  """Extract post date from Instagram post page."""
+  try:
+    if post_url:
+      logger.debug(f"Date extraction for: {post_url}")
+      # Navigate to post if URL provided
+      page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
+      time.sleep(1)  # Brief wait for content
 
-      # Try to get datetime attribute first
-      datetime_attr = date_element.get_attribute('datetime')
-      if datetime_attr:
-        try:
-          dt = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
-          dt_madrid = dt.astimezone(MADRID_TZ)
-          return dt_madrid.strftime('%Y-%m-%d %H:%M:%S %Z')
-        except Exception:
-          pass
-
-      # Fallback to title attribute or inner text
-      title_attr = date_element.get_attribute('title')
-      if title_attr:
-        return title_attr
-
-      inner_text = date_element.inner_text().strip()
-      if inner_text and re.search(r'\d{4}', inner_text):
-        return inner_text
-
-    except Exception as e:
-      if EXECUTION_CONTEXT_ERROR in str(e):
-        logger.warning("Execution context destroyed while extracting date")
-        break
-      continue
-
-  return ''
-
-
-def is_valid_image(img_src: str, width: Optional[str], height: Optional[str]) -> bool:
-  """Check if image is valid based on URL and dimensions."""
-  if not img_src or not (img_src.startswith('http') or img_src.startswith('data:')):
-    return False
-
-  # Accept images that contain Instagram-related keywords OR look like valid image URLs
-  has_instagram_keywords = any(keyword in img_src.lower() for keyword in IMG_KEYWORDS)
-  looks_like_image = any(ext in img_src.lower() for ext in IMG_EXTENSIONS)
-
-  if not (has_instagram_keywords or looks_like_image):
-    return False
-
-  # More lenient dimension check - accept if no dimensions or reasonable size
-  if width and height:
-    try:
-      w, h = int(width), int(height)
-      return w >= MIN_IMAGE_SIZE and h >= MIN_IMAGE_SIZE
-    except ValueError:
-      # If we can't parse dimensions, accept the image anyway
-      return True
-
-  return True
-
-
-def extract_image_url(page: Page) -> Optional[str]:
-  """Extract image URL from Instagram post."""
-  # Wait for images to load
-  time.sleep(2)
-
-  # Image selectors in priority order (most specific first)
-  image_selectors = [
-      'article img[crossorigin="anonymous"]',  # Main post images
-      '[role="img"] img',                      # Modern Instagram layouts
-      'div[role="img"] img',
-      'img[src*="scontent"]',                  # CDN-specific selectors
-      'img[src*="cdninstagram"]',
-      'img[src*="fbcdn"]',
-      'article img',                           # General post images
-      'img[alt*="Photo"]',
-      'img[alt*="Image"]',
-      'img[src*="instagram"]',                 # Fallback selectors
-      'img[src*="cdn"]',
-      'img[src*="akamai"]',
-      'img[src*="media"]',
-      'img'                                    # Last resort
-  ]
-
-  found_images = []
-
-  for selector in image_selectors:
-    try:
-      img_elements = page.query_selector_all(selector)
-      logger.debug(f"Selector '{selector}': found {len(img_elements)} images")
-
-      for img_element in img_elements:
-        try:
-          img_src = img_element.get_attribute('src')
-          width = img_element.get_attribute('width')
-          height = img_element.get_attribute('height')
-
-          if img_src:
-            found_images.append({
-                'src': img_src,
-                'width': width,
-                'height': height,
-                'selector': selector,
-                'valid': is_valid_image(img_src, width, height)
-            })
-
-        except Exception as e:
-          logger.debug(f"Error extracting from image element: {e}")
+    # Try to extract date from current page
+    for selector in SELECTORS['date']:
+      try:
+        date_element = page.query_selector(selector)
+        if not date_element:
           continue
 
-    except Exception as e:
-      if EXECUTION_CONTEXT_ERROR in str(e):
-        logger.warning("Execution context destroyed while extracting image")
-        break
-      logger.debug(f"Error with selector '{selector}': {e}")
-      continue
+        # Try datetime attribute first
+        datetime_attr = date_element.get_attribute('datetime')
+        if datetime_attr:
+          try:
+            dt = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
+            dt_madrid = dt.astimezone(MADRID_TZ)
+            return dt_madrid.strftime('%Y-%m-%d %H:%M:%S %Z')
+          except Exception:
+            return datetime_attr
 
-  # Log what we found for debugging
-  if found_images:
-    logger.debug(f"Found {len(found_images)} total images:")
-    for i, img in enumerate(found_images[:5]):  # Show first 5
-      src_preview = img['src'][:80] + ('...' if len(img['src']) > 80 else '')
-      selector_preview = img['selector'][:30]
-      logger.debug(f"  {i + 1}. {src_preview} (valid: {img['valid']}, selector: {selector_preview})")
-  else:
-    logger.debug("No images found with any selector")
+        # Try title attribute
+        title_attr = date_element.get_attribute('title')
+        if title_attr:
+          return title_attr
 
-  # Return the first valid image
-  for img in found_images:
-    if img['valid']:
-      src_preview = img['src'][:80] + ('...' if len(img['src']) > 80 else '')
-      logger.debug(f"Using image: {src_preview}")
-      return img['src']
+        # Try inner text
+        inner_text = date_element.inner_text().strip()
+        if inner_text and re.search(r'\d{4}', inner_text):
+          return inner_text
 
-  # If no valid images, return the first one anyway (let the browser handle it)
-  if found_images:
-    src_preview = found_images[0]['src'][:80] + ('...' if len(found_images[0]['src']) > 80 else '')
-    logger.debug(f"No valid images found, using first available: {src_preview}")
-    return found_images[0]['src']
+      except Exception as e:
+        if EXECUTION_CONTEXT_ERROR in str(e):
+          logger.warning("Execution context destroyed while extracting date")
+          break
+        continue
 
-  return None
+    return None
+
+  except Exception as e:
+    logger.debug(f"Date extraction failed: {e}")
+    return None
 
 
 def create_base_post_data(account: str, post_url: str) -> Dict:
@@ -378,13 +243,6 @@ def create_base_post_data(account: str, post_url: str) -> Dict:
       'image_url': None,
       'timestamp': datetime.now().isoformat()
   }
-
-
-def create_error_post_data(account: str, post_url: str, error: str) -> Dict:
-  """Create post data structure for errors."""
-  post_data = create_base_post_data(account, post_url)
-  post_data['error'] = error
-  return post_data
 
 
 def extract_post_urls(page: Page, account: str) -> List[str]:
@@ -464,7 +322,7 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
         logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}")
 
         # Quick date check first
-        post_date_str = extract_post_date_quick(page, post_url)
+        post_date_str = extract_post_date(page, post_url)
 
         if post_date_str and not is_post_recent(post_date_str, cutoff_date):
           posts_too_old += 1
@@ -474,13 +332,13 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
           break
 
         # Post seems recent or date unclear, process it fully
-        # NOTE: We're already on the post page from extract_post_date_quick
+        # NOTE: We're already on the post page from extract_post_date
         logger.debug(f"Post appears recent, extracting details...")
 
-        # Extract details from current page (already navigated by extract_post_date_quick)
+        # Extract details from current page (already navigated by extract_post_date)
         post_data = create_base_post_data(account, post_url)
         post_data['caption'] = extract_caption(page)
-        post_data['date_posted'] = post_date_str or extract_date_posted(page)
+        post_data['date_posted'] = post_date_str or extract_post_date(page)
         # Image fetching disabled as per user request
         post_data['image_url'] = None
 
@@ -763,6 +621,25 @@ def generate_html_footer() -> str:
 </html>"""
 
 
+def get_desktop_path() -> str:
+  """Get the path to the user's desktop directory across different operating systems."""
+  if os.name == 'nt':  # Windows
+    return os.path.join(os.path.expanduser('~'), 'Desktop')
+  elif os.name == 'posix':  # macOS and Linux
+    desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+    # Check if Desktop exists, if not try common alternatives
+    if not os.path.exists(desktop_path):
+      # Try common Linux desktop paths
+      for alt_path in ['~/Desktop', '~/Escritorio', '~/Рабочий стол']:
+        alt_desktop = os.path.expanduser(alt_path)
+        if os.path.exists(alt_desktop):
+          return alt_desktop
+    return desktop_path
+  else:
+    # Fallback to current directory
+    return os.getcwd()
+
+
 def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: Optional[str] = None) -> str:
   """Generate a beautiful HTML report of fetched posts."""
   timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -771,22 +648,7 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: O
   if output_file is None:
     date_checked = datetime.now().strftime('%Y%m%d')
     filename = f"instagram_updates_{date_checked}.html"
-
-    # Get Desktop path
-    if os.name == 'nt':  # Windows
-      desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
-    elif os.name == 'posix':  # macOS and Linux
-      desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
-      # Check if Desktop exists, if not try common alternatives
-      if not os.path.exists(desktop_path):
-        # Try common Linux desktop paths
-        for alt_path in ['~/Desktop', '~/Escritorio', '~/Рабочий стол']:
-          alt_desktop = os.path.expanduser(alt_path)
-          if os.path.exists(alt_desktop):
-            desktop_path = alt_desktop
-            break
-
-    output_file = os.path.join(desktop_path, filename)
+    output_file = os.path.join(get_desktop_path(), filename)
 
   html_parts = [
       generate_html_header(timestamp),
