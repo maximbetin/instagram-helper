@@ -1,7 +1,10 @@
 """Instagram browser launcher with post fetching."""
 
+import os
 import re
+import subprocess
 import time
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
@@ -478,13 +481,8 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
         post_data = create_base_post_data(account, post_url)
         post_data['caption'] = extract_caption(page)
         post_data['date_posted'] = post_date_str or extract_date_posted(page)
-        post_data['image_url'] = extract_image_url(page)
-
-        # Log image extraction result
-        if post_data['image_url']:
-          logger.debug(f"✓ Image extracted successfully")
-        else:
-          logger.debug(f"✗ No image found for post")
+        # Image fetching disabled as per user request
+        post_data['image_url'] = None
 
         # Double-check the date after full processing
         if post_data.get('date_posted'):
@@ -516,26 +514,15 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
   total_posts = sum(len(posts) for posts in posts_by_account.values())
   cutoff_date = get_cutoff_date()
 
-  # Calculate image statistics
-  posts_with_images = 0
-  posts_without_images = 0
-  for posts in posts_by_account.values():
-    for post in posts:
-      if post.get('image_url'):
-        posts_with_images += 1
-      else:
-        posts_without_images += 1
-
   logger.info("=== SUMMARY ===")
   logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')} ({DAYS_BACK_TO_FETCH} days)")
   logger.info(f"Accounts: {len(posts_by_account)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
-  logger.info(f"Images: {posts_with_images} with images, {posts_without_images} without images")
+  logger.info("Image fetching disabled - focusing on text content and dates")
 
   if posts_by_account:
     logger.info("Posts by account:")
     for account, posts in posts_by_account.items():
-      account_with_images = sum(1 for post in posts if post.get('image_url'))
-      logger.info(f"  @{account}: {len(posts)} posts ({account_with_images} with images)")
+      logger.info(f"  @{account}: {len(posts)} posts")
 
   logger.info("=" * 15)
 
@@ -558,13 +545,16 @@ def generate_html_styles() -> str:
         .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; padding: 20px; }
         .post-card { border: 1px solid #e1e5e9; border-radius: 8px; overflow: hidden; transition: transform 0.2s; }
         .post-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .post-image { width: 100%; height: 180px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; color: #666; }
-        .post-image img { width: 100%; height: 100%; object-fit: cover; }
         .post-content { padding: 15px; }
+        .post-account { color: #667eea; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
         .post-date { color: #667eea; font-size: 0.8rem; font-weight: 500; margin-bottom: 8px; }
         .post-caption { color: #333; line-height: 1.4; margin-bottom: 12px; white-space: pre-wrap; word-wrap: break-word; }
+        .post-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .post-link { display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; }
         .post-link:hover { background: #5a6fd8; }
+        .copy-link-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s; }
+        .copy-link-btn:hover { background: #218838; }
+        .copy-link-btn:active { background: #1e7e34; }
         .no-posts { text-align: center; padding: 30px; color: #666; font-style: italic; }
         .footer { text-align: center; padding: 20px; color: #666; border-top: 1px solid #e1e5e9; }
         @media (max-width: 768px) { .posts-grid { grid-template-columns: 1fr; } .header h1 { font-size: 2rem; } }
@@ -583,12 +573,69 @@ def generate_html_header(timestamp: str) -> str:
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Instagram Posts Report - Recent Posts ({DAYS_BACK_TO_FETCH} days)</title>
     <style>{generate_html_styles()}</style>
+    <script>
+        function copyToClipboard(text) {{
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {{
+                navigator.clipboard.writeText(text).then(function() {{
+                    // Show success feedback
+                    const event = window.event;
+                    const button = event.target;
+                    const originalText = button.textContent;
+                    button.textContent = '✅ Copied!';
+                    button.style.background = '#007bff';
+                    setTimeout(function() {{
+                        button.textContent = originalText;
+                        button.style.background = '#28a745';
+                    }}, 2000);
+                }}).catch(function(err) {{
+                    console.error('Clipboard API failed: ', err);
+                    // Fallback to document.execCommand
+                    fallbackCopyToClipboard(text, event.target);
+                }});
+            }} else {{
+                // Fallback for older browsers
+                fallbackCopyToClipboard(text, event.target);
+            }}
+        }}
+
+        function fallbackCopyToClipboard(text, button) {{
+            try {{
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                if (successful) {{
+                    // Show success feedback
+                    const originalText = button.textContent;
+                    button.textContent = '✅ Copied!';
+                    button.style.background = '#007bff';
+                    setTimeout(function() {{
+                        button.textContent = originalText;
+                        button.style.background = '#28a745';
+                    }}, 2000);
+                }} else {{
+                    alert('Failed to copy link to clipboard');
+                }}
+            }} catch (err) {{
+                console.error('Fallback copy failed: ', err);
+                alert('Failed to copy link to clipboard');
+            }}
+        }}
+    </script>
 </head>
 <body>
     <div class='container'>
         <div class='header'>
             <h1>📸 Instagram Posts Report</h1>
-            <p>Recent posts from the past {DAYS_BACK_TO_FETCH} days</p>
+            <p>Recent posts from the past {DAYS_BACK_TO_FETCH} days (sorted by date)</p>
             <p>Date range: {date_range}</p>
             <p>Generated on {timestamp}</p>
         </div>"""
@@ -619,25 +666,43 @@ def format_post_caption(caption: str) -> str:
   return caption.replace('"', '&quot;').replace("'", '&#39;')
 
 
+def clean_instagram_url(url: str) -> str:
+  """Clean Instagram URL by removing tracking parameters."""
+  if not url:
+    return url
+
+  # Remove common tracking parameters
+  parsed = urllib.parse.urlparse(url)
+
+  # Keep only the base path, remove query parameters and fragments
+  clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+
+  # Remove trailing slash if present
+  clean_url = clean_url.rstrip('/')
+
+  return clean_url
+
+
 def generate_post_card_html(post: Dict) -> str:
   """Generate HTML for a single post card."""
   caption = format_post_caption(post.get('caption', ''))
   date_posted = post.get('date_posted', 'Unknown date')
-  image_url = post.get('image_url')
+  account = post.get('account', 'Unknown account')
+  original_url = post.get('url', '')
+  clean_url = clean_instagram_url(original_url)
 
-  if image_url:
-    image_html = f'<img src="{image_url}" alt="Post image" onerror="this.parentElement.innerHTML=\'<span>No image available</span>\'" />'
-  else:
-    image_html = '<span>No image available</span>'
-
+  # Since image fetching is disabled, we focus on text content
   return f"""                <div class='post-card'>
-                    <div class='post-image'>
-                        {image_html}
-                    </div>
                     <div class='post-content'>
+                        <div class='post-account'>👤 @{account}</div>
                         <div class='post-date'>📅 {date_posted}</div>
                         <div class='post-caption'>{caption}</div>
-                        <a href='{post['url']}' target='_blank' class='post-link'>View on Instagram →</a>
+                        <div class='post-actions'>
+                            <a href='{original_url}' target='_blank' class='post-link'>View on Instagram →</a>
+                            <button class='copy-link-btn' onclick='copyToClipboard("{clean_url}")' title='Copy clean link for sharing'>
+                                📋 Copy Link
+                            </button>
+                        </div>
                     </div>
                 </div>"""
 
@@ -665,6 +730,29 @@ def generate_account_section_html(account: str, posts: List[Dict]) -> str:
   return section_html
 
 
+def generate_global_posts_section_html(posts: List[Dict]) -> str:
+  """Generate HTML for all posts sorted globally by date."""
+  section_html = f"""        <div class='account-section'>
+            <div class='account-header'>
+                <div class='account-name'>🌍 All Posts (Sorted by Date)</div>
+                <div class='post-count'>{len(posts)} posts</div>
+            </div>
+            <div class='posts-grid'>"""
+
+  if posts:
+    for post in posts:
+      section_html += "\n" + generate_post_card_html(post)
+  else:
+    section_html += """                <div class='no-posts'>
+                    <p>No posts found</p>
+                </div>"""
+
+  section_html += """            </div>
+        </div>"""
+
+  return section_html
+
+
 def generate_html_footer() -> str:
   """Generate HTML footer section."""
   return """        <div class='footer'>
@@ -684,9 +772,16 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: s
       generate_html_stats(posts_by_account)
   ]
 
-  # Generate content for each account
-  for account, posts in posts_by_account.items():
-    html_parts.append(generate_account_section_html(account, posts))
+  # Use globally sorted posts if available, otherwise fall back to individual accounts
+  if '_all_sorted' in posts_by_account and posts_by_account['_all_sorted']:
+    # Show all posts sorted globally by date
+    all_posts = posts_by_account['_all_sorted']
+    html_parts.append(generate_global_posts_section_html(all_posts))
+  else:
+    # Fallback to individual account sections
+    for account, posts in posts_by_account.items():
+      if account != '_all_sorted':  # Skip the special sorting key
+        html_parts.append(generate_account_section_html(account, posts))
 
   html_parts.append(generate_html_footer())
 
@@ -748,20 +843,70 @@ def navigate_to_instagram(page: Page) -> bool:
     return False
 
 
+def sort_posts_by_date(posts: List[Dict]) -> List[Dict]:
+  """Sort posts by published date, newest first."""
+  def get_sort_key(post):
+    date_str = post.get('date_posted', '')
+    if not date_str:
+      return datetime.min.replace(tzinfo=MADRID_TZ)
+
+    parsed_date = parse_post_date(date_str)
+    return parsed_date if parsed_date else datetime.min.replace(tzinfo=MADRID_TZ)
+
+  return sorted(posts, key=get_sort_key, reverse=True)
+
+
 def fetch_all_posts(page: Page) -> Dict[str, List[Dict]]:
   """Fetch posts from all configured accounts."""
   posts_by_account = {}
+  all_posts = []
 
   for account in INSTAGRAM_ACCOUNTS:
     posts = fetch_posts_from_account(page, account)
     if posts:
       posts_by_account[account] = posts
+      all_posts.extend(posts)
 
     # Delay between accounts (except last one)
     if account != INSTAGRAM_ACCOUNTS[-1]:
       time.sleep(DELAY_BETWEEN_ACCOUNTS)
 
+  # Sort all posts globally by date (newest first)
+  all_posts_sorted = sort_posts_by_date(all_posts)
+
+  # Store the globally sorted posts under a special key
+  posts_by_account['_all_sorted'] = all_posts_sorted
+
   return posts_by_account
+
+
+def open_html_file(file_path: str) -> None:
+  """Open HTML file in default browser."""
+  try:
+    abs_path = os.path.abspath(file_path)
+    if os.path.exists(abs_path):
+      logger.info(f"Opening HTML report in browser: {abs_path}")
+
+      # Cross-platform approach to open file in default browser
+      if os.name == 'nt':  # Windows
+        os.startfile(abs_path)
+      elif os.name == 'posix':  # macOS and Linux
+        try:
+          # Try macOS first
+          subprocess.run(['open', abs_path], check=True, capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+          try:
+            # Try Linux
+            subprocess.run(['xdg-open', abs_path], check=True, capture_output=True)
+          except (subprocess.CalledProcessError, FileNotFoundError):
+            logger.warning(f"Could not auto-open HTML file. Please manually open: {abs_path}")
+      else:
+        logger.warning(f"Could not auto-open HTML file on this platform. Please manually open: {abs_path}")
+    else:
+      logger.error(f"HTML file not found: {abs_path}")
+  except Exception as e:
+    logger.warning(f"Could not auto-open HTML file: {e}")
+    logger.info(f"Please manually open: {os.path.abspath(file_path)}")
 
 
 def main():
@@ -799,11 +944,15 @@ def main():
       html_file = generate_html_report(posts_by_account)
       logger.info(f"HTML report saved to: {html_file}")
 
-      logger.info("Post fetching complete! Press Enter to close the browser...")
-      input()
-
+      # Close browser automatically
+      logger.info("Closing browser...")
       context.close()
       browser.close()
+
+      # Auto-open the HTML file
+      open_html_file(html_file)
+
+      logger.info("Post fetching complete! HTML report opened in browser.")
 
   except Exception as e:
     logger.error(f"An error occurred: {e}")
