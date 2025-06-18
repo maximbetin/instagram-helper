@@ -763,9 +763,30 @@ def generate_html_footer() -> str:
 </html>"""
 
 
-def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: str = "instagram_posts.html") -> str:
+def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: Optional[str] = None) -> str:
   """Generate a beautiful HTML report of fetched posts."""
   timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+  # Generate filename with date format if not provided
+  if output_file is None:
+    date_checked = datetime.now().strftime('%Y%m%d')
+    filename = f"instagram_updates_{date_checked}.html"
+
+    # Get Desktop path
+    if os.name == 'nt':  # Windows
+      desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+    elif os.name == 'posix':  # macOS and Linux
+      desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+      # Check if Desktop exists, if not try common alternatives
+      if not os.path.exists(desktop_path):
+        # Try common Linux desktop paths
+        for alt_path in ['~/Desktop', '~/Escritorio', '~/Рабочий стол']:
+          alt_desktop = os.path.expanduser(alt_path)
+          if os.path.exists(alt_desktop):
+            desktop_path = alt_desktop
+            break
+
+    output_file = os.path.join(desktop_path, filename)
 
   html_parts = [
       generate_html_header(timestamp),
