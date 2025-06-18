@@ -200,7 +200,6 @@ def create_base_post_data(account: str, post_url: str) -> Dict:
         'url': post_url,
         'caption': '',
         'date_posted': '',
-        'image_url': None,
         'timestamp': datetime.now().isoformat()
     }
 
@@ -303,8 +302,6 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
                 post_data = create_base_post_data(account, post_url)
                 post_data['caption'] = extract_caption(page)
                 post_data['date_posted'] = post_date_str  # Use the date we already extracted
-                # Image fetching disabled as per user request
-                post_data['image_url'] = None
 
                 # Double-check the date after full processing (only if we didn't get a date initially)
                 if not post_data.get('date_posted'):
@@ -343,7 +340,6 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
     logger.info("=== SUMMARY ===")
     logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {current_time.strftime('%Y-%m-%d')} ({INSTAGRAM_MAX_POST_AGE} days)")
     logger.info(f"Accounts: {len(real_accounts)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
-    logger.info("Image fetching disabled - focusing on text content and dates")
 
     if real_accounts:
         logger.info("Posts by account:")
@@ -519,7 +515,6 @@ def generate_post_card_html(post: Dict) -> str:
     original_url = post.get('url', '')
     clean_url = clean_instagram_url(original_url)
 
-    # Since image fetching is disabled, we focus on text content
     return f"""                <div class='post-card'>
                     <div class='post-content'>
                         <div class='post-account'>👤 @{account}</div>
@@ -751,11 +746,10 @@ def main():
             if not navigate_to_instagram(page):
                 return
 
-            logger.info("Instagram page opened! Please log in manually.")
-            logger.info("After logging in, press Enter to start fetching posts...")
+            logger.info("Please log in manually, press Enter to continue...")
             input()
 
-            logger.info("Login verified! Starting to fetch posts from specified accounts...")
+            logger.info("User logged in, fetching posts from specified accounts...")
 
             # Fetch posts from all accounts
             posts_by_account = fetch_all_posts(page)
@@ -765,7 +759,7 @@ def main():
             html_file = generate_html_report(posts_by_account)
             logger.info(f"HTML report saved to: {html_file}")
 
-            # Close browser automatically
+            # Close browser on completion
             logger.info("Closing browser...")
             context.close()
             browser.close()
@@ -773,7 +767,7 @@ def main():
             # Auto-open the HTML file
             open_html_file(html_file)
 
-            logger.info("Post fetching complete! HTML report opened in browser.")
+            logger.info("Done :)")
 
     except Exception as e:
         logger.error(f"An error occurred: {e}")
