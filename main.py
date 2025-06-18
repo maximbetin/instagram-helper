@@ -8,6 +8,7 @@ import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
+from jinja2 import Environment, FileSystemLoader
 from playwright.sync_api import Page, sync_playwright
 
 from config import *
@@ -349,147 +350,6 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
     logger.info("=" * 15)
 
 
-def generate_html_styles() -> str:
-    """Generate CSS styles for HTML report."""
-    return """
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { margin: 0; font-size: 2.5rem; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 25px; }
-        .stat-item { text-align: center; background: #f8f9fa; padding: 20px; border-radius: 8px; }
-        .stat-number { font-size: 2rem; font-weight: bold; color: #667eea; }
-        .stat-label { color: #666; font-size: 0.9rem; text-transform: uppercase; }
-        .account-section { margin: 20px; border: 1px solid #e1e5e9; border-radius: 8px; overflow: hidden; }
-        .account-header { background: #667eea; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .account-name { font-size: 1.3rem; font-weight: bold; }
-        .post-count { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 15px; font-size: 0.9rem; }
-        .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; padding: 20px; }
-        .post-card { border: 1px solid #e1e5e9; border-radius: 8px; overflow: hidden; transition: transform 0.2s; }
-        .post-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .post-content { padding: 15px; }
-        .post-account { color: #667eea; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
-        .post-date { color: #667eea; font-size: 0.8rem; font-weight: 500; margin-bottom: 8px; }
-        .post-caption { color: #333; line-height: 1.4; margin-bottom: 12px; white-space: pre-wrap; word-wrap: break-word; }
-        .post-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .post-link { display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; }
-        .post-link:hover { background: #5a6fd8; }
-        .copy-link-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s; }
-        .copy-link-btn:hover { background: #218838; }
-        .copy-link-btn:active { background: #1e7e34; }
-        .no-posts { text-align: center; padding: 30px; color: #666; font-style: italic; }
-        .footer { text-align: center; padding: 20px; color: #666; border-top: 1px solid #e1e5e9; }
-        @media (max-width: 768px) { .posts-grid { grid-template-columns: 1fr; } .header h1 { font-size: 2rem; } }
-    """
-
-
-def generate_html_header(timestamp: str) -> str:
-    """Generate HTML header section."""
-    cutoff_date = get_cutoff_date()
-    date_range = f"{cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}"
-
-    return f"""<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Instagram Posts Report - Recent Posts ({INSTAGRAM_MAX_POST_AGE} days)</title>
-    <style>{generate_html_styles()}</style>
-    <script>
-        function copyToClipboard(text) {{
-            // Try modern clipboard API first
-            if (navigator.clipboard && navigator.clipboard.writeText) {{
-                navigator.clipboard.writeText(text).then(function() {{
-                    // Show success feedback
-                    const event = window.event;
-                    const button = event.target;
-                    const originalText = button.textContent;
-                    button.textContent = '✅ Copied!';
-                    button.style.background = '#007bff';
-                    setTimeout(function() {{
-                        button.textContent = originalText;
-                        button.style.background = '#28a745';
-                    }}, 2000);
-                }}).catch(function(err) {{
-                    console.error('Clipboard API failed: ', err);
-                    // Fallback to document.execCommand
-                    fallbackCopyToClipboard(text, event.target);
-                }});
-            }} else {{
-                // Fallback for older browsers
-                fallbackCopyToClipboard(text, event.target);
-            }}
-        }}
-
-        function fallbackCopyToClipboard(text, button) {{
-            try {{
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                const successful = document.execCommand('copy');
-                document.body.removeChild(textArea);
-
-                if (successful) {{
-                    // Show success feedback
-                    const originalText = button.textContent;
-                    button.textContent = '✅ Copied!';
-                    button.style.background = '#007bff';
-                    setTimeout(function() {{
-                        button.textContent = originalText;
-                        button.style.background = '#28a745';
-                    }}, 2000);
-                }} else {{
-                    alert('Failed to copy link to clipboard');
-                }}
-            }} catch (err) {{
-                console.error('Fallback copy failed: ', err);
-                alert('Failed to copy link to clipboard');
-            }}
-        }}
-    </script>
-</head>
-<body>
-    <div class='container'>
-        <div class='header'>
-            <h1>📸 Instagram Posts Report</h1>
-            <p>Recent posts from the past {INSTAGRAM_MAX_POST_AGE} days (sorted by date)</p>
-            <p>Date range: {date_range}</p>
-            <p>Generated on {timestamp}</p>
-        </div>"""
-
-
-def generate_html_stats(posts_by_account: Dict[str, List[Dict]]) -> str:
-    """Generate HTML stats section."""
-    # Calculate stats excluding the special sorting key
-    real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
-    total_posts = sum(len(posts) for posts in real_accounts.values())
-
-    return f"""        <div class='stats'>
-            <div class='stat-item'>
-                <div class='stat-number'>{len(INSTAGRAM_ACCOUNTS)}</div>
-                <div class='stat-label'>Accounts Checked</div>
-            </div>
-            <div class='stat-item'>
-                <div class='stat-number'>{len(real_accounts)}</div>
-                <div class='stat-label'>Accounts with Posts</div>
-            </div>
-            <div class='stat-item'>
-                <div class='stat-number'>{total_posts}</div>
-                <div class='stat-label'>Total Posts Found</div>
-            </div>
-        </div>"""
-
-
-def format_post_caption(caption: str) -> str:
-    """Format post caption for HTML display."""
-    return caption.replace('"', '&quot;').replace("'", '&#39;')
-
-
 def clean_instagram_url(url: str) -> str:
     """Clean Instagram URL by removing tracking parameters."""
     if not url:
@@ -505,85 +365,6 @@ def clean_instagram_url(url: str) -> str:
     clean_url = clean_url.rstrip('/')
 
     return clean_url
-
-
-def generate_post_card_html(post: Dict) -> str:
-    """Generate HTML for a single post card."""
-    caption = format_post_caption(post.get('caption', ''))
-    date_posted = post.get('date_posted', 'Unknown date')
-    account = post.get('account', 'Unknown account')
-    original_url = post.get('url', '')
-    clean_url = clean_instagram_url(original_url)
-
-    return f"""                <div class='post-card'>
-                    <div class='post-content'>
-                        <div class='post-account'>👤 @{account}</div>
-                        <div class='post-date'>📅 {date_posted}</div>
-                        <div class='post-caption'>{caption}</div>
-                        <div class='post-actions'>
-                            <a href='{original_url}' target='_blank' class='post-link'>View on Instagram →</a>
-                            <button class='copy-link-btn' onclick='copyToClipboard("{clean_url}")' title='Copy clean link for sharing'>
-                                📋 Copy Link
-                            </button>
-                        </div>
-                    </div>
-                </div>"""
-
-
-def generate_account_section_html(account: str, posts: List[Dict]) -> str:
-    """Generate HTML for an account section."""
-    section_html = f"""        <div class='account-section'>
-            <div class='account-header'>
-                <div class='account-name'>@{account}</div>
-                <div class='post-count'>{len(posts)} posts</div>
-            </div>
-            <div class='posts-grid'>"""
-
-    if posts:
-        for post in posts:
-            section_html += "\n" + generate_post_card_html(post)
-    else:
-        section_html += """                <div class='no-posts'>
-                    <p>No posts found for this account</p>
-                </div>"""
-
-    section_html += """            </div>
-        </div>"""
-
-    return section_html
-
-
-def generate_global_posts_section_html(posts: List[Dict]) -> str:
-    """Generate HTML for all posts sorted globally by date."""
-    section_html = f"""        <div class='account-section'>
-            <div class='account-header'>
-                <div class='account-name'>🌍 All Posts (Sorted by Date)</div>
-                <div class='post-count'>{len(posts)} posts</div>
-            </div>
-            <div class='posts-grid'>"""
-
-    if posts:
-        for post in posts:
-            section_html += "\n" + generate_post_card_html(post)
-    else:
-        section_html += """                <div class='no-posts'>
-                    <p>No posts found</p>
-                </div>"""
-
-    section_html += """            </div>
-        </div>"""
-
-    return section_html
-
-
-def generate_html_footer() -> str:
-    """Generate HTML footer section."""
-    return """        <div class='footer'>
-            <p>Generated by Instagram Posts Fetcher</p>
-        </div>
-    </div>
-</body>
-</html>"""
 
 
 def get_desktop_path() -> str:
@@ -606,7 +387,7 @@ def get_desktop_path() -> str:
 
 
 def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: Optional[str] = None) -> str:
-    """Generate a beautiful HTML report of fetched posts."""
+    """Generate a beautiful HTML report of fetched posts using template."""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Generate filename with date format if not provided
@@ -615,26 +396,41 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: O
         filename = f"instagram_updates_{date_checked}.html"
         output_file = os.path.join(get_desktop_path(), filename)
 
-    html_parts = [
-        generate_html_header(timestamp),
-        generate_html_stats(posts_by_account)
-    ]
+    # Prepare template data
+    cutoff_date = get_cutoff_date()
+    date_range = f"{cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}"
 
-    # Use globally sorted posts if available, otherwise fall back to individual accounts
-    if '_all_sorted' in posts_by_account and posts_by_account['_all_sorted']:
-        # Show all posts sorted globally by date
-        all_posts = posts_by_account['_all_sorted']
-        html_parts.append(generate_global_posts_section_html(all_posts))
-    else:
-        # Fallback to individual account sections
-        for account, posts in posts_by_account.items():
-            if account != '_all_sorted':  # Skip the special sorting key
-                html_parts.append(generate_account_section_html(account, posts))
+    # Calculate stats excluding the special sorting key
+    real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
+    total_posts = sum(len(posts) for posts in real_accounts.values())
 
-    html_parts.append(generate_html_footer())
+    # Prepare posts data with clean URLs
+    all_posts_sorted = posts_by_account.get('_all_sorted', [])
+    for post in all_posts_sorted:
+        post['clean_url'] = clean_instagram_url(post.get('url', ''))
+
+    # Also add clean URLs to individual account posts
+    for posts in real_accounts.values():
+        for post in posts:
+            post['clean_url'] = clean_instagram_url(post.get('url', ''))
+
+    template_data = {
+        'timestamp': timestamp,
+        'max_post_age': INSTAGRAM_MAX_POST_AGE,
+        'date_range': date_range,
+        'total_accounts': len(INSTAGRAM_ACCOUNTS),
+        'accounts_with_posts': len(real_accounts),
+        'total_posts': total_posts,
+        'all_posts_sorted': all_posts_sorted,
+        'posts_by_account': real_accounts
+    }
+
+    # Load and render template
+    env = Environment(loader=FileSystemLoader('.'))
+    template = env.get_template('template.html')
+    html_content = template.render(**template_data)
 
     # Write to file
-    html_content = '\n'.join(html_parts)
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html_content)
 

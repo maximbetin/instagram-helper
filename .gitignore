@@ -195,6 +195,3 @@ cython_debug/
 
 # Instagram session files
 *_session
-
-# HTML files
-*.html
