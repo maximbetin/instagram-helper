@@ -10,8 +10,7 @@ from typing import Dict, List, Optional
 
 from playwright.sync_api import Page, sync_playwright
 
-from config import (BROWSER_ARGS, BROWSER_VIEWPORT, DAYS_BACK_TO_FETCH, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, MAX_POSTS_TO_CHECK,
-                    TIMEZONE, USER_AGENT)
+from config import *
 from utils import logger
 
 # Constants
