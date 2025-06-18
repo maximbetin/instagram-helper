@@ -109,6 +109,14 @@ Reports are automatically saved to your Desktop folder with the format:
 - Date-based naming for easy organization
 - Automatic browser opening after generation
 
+## TODO
+
+- Do some cleaning up of the code since it's a bit overly complex in some parts.
+- Once cleaned up, unit tests and even a GitHub Actions workflow would be interesting to consider.
+- It may be worth looking into using a more modular and maintainable approach to the code, with separate files for each functionality - even OOP perhaps.
+- Functionality-wise, a fully automated version that doesn't require manual login is a nice to have (even headless browser automation would be interesting).
+- Down the line, perhaps a creating a UI with configurable settings and even polling periodicity can be pretty cool.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
