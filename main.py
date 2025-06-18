@@ -73,37 +73,68 @@ SELECTORS = {
 
 def get_cutoff_date() -> datetime:
   """Get the cutoff date for filtering posts."""
-  return datetime.now(MADRID_TZ) - timedelta(days=DAYS_BACK_TO_FETCH)
+  current_time = datetime.now(MADRID_TZ)
+  cutoff = current_time - timedelta(days=DAYS_BACK_TO_FETCH)
+  logger.debug(f"Current time: {current_time}")
+  logger.debug(f"Cutoff date ({DAYS_BACK_TO_FETCH} days back): {cutoff}")
+  return cutoff
 
 
-def parse_post_date(date_str: str) -> Optional[datetime]:
+def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
   """Parse a post date string into a datetime object."""
   if not date_str:
     return None
 
+  logger.info(f"DEBUG: Attempting to parse date: '{date_str}'")
+
   try:
-    # Try parsing ISO format first (from datetime attribute)
+    # Handle "UTC+01:00" format specifically - this is the main case
+    if 'UTC' in date_str and '+' in date_str:
+      # Replace " UTC" with "" to get "2025-06-17 20:44:05+01:00"
+      cleaned_date = date_str.replace(' UTC', '')
+      logger.info(f"DEBUG: Trying UTC format, cleaned: '{cleaned_date}'")
+      try:
+        dt = datetime.fromisoformat(cleaned_date)
+        result = dt.astimezone(MADRID_TZ)
+        logger.info(f"DEBUG: UTC parsing successful: {result}")
+        return result
+      except Exception as e:
+        logger.info(f"DEBUG: UTC parsing failed: {e}")
+
+    # Try parsing ISO format (from datetime attribute)
     if 'T' in date_str and ('Z' in date_str or '+' in date_str):
       dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-      return dt.astimezone(MADRID_TZ)
+      result = dt.astimezone(MADRID_TZ)
+      logger.info(f"DEBUG: ISO parsing successful: {result}")
+      return result
 
     # Try parsing other common formats
     formats = [
         '%Y-%m-%d %H:%M:%S %Z',
         '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%d %H:%M:%S UTC%z',  # Handle UTC+01:00 format
         '%B %d, %Y',
         '%d %B %Y',
     ]
 
     for fmt in formats:
       try:
-        return datetime.strptime(date_str, fmt)
-      except ValueError:
+        logger.info(f"DEBUG: Trying format: '{fmt}'")
+        parsed = datetime.strptime(date_str, fmt)
+        # If no timezone info, assume Madrid timezone
+        if parsed.tzinfo is None:
+          parsed = parsed.replace(tzinfo=MADRID_TZ)
+        result = parsed.astimezone(MADRID_TZ)
+        logger.info(f"DEBUG: Format parsing successful: {result}")
+        return result
+      except ValueError as e:
+        logger.info(f"DEBUG: Format '{fmt}' failed: {e}")
         continue
 
   except Exception as e:
     logger.debug(f"Could not parse date '{date_str}': {e}")
 
+  logger.info(f"DEBUG: All parsing attempts failed for: '{date_str}'")
   return None
 
 
@@ -323,31 +354,44 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 
         # Quick date check first
         post_date_str = extract_post_date(page, post_url)
+        logger.info(f"DEBUG: Extracted date string: '{post_date_str}'")
 
-        if post_date_str and not is_post_recent(post_date_str, cutoff_date):
+        # Check if post is too old
+        is_recent_post = is_post_recent(post_date_str, cutoff_date)
+
+        if post_date_str:
+          parsed_date = parse_post_date(post_date_str)
+          logger.info(f"DEBUG: Parsed date: {parsed_date}, Cutoff: {cutoff_date}")
+          if parsed_date:
+            is_recent_comparison = parsed_date >= cutoff_date
+            logger.info(f"DEBUG: Date comparison: {parsed_date} >= {cutoff_date} = {is_recent_comparison}")
+
+        if not is_recent_post:
           posts_too_old += 1
-          logger.debug(f"Post too old ({post_date_str}), stopping check")
+          logger.info(f"DEBUG: Post too old ({post_date_str}), stopping further processing for this account")
           # Since posts are usually ordered by date (newest first),
-          # if one post is outside our range, all subsequent posts will be too
+          # if one post is outside our range, stop processing more posts
+          # but keep the recent posts we already found
           break
 
-        # Post seems recent or date unclear, process it fully
-        # NOTE: We're already on the post page from extract_post_date
-        logger.debug(f"Post appears recent, extracting details...")
+        # Post is recent, extract details
+        logger.info(f"DEBUG: Post appears recent, extracting details...")
 
         # Extract details from current page (already navigated by extract_post_date)
         post_data = create_base_post_data(account, post_url)
         post_data['caption'] = extract_caption(page)
-        post_data['date_posted'] = post_date_str or extract_post_date(page)
+        post_data['date_posted'] = post_date_str  # Use the date we already extracted
         # Image fetching disabled as per user request
         post_data['image_url'] = None
 
-        # Double-check the date after full processing
-        if post_data.get('date_posted'):
-          if not is_post_recent(post_data['date_posted'], cutoff_date):
-            logger.debug(f"Post confirmed too old after full processing, stopping check")
-            posts_too_old += 1
-            # Since posts are usually ordered by date, stop checking remaining posts
+        # Double-check the date after full processing (only if we didn't get a date initially)
+        if not post_data.get('date_posted'):
+          fallback_date = extract_post_date(page)  # Try again without URL since we're already on the page
+          post_data['date_posted'] = fallback_date
+          if fallback_date and not is_post_recent(fallback_date, cutoff_date):
+            logger.info(f"DEBUG: Post confirmed too old after fallback extraction, stopping further processing")
+            # Since posts are usually ordered by date, stop processing more posts
+            # but keep the recent posts we already found
             break
 
         recent_posts.append(post_data)
@@ -369,17 +413,20 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 
 def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
   """Display a summary of fetched posts."""
-  total_posts = sum(len(posts) for posts in posts_by_account.values())
+  # Calculate stats excluding the special sorting key
+  real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
+  total_posts = sum(len(posts) for posts in real_accounts.values())
   cutoff_date = get_cutoff_date()
+  current_time = datetime.now(MADRID_TZ)
 
   logger.info("=== SUMMARY ===")
-  logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')} ({DAYS_BACK_TO_FETCH} days)")
-  logger.info(f"Accounts: {len(posts_by_account)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
+  logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {current_time.strftime('%Y-%m-%d')} ({DAYS_BACK_TO_FETCH} days)")
+  logger.info(f"Accounts: {len(real_accounts)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
   logger.info("Image fetching disabled - focusing on text content and dates")
 
-  if posts_by_account:
+  if real_accounts:
     logger.info("Posts by account:")
-    for account, posts in posts_by_account.items():
+    for account, posts in real_accounts.items():
       logger.info(f"  @{account}: {len(posts)} posts")
 
   logger.info("=" * 15)
@@ -501,7 +548,9 @@ def generate_html_header(timestamp: str) -> str:
 
 def generate_html_stats(posts_by_account: Dict[str, List[Dict]]) -> str:
   """Generate HTML stats section."""
-  total_posts = sum(len(posts) for posts in posts_by_account.values())
+  # Calculate stats excluding the special sorting key
+  real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
+  total_posts = sum(len(posts) for posts in real_accounts.values())
 
   return f"""        <div class='stats'>
             <div class='stat-item'>
@@ -509,7 +558,7 @@ def generate_html_stats(posts_by_account: Dict[str, List[Dict]]) -> str:
                 <div class='stat-label'>Accounts Checked</div>
             </div>
             <div class='stat-item'>
-                <div class='stat-number'>{len(posts_by_account)}</div>
+                <div class='stat-number'>{len(real_accounts)}</div>
                 <div class='stat-label'>Accounts with Posts</div>
             </div>
             <div class='stat-item'>
