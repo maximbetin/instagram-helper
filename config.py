@@ -36,6 +36,7 @@ INSTAGRAM_ACCOUNTS = [
     "mierescultura",
     "cultura.gijon",
     "conectaoviedo",
+    "culturallanes",
     "gonggalaxyclub",
     "juventudoviedo",
     "cinesfoncalada",
@@ -43,16 +44,24 @@ INSTAGRAM_ACCOUNTS = [
     "oviedo_secrets",
     "patioh_laboral",
     "centroniemeyer",
+    "culturacolunga",
     "conocerasturias",
     "kuivi_almacenes",
+    "cuentosdemaleta",
     "asturias_en_vena",
     "museosgijonxixon",
     "lasalvaje.oviedo",
     "laboralcinemateca",
+    "lacompaniadelalba",
+    "gteatrolospintores",
+    "cia.proyectopiloto",
     "youropia_asociacion",
+    "traslapuertatiteres",
     "laboralciudadcultura",
+    "ayuntamientocabranes",
+    "bandinalagarrapiella",
     "asturiesculturaenrede",
-    "chigreculturallatadezinc"
+    "chigreculturallatadezinc",
 ]
 
 # Browser launch arguments
