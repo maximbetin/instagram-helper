@@ -13,69 +13,13 @@ from playwright.sync_api import Page, sync_playwright
 from config import *
 from utils import logger
 
-# Constants
-MADRID_TZ = timezone(timedelta(hours=1))  # CET/CEST
-EXECUTION_CONTEXT_ERROR = "Execution context was destroyed"
-LOGIN_RETRY_ATTEMPTS = 3
-
-# Timeouts (milliseconds)
-TIMEOUTS = {
-    'page_load': 3000,
-    'post_navigation': 8000,
-    'account_navigation': 12000,
-    'main_page': 30000,
-}
-
-# Element selectors
-SELECTORS = {
-    'login_indicators': [
-        'nav[role="navigation"]',
-        'a[href="/"]',
-        'a[href="/explore/"]',
-        'a[href="/reels/"]',
-        'a[href="/direct/inbox/"]'
-    ],
-    'login_page_indicators': [
-        'input[name="username"]',
-        'input[name="password"]',
-        'button[type="submit"]',
-        'form[method="post"]'
-    ],
-    'caption': [
-        'h1[dir="auto"]',
-        'div[data-testid="post-caption"] span',
-        'article h1',
-        'span[dir="auto"]',
-        'div[data-testid="post-caption"]',
-        'article div[dir="auto"]',
-        'article span',
-        'h1',
-        'p'
-    ],
-    'date': [
-        'time[datetime]',
-        'a time',
-        'time',
-        'span[title*="202"]',
-        'a[title*="202"]',
-        'time[title*="202"]'
-    ],
-    'post': [
-        'a[href*="/p/"]',
-        'article a[href*="/p/"]',
-        'a[href*="/p/"]:not([href*="/p/explore/"])',
-        'a[href*="/reel/"]',
-        'a[href*="/tv/"]'
-    ]
-}
-
 
 def get_cutoff_date() -> datetime:
     """Get the cutoff date for filtering posts."""
-    current_time = datetime.now(MADRID_TZ)
-    cutoff = current_time - timedelta(days=DAYS_BACK_TO_FETCH)
+    current_time = datetime.now(TIMEZONE)
+    cutoff = current_time - timedelta(days=INSTAGRAM_MAX_POST_AGE)
     logger.debug(f"Current time: {current_time}")
-    logger.debug(f"Cutoff date ({DAYS_BACK_TO_FETCH} days back): {cutoff}")
+    logger.debug(f"Cutoff date ({INSTAGRAM_MAX_POST_AGE} days back): {cutoff}")
     return cutoff
 
 
@@ -88,13 +32,13 @@ def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
         if 'UTC' in date_str and '+' in date_str:
             cleaned_date = date_str.replace(' UTC', '')
             dt = datetime.fromisoformat(cleaned_date)
-            result = dt.astimezone(MADRID_TZ)
+            result = dt.astimezone(TIMEZONE)
             return result
 
             # Try parsing ISO format (from datetime attribute)
         if 'T' in date_str and ('Z' in date_str or '+' in date_str):
             dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            result = dt.astimezone(MADRID_TZ)
+            result = dt.astimezone(TIMEZONE)
             return result
 
         # Try parsing other common formats
@@ -111,8 +55,8 @@ def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
                 parsed = datetime.strptime(date_str, fmt)
                 # If no timezone info, assume Madrid timezone
                 if parsed.tzinfo is None:
-                    parsed = parsed.replace(tzinfo=MADRID_TZ)
-                result = parsed.astimezone(MADRID_TZ)
+                    parsed = parsed.replace(tzinfo=TIMEZONE)
+                result = parsed.astimezone(TIMEZONE)
                 return result
             except ValueError as e:
                 continue
@@ -142,7 +86,7 @@ def check_if_logged_in(page: Page) -> bool:
         time.sleep(2)  # Wait for page to stabilize
 
         # Check for logged-in indicators
-        for selector in SELECTORS['login_indicators']:
+        for selector in HTML_SELECTORS['login_indicators']:
             try:
                 if page.query_selector(selector):
                     return True
@@ -150,7 +94,7 @@ def check_if_logged_in(page: Page) -> bool:
                 continue
 
         # Check if we're on the login page
-        for selector in SELECTORS['login_page_indicators']:
+        for selector in HTML_SELECTORS['login_page_indicators']:
             try:
                 if page.query_selector(selector):
                     return False
@@ -161,7 +105,7 @@ def check_if_logged_in(page: Page) -> bool:
 
     except Exception as e:
         logger.warning(f"Error checking login status: {e}")
-        if EXECUTION_CONTEXT_ERROR in str(e):
+        if ERROR_EXECUTION_CONTEXT in str(e):
             logger.info("Page is navigating, waiting for it to stabilize...")
             time.sleep(3)
             try:
@@ -174,7 +118,7 @@ def check_if_logged_in(page: Page) -> bool:
 
 def wait_for_page_load(page: Page, timeout: Optional[int] = None) -> None:
     """Wait for page to load with better error handling."""
-    timeout = timeout or TIMEOUTS['page_load']
+    timeout = timeout or TIMEOUT_PAGE_LOAD
     try:
         page.wait_for_load_state("domcontentloaded", timeout=timeout)
         time.sleep(1)  # Small additional wait for dynamic content
@@ -185,7 +129,7 @@ def wait_for_page_load(page: Page, timeout: Optional[int] = None) -> None:
 
 def extract_caption(page: Page) -> str:
     """Extract caption from Instagram post."""
-    for selector in SELECTORS['caption']:
+    for selector in HTML_SELECTORS['caption']:
         try:
             caption_element = page.query_selector(selector)
             if caption_element:
@@ -193,7 +137,7 @@ def extract_caption(page: Page) -> str:
                 if caption_text and len(caption_text) > 5:
                     return caption_text
         except Exception as e:
-            if EXECUTION_CONTEXT_ERROR in str(e):
+            if ERROR_EXECUTION_CONTEXT in str(e):
                 logger.warning("Execution context destroyed while extracting caption")
                 break
             continue
@@ -206,11 +150,11 @@ def extract_post_date(page: Page, post_url: Optional[str] = None) -> Optional[st
         if post_url:
             logger.debug(f"Date extraction for: {post_url}")
             # Navigate to post if URL provided
-            page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
+            page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUT_POST_NAVIGATION)
             time.sleep(1)  # Brief wait for content
 
         # Try to extract date from current page
-        for selector in SELECTORS['date']:
+        for selector in HTML_SELECTORS['date']:
             try:
                 date_element = page.query_selector(selector)
                 if not date_element:
@@ -221,7 +165,7 @@ def extract_post_date(page: Page, post_url: Optional[str] = None) -> Optional[st
                 if datetime_attr:
                     try:
                         dt = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
-                        dt_madrid = dt.astimezone(MADRID_TZ)
+                        dt_madrid = dt.astimezone(TIMEZONE)
                         return dt_madrid.strftime('%Y-%m-%d %H:%M:%S %Z')
                     except Exception:
                         return datetime_attr
@@ -237,7 +181,7 @@ def extract_post_date(page: Page, post_url: Optional[str] = None) -> Optional[st
                     return inner_text
 
             except Exception as e:
-                if EXECUTION_CONTEXT_ERROR in str(e):
+                if ERROR_EXECUTION_CONTEXT in str(e):
                     logger.warning("Execution context destroyed while extracting date")
                     break
                 continue
@@ -263,14 +207,14 @@ def create_base_post_data(account: str, post_url: str) -> Dict:
 
 def extract_post_urls(page: Page, account: str) -> List[str]:
     """Extract post URLs from account page."""
-    for selector in SELECTORS['post']:
+    for selector in HTML_SELECTORS['post']:
         try:
             links = page.query_selector_all(selector)
             if links:
                 logger.debug(f"Found {len(links)} posts using selector: {selector}")
 
                 post_urls = []
-                for link in links[:MAX_POSTS_TO_CHECK]:
+                for link in links[:INSTAGRAM_MAX_POSTS_PER_ACCOUNT]:
                     try:
                         post_url = link.get_attribute('href')
                         if post_url and any(path in post_url for path in ['/p/', '/reel/', '/tv/']):
@@ -299,7 +243,7 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 
         # Navigate to account
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUTS['account_navigation'])
+            page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_ACCOUNT_NAVIGATION)
             wait_for_page_load(page)
         except Exception as e:
             logger.error(f"Failed to navigate to @{account}: {e}")
@@ -329,13 +273,13 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
         posts_too_old = 0
 
         for post_url in post_urls:
-            if posts_checked >= MAX_POSTS_TO_CHECK:
+            if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
                 logger.debug(f"Reached maximum post check limit for @{account}")
                 break
 
             try:
                 posts_checked += 1
-                logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}")
+                logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), INSTAGRAM_MAX_POSTS_PER_ACCOUNT)}")
 
                 # Quick date check first
                 post_date_str = extract_post_date(page, post_url)
@@ -394,10 +338,10 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
     real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
     total_posts = sum(len(posts) for posts in real_accounts.values())
     cutoff_date = get_cutoff_date()
-    current_time = datetime.now(MADRID_TZ)
+    current_time = datetime.now(TIMEZONE)
 
     logger.info("=== SUMMARY ===")
-    logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {current_time.strftime('%Y-%m-%d')} ({DAYS_BACK_TO_FETCH} days)")
+    logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {current_time.strftime('%Y-%m-%d')} ({INSTAGRAM_MAX_POST_AGE} days)")
     logger.info(f"Accounts: {len(real_accounts)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
     logger.info("Image fetching disabled - focusing on text content and dates")
 
@@ -453,7 +397,7 @@ def generate_html_header(timestamp: str) -> str:
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Instagram Posts Report - Recent Posts ({DAYS_BACK_TO_FETCH} days)</title>
+    <title>Instagram Posts Report - Recent Posts ({INSTAGRAM_MAX_POST_AGE} days)</title>
     <style>{generate_html_styles()}</style>
     <script>
         function copyToClipboard(text) {{
@@ -517,7 +461,7 @@ def generate_html_header(timestamp: str) -> str:
     <div class='container'>
         <div class='header'>
             <h1>📸 Instagram Posts Report</h1>
-            <p>Recent posts from the past {DAYS_BACK_TO_FETCH} days (sorted by date)</p>
+            <p>Recent posts from the past {INSTAGRAM_MAX_POST_AGE} days (sorted by date)</p>
             <p>Date range: {date_range}</p>
             <p>Generated on {timestamp}</p>
         </div>"""
@@ -703,39 +647,15 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: O
     return output_file
 
 
-def verify_login_with_retries(page: Page) -> bool:
-    """Verify login status with retries."""
-    for attempt in range(LOGIN_RETRY_ATTEMPTS):
-        try:
-            logger.info(f"Verifying login status (attempt {attempt + 1}/{LOGIN_RETRY_ATTEMPTS})...")
-            if check_if_logged_in(page):
-                return True
-            else:
-                logger.warning("Login not detected, please make sure you're logged in")
-                if attempt < LOGIN_RETRY_ATTEMPTS - 1:
-                    retry = input("Press Enter to retry login verification, or 'q' to quit: ")
-                    if retry.lower() == 'q':
-                        return False
-        except Exception as e:
-            logger.warning(f"Login verification attempt {attempt + 1} failed: {e}")
-            if attempt < LOGIN_RETRY_ATTEMPTS - 1:
-                time.sleep(2)
-            continue
-
-    logger.error(f"Could not verify login status after {LOGIN_RETRY_ATTEMPTS} attempts.")
-    logger.info("Please make sure you are properly logged into Instagram!")
-    return False
-
-
 def setup_browser_context(playwright_instance):
     """Set up browser and context with proper configuration."""
     browser = playwright_instance.chromium.launch(headless=False, args=BROWSER_ARGS)
 
     context = browser.new_context(
         viewport=BROWSER_VIEWPORT,
-        user_agent=USER_AGENT,
-        locale=LOCALE,
-        timezone_id=TIMEZONE
+        user_agent=BROWSER_USER_AGENT,
+        locale=BROWSER_LOCALE,
+        timezone_id=BROWSER_TIMEZONE
     )
 
     return browser, context
@@ -745,7 +665,7 @@ def navigate_to_instagram(page: Page) -> bool:
     """Navigate to Instagram main page."""
     try:
         logger.info("Navigating to Instagram...")
-        page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUTS['main_page'])
+        page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUT_MAIN_PAGE)
         return True
     except Exception as e:
         logger.error(f"Failed to navigate to Instagram: {e}")
@@ -757,10 +677,10 @@ def sort_posts_by_date(posts: List[Dict]) -> List[Dict]:
     def get_sort_key(post):
         date_str = post.get('date_posted', '')
         if not date_str:
-            return datetime.min.replace(tzinfo=MADRID_TZ)
+            return datetime.min.replace(tzinfo=TIMEZONE)
 
         parsed_date = parse_post_date(date_str)
-        return parsed_date if parsed_date else datetime.min.replace(tzinfo=MADRID_TZ)
+        return parsed_date if parsed_date else datetime.min.replace(tzinfo=TIMEZONE)
 
     return sorted(posts, key=get_sort_key, reverse=True)
 
@@ -778,7 +698,7 @@ def fetch_all_posts(page: Page) -> Dict[str, List[Dict]]:
 
         # Delay between accounts (except last one)
         if account != INSTAGRAM_ACCOUNTS[-1]:
-            time.sleep(DELAY_BETWEEN_ACCOUNTS)
+            time.sleep(INSTAGRAM_DELAY_BETWEEN_ACCOUNTS)
 
     # Sort all posts globally by date (newest first)
     all_posts_sorted = sort_posts_by_date(all_posts)
@@ -834,14 +754,6 @@ def main():
             logger.info("Instagram page opened! Please log in manually.")
             logger.info("After logging in, press Enter to start fetching posts...")
             input()
-
-            # Verify login
-            if not verify_login_with_retries(page):
-                logger.info("Press Enter to close the browser...")
-                input()
-                context.close()
-                browser.close()
-                return
 
             logger.info("Login verified! Starting to fetch posts from specified accounts...")
 
