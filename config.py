@@ -31,6 +31,7 @@ INSTAGRAM_ACCOUNTS = [
     "sala_niagara",
     "rocketoviedo",
     "prestosofest",
+    "deportesayov",
     "meidinerzclub",
     "exprime.gijon",
     "mierescultura",
