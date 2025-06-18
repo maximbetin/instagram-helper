@@ -21,13 +21,16 @@ DELAY_BETWEEN_ACCOUNTS = 3  # seconds
 
 # Instagram accounts to track
 INSTAGRAM_ACCOUNTS = [
+    "gijon",
     "biodevas",
     "ausevagm",
     "aytoviedo",
     "nortes.me",
     "paramo_bar",
+    "kbunsgijon",
     "crjasturias",
     "agendagijon",
+    "conseyu_cmx",
     "sala_niagara",
     "rocketoviedo",
     "prestosofest",
@@ -37,6 +40,7 @@ INSTAGRAM_ACCOUNTS = [
     "mierescultura",
     "cultura.gijon",
     "conectaoviedo",
+    "juventudgijon",
     "culturallanes",
     "gonggalaxyclub",
     "juventudoviedo",
@@ -46,6 +50,7 @@ INSTAGRAM_ACCOUNTS = [
     "patioh_laboral",
     "centroniemeyer",
     "culturacolunga",
+    "ferialibroxixon",
     "conocerasturias",
     "kuivi_almacenes",
     "cuentosdemaleta",
@@ -62,6 +67,8 @@ INSTAGRAM_ACCOUNTS = [
     "ayuntamientocabranes",
     "bandinalagarrapiella",
     "asturiesculturaenrede",
+    "bibliotecasdegijonxixon",
+    "museudelpuebludasturies",
     "chigreculturallatadezinc",
 ]
 
