@@ -1,36 +1,15 @@
 """Configuration settings for Instagram browser."""
 
+import os
 from datetime import timedelta, timezone
 
-from playwright.sync_api import ViewportSize
-
 # Constants
+BROWSER_DEBUG_PORT = 9222
 TIMEZONE = timezone(timedelta(hours=2))
 ERROR_EXECUTION_CONTEXT = "Execution context was destroyed"
-
-# Browser settings
-BROWSER_LOCALE = 'en-US'
-BROWSER_TIMEZONE = 'Europe/Madrid'
-BROWSER_VIEWPORT: ViewportSize = {'width': 1366, 'height': 768}
-BROWSER_USER_AGENT = (
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-    '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-)
-BROWSER_ARGS = [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-blink-features=AutomationControlled',
-    '--disable-features=VizDisplayCompositor',
-    '--disable-web-security',
-    '--disable-features=TranslateUI',
-    '--disable-ipc-flooding-protection'
-]
-
-# Timeouts
-TIMEOUT_PAGE_LOAD = 3000
-TIMEOUT_POST_NAVIGATION = 8000
-TIMEOUT_ACCOUNT_NAVIGATION = 12000
-TIMEOUT_MAIN_PAGE = 30000
+BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
+BROWSER_LOAD_DELAY = 3  # seconds
+BROWSER_LOAD_TIMEOUT = 10000  # milliseconds
 
 # HTML selectors
 HTML_SELECTORS = {
@@ -78,7 +57,6 @@ HTML_SELECTORS = {
 # Instagram settings
 INSTAGRAM_MAX_POST_AGE = 3  # days
 INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 3  # posts
-INSTAGRAM_DELAY_BETWEEN_ACCOUNTS = 3  # seconds
 INSTAGRAM_URL = "https://www.instagram.com/"
 
 # Instagram accounts to track

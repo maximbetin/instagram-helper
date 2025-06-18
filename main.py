@@ -4,8 +4,7 @@ import os
 import re
 import subprocess
 import time
-import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader
@@ -13,15 +12,6 @@ from playwright.sync_api import Page, sync_playwright
 
 from config import *
 from utils import logger
-
-
-def get_cutoff_date() -> datetime:
-    """Get the cutoff date for filtering posts."""
-    current_time = datetime.now(TIMEZONE)
-    cutoff = current_time - timedelta(days=INSTAGRAM_MAX_POST_AGE)
-    logger.debug(f"Current time: {current_time}")
-    logger.debug(f"Cutoff date ({INSTAGRAM_MAX_POST_AGE} days back): {cutoff}")
-    return cutoff
 
 
 def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
@@ -81,43 +71,7 @@ def is_post_recent(date_str: Optional[str], cutoff_date: datetime) -> bool:
     return post_date >= cutoff_date
 
 
-def check_if_logged_in(page: Page) -> bool:
-    """Check if user is properly logged into Instagram."""
-    try:
-        time.sleep(2)  # Wait for page to stabilize
-
-        # Check for logged-in indicators
-        for selector in HTML_SELECTORS['login_indicators']:
-            try:
-                if page.query_selector(selector):
-                    return True
-            except Exception:
-                continue
-
-        # Check if we're on the login page
-        for selector in HTML_SELECTORS['login_page_indicators']:
-            try:
-                if page.query_selector(selector):
-                    return False
-            except Exception:
-                continue
-
-        return True  # Assume logged in if we can't determine
-
-    except Exception as e:
-        logger.warning(f"Error checking login status: {e}")
-        if ERROR_EXECUTION_CONTEXT in str(e):
-            logger.info("Page is navigating, waiting for it to stabilize...")
-            time.sleep(3)
-            try:
-                page.wait_for_selector('body', timeout=5000)
-                return True
-            except Exception:
-                return False
-        return False
-
-
-def extract_caption(page: Page) -> str:
+def get_post_caption(page: Page) -> str:
     """Extract caption from Instagram post."""
     for selector in HTML_SELECTORS['caption']:
         try:
@@ -134,13 +88,13 @@ def extract_caption(page: Page) -> str:
     return ''
 
 
-def extract_post_date(page: Page, post_url: Optional[str] = None) -> Optional[str]:
+def get_post_date(page: Page, post_url: Optional[str] = None) -> Optional[str]:
     """Extract post date from Instagram post page."""
     try:
         if post_url:
             logger.debug(f"Date extraction for: {post_url}")
             # Navigate to post if URL provided
-            page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUT_POST_NAVIGATION)
+            page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
             time.sleep(1)  # Brief wait for content
 
         # Try to extract date from current page
@@ -194,219 +148,131 @@ def create_base_post_data(account: str, post_url: str) -> Dict:
     }
 
 
-def extract_post_urls(page: Page, account: str) -> List[str]:
+def get_account_posts_urls(page: Page) -> List[str]:
     """Extract post URLs from account page."""
     for selector in HTML_SELECTORS['post']:
         try:
             links = page.query_selector_all(selector)
             if links:
-                logger.debug(f"Found {len(links)} posts using selector: {selector}")
-
                 post_urls = []
                 for link in links[:INSTAGRAM_MAX_POSTS_PER_ACCOUNT]:
                     try:
                         post_url = link.get_attribute('href')
                         if post_url and any(path in post_url for path in ['/p/', '/reel/', '/tv/']):
-                            full_url = (f"https://www.instagram.com{post_url}"
-                                        if post_url.startswith('/') else post_url)
+                            full_url = (f"https://www.instagram.com{post_url}" if post_url.startswith('/') else post_url)
                             post_urls.append(full_url)
                     except Exception as e:
                         logger.debug(f"Error extracting URL from post: {e}")
                         continue
-
                 return post_urls
         except Exception:
             continue
-
     return []
 
 
-def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
+def get_account_posts(page: Page, account: str, cutoff_date: datetime) -> List[Dict]:
     """Fetch recent posts from a specific Instagram account."""
-    try:
-        url = f"https://www.instagram.com/{account}/"
-        logger.info(f"Fetching recent posts from @{account}")
+    post_urls = get_account_posts_urls(page)
+    if not post_urls:
+        logger.warning(f"No posts found for account @{account}")
+        return []
 
-        cutoff_date = get_cutoff_date()
-        logger.debug(f"Cutoff date: {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
+    recent_posts = []
+    posts_checked = 0
+    posts_too_old = 0
 
-        # Navigate to account
+    for post_url in post_urls:
+        if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
+            logger.debug(f"Reached maximum post check limit for account @{account}")
+            break
+
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_ACCOUNT_NAVIGATION)
-        except Exception as e:
-            logger.error(f"Failed to navigate to @{account}: {e}")
-            return []
+            posts_checked += 1
 
-        # Validate we're on the correct page
-        if account not in page.url:
-            logger.warning(f"Redirected away from @{account} to {page.url}")
-            return []
+            # Quick date check first
+            post_date_str = get_post_date(page, post_url)
 
-        # Check login status
-        if not check_if_logged_in(page):
-            logger.error("Not properly logged in to Instagram")
-            return []
+            # Check if post is too old
+            is_recent_post = is_post_recent(post_date_str, cutoff_date)
 
-        # Extract post URLs
-        post_urls = extract_post_urls(page, account)
-        if not post_urls:
-            logger.warning(f"No post links found for @{account}")
-            return []
+            if post_date_str:
+                parsed_date = parse_post_date(post_date_str)
+                if parsed_date:
+                    is_recent_comparison = parsed_date >= cutoff_date
 
-        logger.info(f"Found {len(post_urls)} posts to check")
-
-        # Process posts with date filtering
-        recent_posts = []
-        posts_checked = 0
-        posts_too_old = 0
-
-        for post_url in post_urls:
-            if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
-                logger.debug(f"Reached maximum post check limit for @{account}")
+            if not is_recent_post:
+                posts_too_old += 1
+                # Since posts are usually ordered by date (newest first),
+                # if one post is outside our range, stop processing more posts
+                # but keep the recent posts we already found
                 break
 
-            try:
-                posts_checked += 1
-                logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), INSTAGRAM_MAX_POSTS_PER_ACCOUNT)}")
+            # Extract details from current page (already navigated by extract_post_date)
+            post_data = create_base_post_data(account, post_url)
+            post_data['caption'] = get_post_caption(page)
+            post_data['date_posted'] = post_date_str  # Use the date we already extracted
 
-                # Quick date check first
-                post_date_str = extract_post_date(page, post_url)
-
-                # Check if post is too old
-                is_recent_post = is_post_recent(post_date_str, cutoff_date)
-
-                if post_date_str:
-                    parsed_date = parse_post_date(post_date_str)
-                    if parsed_date:
-                        is_recent_comparison = parsed_date >= cutoff_date
-
-                if not is_recent_post:
-                    posts_too_old += 1
-                    # Since posts are usually ordered by date (newest first),
-                    # if one post is outside our range, stop processing more posts
+            # Double-check the date after full processing (only if we didn't get a date initially)
+            if not post_data.get('date_posted'):
+                fallback_date = get_post_date(page)  # Try again without URL since we're already on the page
+                post_data['date_posted'] = fallback_date
+                if fallback_date and not is_post_recent(fallback_date, cutoff_date):
+                    # Since posts are usually ordered by date, stop processing more posts
                     # but keep the recent posts we already found
                     break
 
-                # Extract details from current page (already navigated by extract_post_date)
-                post_data = create_base_post_data(account, post_url)
-                post_data['caption'] = extract_caption(page)
-                post_data['date_posted'] = post_date_str  # Use the date we already extracted
+            recent_posts.append(post_data)
+            time.sleep(1)
 
-                # Double-check the date after full processing (only if we didn't get a date initially)
-                if not post_data.get('date_posted'):
-                    fallback_date = extract_post_date(page)  # Try again without URL since we're already on the page
-                    post_data['date_posted'] = fallback_date
-                    if fallback_date and not is_post_recent(fallback_date, cutoff_date):
-                        # Since posts are usually ordered by date, stop processing more posts
-                        # but keep the recent posts we already found
-                        break
+        except Exception as e:
+            logger.warning(f"Error processing post {posts_checked}: {e}")
+            continue
 
-                recent_posts.append(post_data)
-                logger.debug(f"Added recent post (total: {len(recent_posts)})")
-
-                time.sleep(1)  # Small delay between posts
-
-            except Exception as e:
-                logger.warning(f"Error processing post {posts_checked}: {e}")
-                continue
-
-        logger.info(f"@{account}: {len(recent_posts)} recent posts found ({posts_checked} checked, {posts_too_old} too old)")
-        return recent_posts
-
-    except Exception as e:
-        logger.error(f"Error fetching posts from @{account}: {e}")
-        return []
+    return recent_posts
 
 
-def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
-    """Display a summary of fetched posts."""
-    # Calculate stats excluding the special sorting key
-    real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
-    total_posts = sum(len(posts) for posts in real_accounts.values())
-    cutoff_date = get_cutoff_date()
-    current_time = datetime.now(TIMEZONE)
-
-    logger.info("=== SUMMARY ===")
-    logger.info(f"Date range: {cutoff_date.strftime('%Y-%m-%d')} to {current_time.strftime('%Y-%m-%d')} ({INSTAGRAM_MAX_POST_AGE} days)")
-    logger.info(f"Accounts: {len(real_accounts)}/{len(INSTAGRAM_ACCOUNTS)} with posts | Total posts: {total_posts}")
-
-    if real_accounts:
-        logger.info("Posts by account:")
-        for account, posts in real_accounts.items():
-            logger.info(f"  @{account}: {len(posts)} posts")
-
-    logger.info("=" * 15)
-
-
-def get_desktop_path() -> str:
-    """Get the path to the user's desktop directory."""
-    return os.path.join(os.path.expanduser('~'), 'Desktop')
-
-
-def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: Optional[str] = None) -> str:
+def generate_html_report(all_posts: Dict[str, List[Dict]], cutoff_date: datetime) -> str:
     """Generate a beautiful HTML report of fetched posts using template."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+    desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
 
-    # Generate filename with date format if not provided
-    if output_file is None:
-        date_checked = datetime.now().strftime('%Y%m%d')
-        filename = f"instagram_updates_{date_checked}.html"
-        output_file = os.path.join(get_desktop_path(), filename)
+    filename = f"instagram_updates_{datetime.now().strftime('%d-%m-%Y')}.html"
+    output_file = os.path.join(desktop_path, filename)
 
-    # Prepare template data
-    cutoff_date = get_cutoff_date()
-    date_range = f"{cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}"
+    date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
 
     # Calculate stats excluding the special sorting key
-    real_accounts = {k: v for k, v in posts_by_account.items() if k != '_all_sorted'}
+    real_accounts = {k: v for k, v in all_posts.items() if k != '_all_sorted'}
     total_posts = sum(len(posts) for posts in real_accounts.values())
 
-    # Prepare posts data with clean URLs
-    all_posts_sorted = posts_by_account.get('_all_sorted', [])
+    all_posts_sorted = all_posts.get('_all_sorted', [])
     for post in all_posts_sorted:
         post['clean_url'] = post.get('url', '')
 
-    # Also add clean URLs to individual account posts
     for posts in real_accounts.values():
         for post in posts:
             post['clean_url'] = post.get('url', '')
 
     template_data = {
         'timestamp': timestamp,
-        'max_post_age': INSTAGRAM_MAX_POST_AGE,
         'date_range': date_range,
+        'total_posts': total_posts,
+        'posts_by_account': real_accounts,
+        'all_posts_sorted': all_posts_sorted,
+        'max_post_age': INSTAGRAM_MAX_POST_AGE,
         'total_accounts': len(INSTAGRAM_ACCOUNTS),
         'accounts_with_posts': len(real_accounts),
-        'total_posts': total_posts,
-        'all_posts_sorted': all_posts_sorted,
-        'posts_by_account': real_accounts
     }
 
-    # Load and render template
     env = Environment(loader=FileSystemLoader('.'))
     template = env.get_template('template.html')
     html_content = template.render(**template_data)
 
-    # Write to file
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
     logger.info(f"HTML report generated: {output_file}")
     return output_file
-
-
-def setup_browser_context(playwright_instance):
-    """Set up browser and context with proper configuration."""
-    browser = playwright_instance.chromium.launch(headless=False, args=BROWSER_ARGS)
-
-    context = browser.new_context(
-        viewport=BROWSER_VIEWPORT,
-        user_agent=BROWSER_USER_AGENT,
-        locale=BROWSER_LOCALE,
-        timezone_id=BROWSER_TIMEZONE
-    )
-
-    return browser, context
 
 
 def sort_posts_by_date(posts: List[Dict]) -> List[Dict]:
@@ -422,79 +288,61 @@ def sort_posts_by_date(posts: List[Dict]) -> List[Dict]:
     return sorted(posts, key=get_sort_key, reverse=True)
 
 
-def fetch_all_posts(page: Page) -> Dict[str, List[Dict]]:
+def get_all_posts(page: Page, cutoff_date: datetime) -> Dict[str, List[Dict]]:
     """Fetch posts from all configured accounts."""
-    posts_by_account = {}
     all_posts = []
+    account_posts = {}
 
     for account in INSTAGRAM_ACCOUNTS:
-        posts = fetch_posts_from_account(page, account)
-        if posts:
-            posts_by_account[account] = posts
-            all_posts.extend(posts)
+        account_url = f"{INSTAGRAM_URL}{account}/"
 
-        # Delay between accounts (except last one)
-        if account != INSTAGRAM_ACCOUNTS[-1]:
-            time.sleep(INSTAGRAM_DELAY_BETWEEN_ACCOUNTS)
+        logger.info(f"Navigating to {account_url}...")
+        page.goto(account_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
+        time.sleep(BROWSER_LOAD_DELAY)
+
+        logger.info(f"@{account}: Getting recent posts...")
+        posts = get_account_posts(page, account, cutoff_date)
+        logger.info(f"@{account}: Found {len(posts)} recent posts!")
+
+        account_posts[account] = posts
+        all_posts.extend(posts)
 
     # Sort all posts globally by date (newest first)
     all_posts_sorted = sort_posts_by_date(all_posts)
 
     # Store the globally sorted posts under a special key
-    posts_by_account['_all_sorted'] = all_posts_sorted
+    account_posts['_all_sorted'] = all_posts_sorted
 
-    return posts_by_account
-
-
-def open_html_file(file_path: str) -> None:
-    """Open HTML file in default browser."""
-    try:
-        abs_path = os.path.abspath(file_path)
-        if os.path.exists(abs_path):
-            logger.info(f"Opening HTML report in default browser: {abs_path}")
-            os.startfile(abs_path)
-        else:
-            logger.error(f"HTML file not found: {abs_path}")
-    except Exception as e:
-        logger.warning(f"Could not auto-open HTML file: {e}")
-        logger.info(f"Please manually open: {os.path.abspath(file_path)}")
+    return account_posts
 
 
 def main():
-    """Open Instagram for login, then fetch posts from specified accounts."""
     try:
-        logger.info("Opening Instagram main page...")
-
         with sync_playwright() as p:
-            browser, context = setup_browser_context(p)
-            page = context.new_page()
+            logger.info(f"Starting the browser at page {INSTAGRAM_URL}...")
+            subprocess.Popen([BROWSER_PATH, f"--remote-debugging-port={BROWSER_DEBUG_PORT}", INSTAGRAM_URL])
 
-            logger.info("Navigating to Instagram...")
-            page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUT_MAIN_PAGE)
+            logger.info(f"Waiting {BROWSER_LOAD_DELAY} seconds for the browser to load the page...")
+            time.sleep(BROWSER_LOAD_DELAY)
 
-            logger.info("Please log in manually, press Enter to continue...")
-            input()
+            logger.info(f"Connecting to the browser at port {BROWSER_DEBUG_PORT}...")
+            browser = p.chromium.connect_over_cdp(f"http://localhost:{BROWSER_DEBUG_PORT}", timeout=10000)
 
-            logger.info("User logged in, fetching posts from specified accounts...")
+            logger.info("Getting the current page content...")
+            page = browser.contexts[0].pages[0]
 
-            # Fetch posts from all accounts
-            posts_by_account = fetch_all_posts(page)
+            cutoff_date = datetime.now(TIMEZONE) - timedelta(days=INSTAGRAM_MAX_POST_AGE)
 
-            # Display results and generate report
-            display_posts_summary(posts_by_account)
-            html_file = generate_html_report(posts_by_account)
-            logger.info(f"HTML report saved to: {html_file}")
+            logger.info("Getting posts from all accounts...")
+            all_posts = get_all_posts(page, cutoff_date)
 
-            # Close browser on completion
-            logger.info("Closing browser...")
-            context.close()
-            browser.close()
+            logger.info("Generating the HTML report...")
+            report = generate_html_report(all_posts, cutoff_date)
 
-            # Auto-open the HTML file
-            open_html_file(html_file)
+            logger.info("Opening the HTML report...")
+            os.startfile(report)
 
-            logger.info("Done :)")
-
+        logger.info("Done :)")
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         raise
