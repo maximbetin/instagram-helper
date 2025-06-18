@@ -85,27 +85,17 @@ def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
   if not date_str:
     return None
 
-  logger.info(f"DEBUG: Attempting to parse date: '{date_str}'")
-
   try:
-    # Handle "UTC+01:00" format specifically - this is the main case
     if 'UTC' in date_str and '+' in date_str:
-      # Replace " UTC" with "" to get "2025-06-17 20:44:05+01:00"
       cleaned_date = date_str.replace(' UTC', '')
-      logger.info(f"DEBUG: Trying UTC format, cleaned: '{cleaned_date}'")
-      try:
-        dt = datetime.fromisoformat(cleaned_date)
-        result = dt.astimezone(MADRID_TZ)
-        logger.info(f"DEBUG: UTC parsing successful: {result}")
-        return result
-      except Exception as e:
-        logger.info(f"DEBUG: UTC parsing failed: {e}")
+      dt = datetime.fromisoformat(cleaned_date)
+      result = dt.astimezone(MADRID_TZ)
+      return result
 
-    # Try parsing ISO format (from datetime attribute)
+      # Try parsing ISO format (from datetime attribute)
     if 'T' in date_str and ('Z' in date_str or '+' in date_str):
       dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
       result = dt.astimezone(MADRID_TZ)
-      logger.info(f"DEBUG: ISO parsing successful: {result}")
       return result
 
     # Try parsing other common formats
@@ -119,22 +109,18 @@ def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
 
     for fmt in formats:
       try:
-        logger.info(f"DEBUG: Trying format: '{fmt}'")
         parsed = datetime.strptime(date_str, fmt)
         # If no timezone info, assume Madrid timezone
         if parsed.tzinfo is None:
           parsed = parsed.replace(tzinfo=MADRID_TZ)
         result = parsed.astimezone(MADRID_TZ)
-        logger.info(f"DEBUG: Format parsing successful: {result}")
         return result
       except ValueError as e:
-        logger.info(f"DEBUG: Format '{fmt}' failed: {e}")
         continue
 
   except Exception as e:
     logger.debug(f"Could not parse date '{date_str}': {e}")
 
-  logger.info(f"DEBUG: All parsing attempts failed for: '{date_str}'")
   return None
 
 
@@ -354,28 +340,21 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
 
         # Quick date check first
         post_date_str = extract_post_date(page, post_url)
-        logger.info(f"DEBUG: Extracted date string: '{post_date_str}'")
 
         # Check if post is too old
         is_recent_post = is_post_recent(post_date_str, cutoff_date)
 
         if post_date_str:
           parsed_date = parse_post_date(post_date_str)
-          logger.info(f"DEBUG: Parsed date: {parsed_date}, Cutoff: {cutoff_date}")
           if parsed_date:
             is_recent_comparison = parsed_date >= cutoff_date
-            logger.info(f"DEBUG: Date comparison: {parsed_date} >= {cutoff_date} = {is_recent_comparison}")
 
         if not is_recent_post:
           posts_too_old += 1
-          logger.info(f"DEBUG: Post too old ({post_date_str}), stopping further processing for this account")
           # Since posts are usually ordered by date (newest first),
           # if one post is outside our range, stop processing more posts
           # but keep the recent posts we already found
           break
-
-        # Post is recent, extract details
-        logger.info(f"DEBUG: Post appears recent, extracting details...")
 
         # Extract details from current page (already navigated by extract_post_date)
         post_data = create_base_post_data(account, post_url)
@@ -389,7 +368,6 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
           fallback_date = extract_post_date(page)  # Try again without URL since we're already on the page
           post_data['date_posted'] = fallback_date
           if fallback_date and not is_post_recent(fallback_date, cutoff_date):
-            logger.info(f"DEBUG: Post confirmed too old after fallback extraction, stopping further processing")
             # Since posts are usually ordered by date, stop processing more posts
             # but keep the recent posts we already found
             break
