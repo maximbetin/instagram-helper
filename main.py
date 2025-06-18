@@ -338,40 +338,9 @@ def display_posts_summary(posts_by_account: Dict[str, List[Dict]]) -> None:
     logger.info("=" * 15)
 
 
-def clean_instagram_url(url: str) -> str:
-    """Clean Instagram URL by removing tracking parameters."""
-    if not url:
-        return url
-
-    # Remove common tracking parameters
-    parsed = urllib.parse.urlparse(url)
-
-    # Keep only the base path, remove query parameters and fragments
-    clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-
-    # Remove trailing slash if present
-    clean_url = clean_url.rstrip('/')
-
-    return clean_url
-
-
 def get_desktop_path() -> str:
-    """Get the path to the user's desktop directory across different operating systems."""
-    if os.name == 'nt':  # Windows
-        return os.path.join(os.path.expanduser('~'), 'Desktop')
-    elif os.name == 'posix':  # macOS and Linux
-        desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
-        # Check if Desktop exists, if not try common alternatives
-        if not os.path.exists(desktop_path):
-            # Try common Linux desktop paths
-            for alt_path in ['~/Desktop', '~/Escritorio', '~/Рабочий стол']:
-                alt_desktop = os.path.expanduser(alt_path)
-                if os.path.exists(alt_desktop):
-                    return alt_desktop
-        return desktop_path
-    else:
-        # Fallback to current directory
-        return os.getcwd()
+    """Get the path to the user's desktop directory."""
+    return os.path.join(os.path.expanduser('~'), 'Desktop')
 
 
 def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: Optional[str] = None) -> str:
@@ -395,12 +364,12 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: O
     # Prepare posts data with clean URLs
     all_posts_sorted = posts_by_account.get('_all_sorted', [])
     for post in all_posts_sorted:
-        post['clean_url'] = clean_instagram_url(post.get('url', ''))
+        post['clean_url'] = post.get('url', '')
 
     # Also add clean URLs to individual account posts
     for posts in real_accounts.values():
         for post in posts:
-            post['clean_url'] = clean_instagram_url(post.get('url', ''))
+            post['clean_url'] = post.get('url', '')
 
     template_data = {
         'timestamp': timestamp,
