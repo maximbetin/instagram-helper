@@ -117,17 +117,6 @@ def check_if_logged_in(page: Page) -> bool:
         return False
 
 
-def wait_for_page_load(page: Page, timeout: Optional[int] = None) -> None:
-    """Wait for page to load with better error handling."""
-    timeout = timeout or TIMEOUT_PAGE_LOAD
-    try:
-        page.wait_for_load_state("domcontentloaded", timeout=timeout)
-        time.sleep(1)  # Small additional wait for dynamic content
-    except Exception as e:
-        logger.warning(f"Page load timeout, continuing anyway: {e}")
-        time.sleep(1)
-
-
 def extract_caption(page: Page) -> str:
     """Extract caption from Instagram post."""
     for selector in HTML_SELECTORS['caption']:
@@ -244,7 +233,6 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
         # Navigate to account
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_ACCOUNT_NAVIGATION)
-            wait_for_page_load(page)
         except Exception as e:
             logger.error(f"Failed to navigate to @{account}: {e}")
             return []
@@ -452,17 +440,6 @@ def setup_browser_context(playwright_instance):
     return browser, context
 
 
-def navigate_to_instagram(page: Page) -> bool:
-    """Navigate to Instagram main page."""
-    try:
-        logger.info("Navigating to Instagram...")
-        page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUT_MAIN_PAGE)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to navigate to Instagram: {e}")
-        return False
-
-
 def sort_posts_by_date(posts: List[Dict]) -> List[Dict]:
     """Sort posts by published date, newest first."""
     def get_sort_key(post):
@@ -505,23 +482,8 @@ def open_html_file(file_path: str) -> None:
     try:
         abs_path = os.path.abspath(file_path)
         if os.path.exists(abs_path):
-            logger.info(f"Opening HTML report in browser: {abs_path}")
-
-            # Cross-platform approach to open file in default browser
-            if os.name == 'nt':  # Windows
-                os.startfile(abs_path)
-            elif os.name == 'posix':  # macOS and Linux
-                try:
-                    # Try macOS first
-                    subprocess.run(['open', abs_path], check=True, capture_output=True)
-                except (subprocess.CalledProcessError, FileNotFoundError):
-                    try:
-                        # Try Linux
-                        subprocess.run(['xdg-open', abs_path], check=True, capture_output=True)
-                    except (subprocess.CalledProcessError, FileNotFoundError):
-                        logger.warning(f"Could not auto-open HTML file. Please manually open: {abs_path}")
-            else:
-                logger.warning(f"Could not auto-open HTML file on this platform. Please manually open: {abs_path}")
+            logger.info(f"Opening HTML report in default browser: {abs_path}")
+            os.startfile(abs_path)
         else:
             logger.error(f"HTML file not found: {abs_path}")
     except Exception as e:
@@ -538,9 +500,8 @@ def main():
             browser, context = setup_browser_context(p)
             page = context.new_page()
 
-            # Navigate to Instagram
-            if not navigate_to_instagram(page):
-                return
+            logger.info("Navigating to Instagram...")
+            page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUT_MAIN_PAGE)
 
             logger.info("Please log in manually, press Enter to continue...")
             input()
