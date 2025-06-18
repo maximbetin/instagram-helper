@@ -2,20 +2,82 @@
 
 import os
 import re
+import subprocess
 import time
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from playwright.sync_api import Page, sync_playwright
 
-from config import *
+from config import (BROWSER_ARGS, BROWSER_VIEWPORT, DAYS_BACK_TO_FETCH, DELAY_BETWEEN_ACCOUNTS, INSTAGRAM_ACCOUNTS, INSTAGRAM_URL, LOCALE, MAX_POSTS_TO_CHECK,
+                    TIMEZONE, USER_AGENT)
 from utils import logger
+
+# Constants
+MADRID_TZ = timezone(timedelta(hours=1))  # CET/CEST
+EXECUTION_CONTEXT_ERROR = "Execution context was destroyed"
+LOGIN_RETRY_ATTEMPTS = 3
+
+# Timeouts (milliseconds)
+TIMEOUTS = {
+    'page_load': 3000,
+    'post_navigation': 8000,
+    'account_navigation': 12000,
+    'main_page': 30000,
+}
+
+# Element selectors
+SELECTORS = {
+    'login_indicators': [
+        'nav[role="navigation"]',
+        'a[href="/"]',
+        'a[href="/explore/"]',
+        'a[href="/reels/"]',
+        'a[href="/direct/inbox/"]'
+    ],
+    'login_page_indicators': [
+        'input[name="username"]',
+        'input[name="password"]',
+        'button[type="submit"]',
+        'form[method="post"]'
+    ],
+    'caption': [
+        'h1[dir="auto"]',
+        'div[data-testid="post-caption"] span',
+        'article h1',
+        'span[dir="auto"]',
+        'div[data-testid="post-caption"]',
+        'article div[dir="auto"]',
+        'article span',
+        'h1',
+        'p'
+    ],
+    'date': [
+        'time[datetime]',
+        'a time',
+        'time',
+        'span[title*="202"]',
+        'a[title*="202"]',
+        'time[title*="202"]'
+    ],
+    'post': [
+        'a[href*="/p/"]',
+        'article a[href*="/p/"]',
+        'a[href*="/p/"]:not([href*="/p/explore/"])',
+        'a[href*="/reel/"]',
+        'a[href*="/tv/"]'
+    ]
+}
 
 
 def get_cutoff_date() -> datetime:
     """Get the cutoff date for filtering posts."""
-    return datetime.now(MADRID_TZ) - timedelta(days=DAYS_BACK_TO_FETCH)
+    current_time = datetime.now(MADRID_TZ)
+    cutoff = current_time - timedelta(days=DAYS_BACK_TO_FETCH)
+    logger.debug(f"Current time: {current_time}")
+    logger.debug(f"Cutoff date ({DAYS_BACK_TO_FETCH} days back): {cutoff}")
+    return cutoff
 
 
 def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
@@ -23,52 +85,103 @@ def parse_post_date(date_str: Optional[str]) -> Optional[datetime]:
     if not date_str:
         return None
 
-    if 'UTC' in date_str and '+' in date_str:
-        cleaned_date = date_str.replace(' UTC', '')
-        dt = datetime.fromisoformat(cleaned_date)
-        return dt.astimezone(MADRID_TZ)
+    try:
+        if 'UTC' in date_str and '+' in date_str:
+            cleaned_date = date_str.replace(' UTC', '')
+            dt = datetime.fromisoformat(cleaned_date)
+            result = dt.astimezone(MADRID_TZ)
+            return result
 
-    # Try parsing ISO format (from datetime attribute)
-    if 'T' in date_str and ('Z' in date_str or '+' in date_str):
-        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-        return dt.astimezone(MADRID_TZ)
+            # Try parsing ISO format (from datetime attribute)
+        if 'T' in date_str and ('Z' in date_str or '+' in date_str):
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            result = dt.astimezone(MADRID_TZ)
+            return result
 
-    # Try parsing other common formats
-    formats = [
-        '%Y-%m-%d %H:%M:%S %Z',
-        '%Y-%m-%d %H:%M:%S',
-        '%Y-%m-%d %H:%M:%S UTC%z',
-        '%B %d, %Y',
-        '%d %B %Y',
-    ]
+        # Try parsing other common formats
+        formats = [
+            '%Y-%m-%d %H:%M:%S %Z',
+            '%Y-%m-%d %H:%M:%S',
+            '%Y-%m-%d %H:%M:%S UTC%z',  # Handle UTC+01:00 format
+            '%B %d, %Y',
+            '%d %B %Y',
+        ]
 
-    for fmt in formats:
-        parsed = datetime.strptime(date_str, fmt)
-        if parsed.tzinfo:
-            parsed = parsed.replace(tzinfo=MADRID_TZ)
-        return parsed.astimezone(MADRID_TZ)
+        for fmt in formats:
+            try:
+                parsed = datetime.strptime(date_str, fmt)
+                # If no timezone info, assume Madrid timezone
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=MADRID_TZ)
+                result = parsed.astimezone(MADRID_TZ)
+                return result
+            except ValueError as e:
+                continue
+
+    except Exception as e:
+        logger.debug(f"Could not parse date '{date_str}': {e}")
 
     return None
 
 
 def is_post_recent(date_str: Optional[str], cutoff_date: datetime) -> bool:
     """Check if a post date is within the recent timeframe."""
-    # If we can't parse the date, assume it might be recent and check it
     if not date_str:
+        # If we can't parse the date, assume it might be recent and check it
         return True
 
     post_date = parse_post_date(date_str)
     if not post_date:
+        # If we can't parse the date, assume it might be recent and check it
         return True
     return post_date >= cutoff_date
 
 
-def wait_for_page_load(page: Page) -> None:
-    """Wait for page to load."""
+def check_if_logged_in(page: Page) -> bool:
+    """Check if user is properly logged into Instagram."""
     try:
-        page.wait_for_load_state("domcontentloaded", timeout=TIMEOUT_PAGE_LOAD)
+        time.sleep(2)  # Wait for page to stabilize
+
+        # Check for logged-in indicators
+        for selector in SELECTORS['login_indicators']:
+            try:
+                if page.query_selector(selector):
+                    return True
+            except Exception:
+                continue
+
+        # Check if we're on the login page
+        for selector in SELECTORS['login_page_indicators']:
+            try:
+                if page.query_selector(selector):
+                    return False
+            except Exception:
+                continue
+
+        return True  # Assume logged in if we can't determine
+
     except Exception as e:
-        logger.warning(f"Page load timeout: {e}")
+        logger.warning(f"Error checking login status: {e}")
+        if EXECUTION_CONTEXT_ERROR in str(e):
+            logger.info("Page is navigating, waiting for it to stabilize...")
+            time.sleep(3)
+            try:
+                page.wait_for_selector('body', timeout=5000)
+                return True
+            except Exception:
+                return False
+        return False
+
+
+def wait_for_page_load(page: Page, timeout: Optional[int] = None) -> None:
+    """Wait for page to load with better error handling."""
+    timeout = timeout or TIMEOUTS['page_load']
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=timeout)
+        time.sleep(1)  # Small additional wait for dynamic content
+    except Exception as e:
+        logger.warning(f"Page load timeout, continuing anyway: {e}")
+        time.sleep(1)
 
 
 def extract_caption(page: Page) -> str:
@@ -78,7 +191,8 @@ def extract_caption(page: Page) -> str:
             caption_element = page.query_selector(selector)
             if caption_element:
                 caption_text = caption_element.inner_text().strip()
-                return caption_text if caption_text and len(caption_text) > 5 else ''
+                if caption_text and len(caption_text) > 5:
+                    return caption_text
         except Exception as e:
             if EXECUTION_CONTEXT_ERROR in str(e):
                 logger.warning("Execution context destroyed while extracting caption")
@@ -92,8 +206,9 @@ def extract_post_date(page: Page, post_url: Optional[str] = None) -> Optional[st
     try:
         if post_url:
             logger.debug(f"Date extraction for: {post_url}")
-            page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUT_POST_NAVIGATION)
-            time.sleep(1)
+            # Navigate to post if URL provided
+            page.goto(post_url, wait_until="domcontentloaded", timeout=TIMEOUTS['post_navigation'])
+            time.sleep(1)  # Brief wait for content
 
         # Try to extract date from current page
         for selector in SELECTORS['date']:
@@ -142,11 +257,12 @@ def create_base_post_data(account: str, post_url: str) -> Dict:
         'url': post_url,
         'caption': '',
         'date_posted': '',
+        'image_url': None,
         'timestamp': datetime.now().isoformat()
     }
 
 
-def extract_post_urls(page: Page) -> List[str]:
+def extract_post_urls(page: Page, account: str) -> List[str]:
     """Extract post URLs from account page."""
     for selector in SELECTORS['post']:
         try:
@@ -177,49 +293,96 @@ def fetch_posts_from_account(page: Page, account: str) -> List[Dict]:
     """Fetch recent posts from a specific Instagram account."""
     try:
         url = f"https://www.instagram.com/{account}/"
-        logger.info(f"Fetching posts from @{account}...")
+        logger.info(f"Fetching recent posts from @{account}")
 
         cutoff_date = get_cutoff_date()
-        page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_ACCOUNT_NAVIGATION)
-        wait_for_page_load(page)
+        logger.debug(f"Cutoff date: {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
-        post_urls = extract_post_urls(page)
-        if post_urls:
-            logger.info(f"Checking {len(post_urls)} posts...")
+        # Navigate to account
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUTS['account_navigation'])
+            wait_for_page_load(page)
+        except Exception as e:
+            logger.error(f"Failed to navigate to @{account}: {e}")
+            return []
 
-            recent_posts = []
-            posts_checked = 0
-            posts_too_old = 0
+        # Validate we're on the correct page
+        if account not in page.url:
+            logger.warning(f"Redirected away from @{account} to {page.url}")
+            return []
 
-            for post_url in post_urls:
-                if posts_checked >= MAX_POSTS_TO_CHECK:
-                    logger.debug(f"Reached maximum post check limit for @{account}")
-                    break
+        # Check login status
+        if not check_if_logged_in(page):
+            logger.error("Not properly logged in to Instagram")
+            return []
 
-                posts_checked += 1
-                logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}")
-                post_date_str = extract_post_date(page, post_url)
-
-                if post_date_str and is_post_recent(post_date_str, cutoff_date):
-                    post_data = create_base_post_data(account, post_url)
-                    post_data['caption'] = extract_caption(page)
-                    post_data['date_posted'] = post_date_str
-
-                    recent_posts.append(post_data)
-                    logger.debug(f"Added recent post (total: {len(recent_posts)})")
-
-                    time.sleep(1)
-
-                else:
-                    posts_too_old += 1
-                    break
-
-            logger.info(f"@{account}: {len(recent_posts)} recent posts found ({posts_checked} checked, {posts_too_old} too old)")
-            return recent_posts
-
-        else:
+        # Extract post URLs
+        post_urls = extract_post_urls(page, account)
+        if not post_urls:
             logger.warning(f"No post links found for @{account}")
             return []
+
+        logger.info(f"Found {len(post_urls)} posts to check")
+
+        # Process posts with date filtering
+        recent_posts = []
+        posts_checked = 0
+        posts_too_old = 0
+
+        for post_url in post_urls:
+            if posts_checked >= MAX_POSTS_TO_CHECK:
+                logger.debug(f"Reached maximum post check limit for @{account}")
+                break
+
+            try:
+                posts_checked += 1
+                logger.debug(f"Checking post {posts_checked}/{min(len(post_urls), MAX_POSTS_TO_CHECK)}")
+
+                # Quick date check first
+                post_date_str = extract_post_date(page, post_url)
+
+                # Check if post is too old
+                is_recent_post = is_post_recent(post_date_str, cutoff_date)
+
+                if post_date_str:
+                    parsed_date = parse_post_date(post_date_str)
+                    if parsed_date:
+                        is_recent_comparison = parsed_date >= cutoff_date
+
+                if not is_recent_post:
+                    posts_too_old += 1
+                    # Since posts are usually ordered by date (newest first),
+                    # if one post is outside our range, stop processing more posts
+                    # but keep the recent posts we already found
+                    break
+
+                # Extract details from current page (already navigated by extract_post_date)
+                post_data = create_base_post_data(account, post_url)
+                post_data['caption'] = extract_caption(page)
+                post_data['date_posted'] = post_date_str  # Use the date we already extracted
+                # Image fetching disabled as per user request
+                post_data['image_url'] = None
+
+                # Double-check the date after full processing (only if we didn't get a date initially)
+                if not post_data.get('date_posted'):
+                    fallback_date = extract_post_date(page)  # Try again without URL since we're already on the page
+                    post_data['date_posted'] = fallback_date
+                    if fallback_date and not is_post_recent(fallback_date, cutoff_date):
+                        # Since posts are usually ordered by date, stop processing more posts
+                        # but keep the recent posts we already found
+                        break
+
+                recent_posts.append(post_data)
+                logger.debug(f"Added recent post (total: {len(recent_posts)})")
+
+                time.sleep(1)  # Small delay between posts
+
+            except Exception as e:
+                logger.warning(f"Error processing post {posts_checked}: {e}")
+                continue
+
+        logger.info(f"@{account}: {len(recent_posts)} recent posts found ({posts_checked} checked, {posts_too_old} too old)")
+        return recent_posts
 
     except Exception as e:
         logger.error(f"Error fetching posts from @{account}: {e}")
@@ -284,7 +447,7 @@ def generate_html_styles() -> str:
 def generate_html_header(timestamp: str) -> str:
     """Generate HTML header section."""
     cutoff_date = get_cutoff_date()
-    date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
+    date_range = f"{cutoff_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}"
 
     return f"""<!DOCTYPE html>
 <html lang='en'>
@@ -487,15 +650,32 @@ def generate_html_footer() -> str:
 
 def get_desktop_path() -> str:
     """Get the path to the user's desktop directory across different operating systems."""
-    return os.path.join(os.path.expanduser('~'), 'Desktop')
+    if os.name == 'nt':  # Windows
+        return os.path.join(os.path.expanduser('~'), 'Desktop')
+    elif os.name == 'posix':  # macOS and Linux
+        desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+        # Check if Desktop exists, if not try common alternatives
+        if not os.path.exists(desktop_path):
+            # Try common Linux desktop paths
+            for alt_path in ['~/Desktop', '~/Escritorio', '~/Рабочий стол']:
+                alt_desktop = os.path.expanduser(alt_path)
+                if os.path.exists(alt_desktop):
+                    return alt_desktop
+        return desktop_path
+    else:
+        # Fallback to current directory
+        return os.getcwd()
 
 
-def generate_html_report(posts_by_account: Dict[str, List[Dict]]) -> str:
-    """Generate a stylized HTML report of fetched posts."""
-    timestamp = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
+def generate_html_report(posts_by_account: Dict[str, List[Dict]], output_file: Optional[str] = None) -> str:
+    """Generate a beautiful HTML report of fetched posts."""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    filename = f"instagram_updates_{timestamp}.html"
-    output_file = os.path.join(get_desktop_path(), filename)
+    # Generate filename with date format if not provided
+    if output_file is None:
+        date_checked = datetime.now().strftime('%Y%m%d')
+        filename = f"instagram_updates_{date_checked}.html"
+        output_file = os.path.join(get_desktop_path(), filename)
 
     html_parts = [
         generate_html_header(timestamp),
@@ -524,18 +704,53 @@ def generate_html_report(posts_by_account: Dict[str, List[Dict]]) -> str:
     return output_file
 
 
+def verify_login_with_retries(page: Page) -> bool:
+    """Verify login status with retries."""
+    for attempt in range(LOGIN_RETRY_ATTEMPTS):
+        try:
+            logger.info(f"Verifying login status (attempt {attempt + 1}/{LOGIN_RETRY_ATTEMPTS})...")
+            if check_if_logged_in(page):
+                return True
+            else:
+                logger.warning("Login not detected, please make sure you're logged in")
+                if attempt < LOGIN_RETRY_ATTEMPTS - 1:
+                    retry = input("Press Enter to retry login verification, or 'q' to quit: ")
+                    if retry.lower() == 'q':
+                        return False
+        except Exception as e:
+            logger.warning(f"Login verification attempt {attempt + 1} failed: {e}")
+            if attempt < LOGIN_RETRY_ATTEMPTS - 1:
+                time.sleep(2)
+            continue
+
+    logger.error(f"Could not verify login status after {LOGIN_RETRY_ATTEMPTS} attempts.")
+    logger.info("Please make sure you are properly logged into Instagram!")
+    return False
+
+
 def setup_browser_context(playwright_instance):
     """Set up browser and context with proper configuration."""
     browser = playwright_instance.chromium.launch(headless=False, args=BROWSER_ARGS)
 
     context = browser.new_context(
-        locale=LOCALE,
-        timezone_id=TIMEZONE,
+        viewport=BROWSER_VIEWPORT,
         user_agent=USER_AGENT,
-        viewport=BROWSER_VIEWPORT
+        locale=LOCALE,
+        timezone_id=TIMEZONE
     )
 
     return browser, context
+
+
+def navigate_to_instagram(page: Page) -> bool:
+    """Navigate to Instagram main page."""
+    try:
+        logger.info("Navigating to Instagram...")
+        page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUTS['main_page'])
+        return True
+    except Exception as e:
+        logger.error(f"Failed to navigate to Instagram: {e}")
+        return False
 
 
 def sort_posts_by_date(posts: List[Dict]) -> List[Dict]:
@@ -577,23 +792,59 @@ def fetch_all_posts(page: Page) -> Dict[str, List[Dict]]:
 
 def open_html_file(file_path: str) -> None:
     """Open HTML file in default browser."""
-    abs_path = os.path.abspath(file_path)
-    logger.info(f"Opening HTML report in browser: {abs_path}...")
-    os.startfile(abs_path)
+    try:
+        abs_path = os.path.abspath(file_path)
+        if os.path.exists(abs_path):
+            logger.info(f"Opening HTML report in browser: {abs_path}")
+
+            # Cross-platform approach to open file in default browser
+            if os.name == 'nt':  # Windows
+                os.startfile(abs_path)
+            elif os.name == 'posix':  # macOS and Linux
+                try:
+                    # Try macOS first
+                    subprocess.run(['open', abs_path], check=True, capture_output=True)
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    try:
+                        # Try Linux
+                        subprocess.run(['xdg-open', abs_path], check=True, capture_output=True)
+                    except (subprocess.CalledProcessError, FileNotFoundError):
+                        logger.warning(f"Could not auto-open HTML file. Please manually open: {abs_path}")
+            else:
+                logger.warning(f"Could not auto-open HTML file on this platform. Please manually open: {abs_path}")
+        else:
+            logger.error(f"HTML file not found: {abs_path}")
+    except Exception as e:
+        logger.warning(f"Could not auto-open HTML file: {e}")
+        logger.info(f"Please manually open: {os.path.abspath(file_path)}")
 
 
 def main():
     """Open Instagram for login, then fetch posts from specified accounts."""
     try:
+        logger.info("Opening Instagram main page...")
+
         with sync_playwright() as p:
             browser, context = setup_browser_context(p)
             page = context.new_page()
 
-            logger.info(f"Navigating to {INSTAGRAM_URL}...")
-            page.goto(INSTAGRAM_URL, wait_until="domcontentloaded", timeout=TIMEOUT_MAIN_PAGE)
+            # Navigate to Instagram
+            if not navigate_to_instagram(page):
+                return
 
-            logger.info("Please log in to Instagram and press Enter to continue...")
+            logger.info("Instagram page opened! Please log in manually.")
+            logger.info("After logging in, press Enter to start fetching posts...")
             input()
+
+            # Verify login
+            if not verify_login_with_retries(page):
+                logger.info("Press Enter to close the browser...")
+                input()
+                context.close()
+                browser.close()
+                return
+
+            logger.info("Login verified! Starting to fetch posts from specified accounts...")
 
             # Fetch posts from all accounts
             posts_by_account = fetch_all_posts(page)
@@ -611,7 +862,7 @@ def main():
             # Auto-open the HTML file
             open_html_file(html_file)
 
-            logger.info("Done :)")
+            logger.info("Post fetching complete! HTML report opened in browser.")
 
     except Exception as e:
         logger.error(f"An error occurred: {e}")
