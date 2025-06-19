@@ -7,34 +7,32 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Browser, Page, sync_playwright
 
 from config import *
 from utils import logger
 
 
 def get_account_post_urls(page: Page) -> List[str]:
-    """Fetch recent posts from a specific Instagram account."""
-    links = page.query_selector_all('a[href*="/p/"]')
-    if links:
-        post_urls = []
-        for link in links:
-            post_url = link.get_attribute('href')
-            if post_url and any(path in post_url for path in ['/p/', '/reel/', '/tv/']):
-                full_url = (f"https://www.instagram.com{post_url}" if post_url.startswith('/') else post_url)
-                post_urls.append(full_url)
-        return post_urls
-    return []
+    """Fetch all post URLs from a specific Instagram account page."""
+    post_urls = set()
+    # Selectors for posts, reels, and tagged content might need updates if Instagram changes layout.
+    # Using a broad selector and filtering is more robust than specific selectors that break often.
+    links = page.query_selector_all('a')
+
+    for link in links:
+        post_url = link.get_attribute('href')
+        if post_url and any(path in post_url for path in ['/p/', '/reel/']):
+            full_url = f"{INSTAGRAM_URL.rstrip('/')}{post_url}" if post_url.startswith('/') else post_url
+            post_urls.add(full_url)
+    return list(post_urls)
 
 
 def get_post_caption(page: Page) -> str:
     """Extract post's caption from Instagram post."""
-    caption_element = page.query_selector('h1[dir="auto"]')
-    if caption_element:
-        caption_text = caption_element.inner_text().strip()
-        if caption_text and len(caption_text) > 5:
-            return caption_text
-    return ''
+    # The main heading is usually the post caption.
+    caption_element = page.query_selector('h1')
+    return caption_element.inner_text().strip() if caption_element else ''
 
 
 def get_post_date(page: Page) -> Optional[datetime]:
@@ -43,39 +41,44 @@ def get_post_date(page: Page) -> Optional[datetime]:
     if date_element:
         datetime_attr = date_element.get_attribute('datetime')
         if datetime_attr:
-            return datetime.fromisoformat(datetime_attr.replace('Z', '+02:00'))
+            # The datetime attribute from Instagram is in UTC ('Z' suffix).
+            # Parse it into a timezone-aware datetime object.
+            utc_datetime = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
+            # Convert to the local timezone specified in the configuration.
+            return utc_datetime.astimezone(TIMEZONE)
     return None
 
 
 def extract_post_data(post_url: str, cutoff_date: datetime, account: str, page: Page) -> Optional[Dict]:
     """Extracts the post data from the post URL."""
-    post = {
-        'caption': '',
-        'date_posted': '',
+    page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
+    time.sleep(BROWSER_LOAD_DELAY)
+
+    post_date = get_post_date(page)
+    if not post_date or post_date < cutoff_date:
+        return None
+
+    return {
         'url': post_url,
         'account': account,
+        'caption': get_post_caption(page),
+        'date_posted': post_date,  # Keep datetime object for sorting
     }
-
-    post_date_dt = get_post_date(page)
-    if post_date_dt:
-        # If the date is older than the cutoff date, stop processing more posts
-        if post_date_dt < cutoff_date:
-            return None
-
-        # Extract details from current page
-        post['caption'] = get_post_caption(page)
-        post['date_posted'] = post_date_dt.strftime('%d-%m-%Y')
-
-    return post
 
 
 def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
     """Generate a stylized HTML report of fetched posts using a template."""
-    generated_on = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-    desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+    # Sort posts by date, newest first, regardless of the account
+    posts.sort(key=lambda p: p['date_posted'], reverse=True)
 
-    filename = f"instagram_updates_{generated_on.split(' ')[0].replace('-', '')}.html"
-    output_file = os.path.join(desktop_path, filename)
+    # Format date after sorting
+    for post in posts:
+        post['date_posted'] = post['date_posted'].strftime('%d-%m-%Y')
+
+    generated_on = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+    output_dir = os.path.join(os.path.expanduser('~'), 'Desktop')
+    filename = f"instagram_updates_{datetime.now().strftime('%Y%m%d')}.html"
+    output_file = os.path.join(output_dir, filename)
 
     date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
 
@@ -88,7 +91,7 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
         'total_accounts': len(INSTAGRAM_ACCOUNTS),
     }
 
-    env = Environment(loader=FileSystemLoader('.'))
+    env = Environment(loader=FileSystemLoader(output_dir))
     template = env.get_template('template.html')
     html_content = template.render(**template_data)
 
@@ -99,63 +102,73 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
     return output_file
 
 
+def setup_browser(playwright) -> Browser:
+    """Launch and connect to the browser instance."""
+    logger.info(f"Starting the browser at page {INSTAGRAM_URL}...")
+    subprocess.Popen([BROWSER_PATH, f"--remote-debugging-port={BROWSER_DEBUG_PORT}", INSTAGRAM_URL])
+    logger.debug(f"Waiting {BROWSER_LOAD_DELAY} seconds for the browser to load...")
+    time.sleep(BROWSER_LOAD_DELAY)
+    logger.debug(f"Connecting to the browser at port {BROWSER_DEBUG_PORT}...")
+    return playwright.chromium.connect_over_cdp(f"http://localhost:{BROWSER_DEBUG_PORT}")
+
+
+def process_account(account: str, page: Page, cutoff_date: datetime) -> List[Dict]:
+    """Process a single Instagram account and return its recent posts."""
+    logger.info(f"@{account}: Processing posts...")
+    account_url = f"{INSTAGRAM_URL}{account}/"
+    page.goto(account_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
+    time.sleep(BROWSER_LOAD_DELAY)
+
+    logger.debug(f"@{account}: Fetching posts URLs...")
+    post_urls = get_account_post_urls(page)
+    if not post_urls:
+        logger.warning(f"@{account}: No post URLs found.")
+        return []
+
+    logger.debug(f"@{account}: Found {len(post_urls)} post URLs. Fetching post details...")
+    account_posts = []
+    for i, post_url in enumerate(post_urls):
+        if i >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
+            logger.debug(f"@{account}: Reached max posts per account ({INSTAGRAM_MAX_POSTS_PER_ACCOUNT}).")
+            break
+        logger.debug(f"@{account}: Fetching post {i + 1}/{len(post_urls)}: {post_url}")
+        post_data = extract_post_data(post_url, cutoff_date, account, page)
+        if post_data:
+            account_posts.append(post_data)
+        else:
+            # Post is older than cutoff date, assuming posts are ordered chronologically.
+            logger.info(f"@{account}: Found post older than cutoff date, stopping.")
+            break
+
+    logger.info(f"@{account}: Found {len(account_posts)} recent post(s).")
+    return account_posts
+
+
 def main():
+    """Main function to run the Instagram scraper."""
     try:
         with sync_playwright() as p:
-            logger.info(f"Starting the browser at page {INSTAGRAM_URL}...")
-            subprocess.Popen([BROWSER_PATH, f"--remote-debugging-port={BROWSER_DEBUG_PORT}", INSTAGRAM_URL])
-
-            logger.debug(f"Waiting {BROWSER_LOAD_DELAY} seconds for the browser to load the page...")
-            time.sleep(BROWSER_LOAD_DELAY)
-
-            logger.debug(f"Connecting to the browser at port {BROWSER_DEBUG_PORT}...")
-            browser = p.chromium.connect_over_cdp(f"http://localhost:{BROWSER_DEBUG_PORT}", timeout=10000)
-
-            logger.debug("Getting the current page content...")
+            browser = setup_browser(p)
             page = browser.contexts[0].pages[0]
 
-            logger.debug("Getting the cutoff date...")
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=INSTAGRAM_MAX_POST_AGE)
+            logger.info(f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}.")
 
             all_posts = []
             for account in INSTAGRAM_ACCOUNTS:
-                account_posts = []
-                logger.info(f"@{account}: Processing posts...")
-                account_url = f"{INSTAGRAM_URL}{account}/"
+                all_posts.extend(process_account(account, page, cutoff_date))
 
-                logger.debug(f"Navigating to {account_url}...")
-                page.goto(account_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
-                time.sleep(BROWSER_LOAD_DELAY)
-
-                logger.debug(f"@{account}: Fetching posts URLs...")
-                post_urls = get_account_post_urls(page)
-
-                logger.debug(f"@{account}: Fetching recent posts...")
-                posts_checked = 0
-                for post_url in post_urls:
-                    if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
-                        break
-
-                    logger.debug(f"@{account}: Fetching post {post_url}...")
-                    page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
-                    time.sleep(BROWSER_LOAD_DELAY)
-                    post = extract_post_data(post_url, cutoff_date, account, page)
-                    if post:
-                        account_posts.append(post)
-                    posts_checked += 1
-
-                logger.info(f"@{account}: {len(account_posts)} recent post(s) found")
-                all_posts.extend(account_posts)
-
-        logger.info("Generating the HTML report...")
-        report = generate_html_report(all_posts, cutoff_date)
-
-        logger.info("Opening the HTML report...")
-        os.startfile(report)
+            if all_posts:
+                logger.info("Generating the HTML report...")
+                report_path = generate_html_report(all_posts, cutoff_date)
+                logger.info("Opening the HTML report...")
+                os.startfile(report_path)
+            else:
+                logger.info("No new posts found to generate a report.")
 
         logger.info("Done :)")
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}", exc_info=True)
         raise
 
 
