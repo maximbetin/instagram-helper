@@ -13,8 +13,8 @@ BROWSER_LOAD_TIMEOUT = 10000  # milliseconds
 BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
 
 # Instagram settings
-INSTAGRAM_MAX_POST_AGE = 3  # days
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 3  # posts
+INSTAGRAM_MAX_POST_AGE = 2  # days
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 5  # posts
 INSTAGRAM_URL = "https://www.instagram.com/"
 
 # Instagram accounts to track
