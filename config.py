@@ -13,30 +13,6 @@ BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\A
 
 # HTML selectors
 HTML_SELECTORS = {
-    'login_indicators': [
-        'nav[role="navigation"]',
-        'a[href="/"]',
-        'a[href="/explore/"]',
-        'a[href="/reels/"]',
-        'a[href="/direct/inbox/"]'
-    ],
-    'login_page_indicators': [
-        'input[name="username"]',
-        'input[name="password"]',
-        'button[type="submit"]',
-        'form[method="post"]'
-    ],
-    'caption': [
-        'h1[dir="auto"]',
-        'div[data-testid="post-caption"] span',
-        'article h1',
-        'span[dir="auto"]',
-        'div[data-testid="post-caption"]',
-        'article div[dir="auto"]',
-        'article span',
-        'h1',
-        'p'
-    ],
     'post': [
         'a[href*="/p/"]',
         'article a[href*="/p/"]',

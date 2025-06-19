@@ -17,19 +17,16 @@ from utils import logger
 
 def get_post_caption(page: Page) -> str:
     """Extract post's caption from Instagram post."""
-    for selector in HTML_SELECTORS['caption']:
-        caption_element = page.query_selector(selector)
-        if caption_element:
-            caption_text = caption_element.inner_text().strip()
-            if caption_text and len(caption_text) > 5:
-                return caption_text
+    caption_element = page.query_selector('h1[dir="auto"]')
+    if caption_element:
+        caption_text = caption_element.inner_text().strip()
+        if caption_text and len(caption_text) > 5:
+            return caption_text
     return ''
 
 
-def get_post_date(page: Page, post_url: str) -> Optional[datetime]:
+def get_post_date(page: Page) -> Optional[datetime]:
     """Extract post's date from Instagram post page."""
-    page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
-    time.sleep(BROWSER_LOAD_DELAY)
     date_element = page.query_selector('time[datetime]')
     if date_element:
         datetime_attr = date_element.get_attribute('datetime')
@@ -54,37 +51,26 @@ def get_post_urls(page: Page) -> List[str]:
     return []
 
 
-def get_recent_posts(post_urls: List[str], cutoff_date: datetime, account: str, page: Page) -> List[Dict]:
+def get_post_data(post_url: str, cutoff_date: datetime, account: str, page: Page) -> Optional[Dict]:
     """Goes over the post URLs and returns a list of the recent ones."""
-    recent_posts = []
-    posts_checked = 0
+    post = {
+        'account': account,
+        'url': post_url,
+        'caption': '',
+        'date_posted': '',
+    }
 
-    for post_url in post_urls:
-        post = {
-            'account': account,
-            'url': post_url,
-            'caption': '',
-            'date_posted': '',
-        }
+    post_date_dt = get_post_date(page)
+    if post_date_dt:
+        # If the date is older than the cutoff date, stop processing more posts
+        if post_date_dt < cutoff_date:
+            return None
 
-        # Stop if we have reached the maximum number of posts to check
-        if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
-            break
+        # Extract details from current page
+        post['caption'] = get_post_caption(page)
+        post['date_posted'] = post_date_dt.strftime('%d-%m-%Y')
 
-        posts_checked += 1
-        post_date_dt = get_post_date(page, post_url)
-        if post_date_dt:
-            # If the date is older than the cutoff date, stop processing more posts
-            if post_date_dt < cutoff_date:
-                break
-
-            # Extract details from current page
-            post['caption'] = get_post_caption(page)
-            post['date_posted'] = post_date_dt.strftime('%d-%m-%Y')
-
-            recent_posts.append(post)
-
-    return recent_posts
+    return post
 
 
 def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
@@ -135,8 +121,9 @@ def main():
             logger.debug("Getting the cutoff date...")
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=INSTAGRAM_MAX_POST_AGE)
 
-            posts = []
+            all_posts = []
             for account in INSTAGRAM_ACCOUNTS:
+                account_posts = []
                 logger.info(f"@{account}: Processing posts...")
                 account_url = f"{INSTAGRAM_URL}{account}/"
 
@@ -148,12 +135,24 @@ def main():
                 post_urls = get_post_urls(page)
 
                 logger.debug(f"@{account}: Fetching recent posts...")
-                account_posts = get_recent_posts(post_urls, cutoff_date, account, page)
-                posts.extend(account_posts)
+                posts_checked = 0
+                for post_url in post_urls:
+                    if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
+                        break
+
+                    logger.debug(f"@{account}: Fetching post {post_url}...")
+                    page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
+                    time.sleep(BROWSER_LOAD_DELAY)
+                    post = get_post_data(post_url, cutoff_date, account, page)
+                    if post:
+                        account_posts.append(post)
+                    posts_checked += 1
+
                 logger.info(f"@{account}: {len(account_posts)} recent post(s) found")
+                all_posts.extend(account_posts)
 
         logger.info("Generating the HTML report...")
-        report = generate_html_report(posts, cutoff_date)
+        report = generate_html_report(all_posts, cutoff_date)
 
         logger.info("Opening the HTML report...")
         os.startfile(report)
