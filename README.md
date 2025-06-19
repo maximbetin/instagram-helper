@@ -1,3 +1,5 @@
+[![Run Tests](https://github.com/maximbetin/instagram-updates/actions/workflows/test.yml/badge.svg)](https://github.com/maximbetin/instagram-updates/actions/workflows/test.yml)
+
 # Instagram Posts Fetcher
 
 A tool that automatically fetches recent posts from specified accounts and generates a stylized HTML report with global date sorting and corresponding links.
