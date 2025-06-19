@@ -1,12 +1,16 @@
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from config import INSTAGRAM_MAX_POSTS_PER_ACCOUNT, INSTAGRAM_URL, TIMEZONE
 from main import extract_post_data, generate_html_report, get_account_post_urls, get_post_caption, get_post_date, main, process_account, setup_browser
+
+# Mock config constants
+MOCK_INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 4
+MOCK_TIMEZONE = timezone(timedelta(hours=2))
+MOCK_INSTAGRAM_URL = "https://www.instagram.com/"
 
 # Add project root to path to allow absolute imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,8 +43,8 @@ def test_get_account_post_urls(mock_page, mock_element):
 
     urls = get_account_post_urls(mock_page)
 
-    assert f"{INSTAGRAM_URL.rstrip('/')}/p/C12345/" in urls
-    assert f"{INSTAGRAM_URL.rstrip('/')}/reel/R67890/" in urls
+    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/p/C12345/" in urls
+    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/reel/R67890/" in urls
     assert len(urls) == 2
 
 
@@ -68,7 +72,7 @@ def test_get_post_date(mock_page, mock_element):
 
     post_date = get_post_date(mock_page)
 
-    expected_date = datetime.fromisoformat(utc_time_str.replace('Z', '+00:00')).astimezone(TIMEZONE)
+    expected_date = datetime.fromisoformat(utc_time_str.replace('Z', '+00:00')).astimezone(MOCK_TIMEZONE)
     assert post_date == expected_date
 
 
@@ -93,10 +97,10 @@ def test_get_post_date_no_datetime_attr(mock_page, mock_element):
 def test_extract_post_data(mock_sleep, mock_get_caption, mock_get_date, mock_page):
     """Test extracting all data from a post page."""
     post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(TIMEZONE) - timedelta(days=1)
+    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
     account = "test_account"
 
-    mock_get_date.return_value = datetime.now(TIMEZONE)
+    mock_get_date.return_value = datetime.now(MOCK_TIMEZONE)
     mock_get_caption.return_value = "A caption"
 
     data = extract_post_data(post_url, cutoff_date, account, mock_page)
@@ -114,10 +118,10 @@ def test_extract_post_data(mock_sleep, mock_get_caption, mock_get_date, mock_pag
 def test_extract_post_data_too_old(mock_sleep, mock_get_date, mock_page):
     """Test extracting data from a post that is too old."""
     post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(TIMEZONE) - timedelta(days=1)
+    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
     account = "test_account"
 
-    mock_get_date.return_value = datetime.now(TIMEZONE) - timedelta(days=2)
+    mock_get_date.return_value = datetime.now(MOCK_TIMEZONE) - timedelta(days=2)
 
     data = extract_post_data(post_url, cutoff_date, account, mock_page)
 
@@ -129,7 +133,7 @@ def test_extract_post_data_too_old(mock_sleep, mock_get_date, mock_page):
 def test_extract_post_data_no_date(mock_sleep, mock_get_date, mock_page):
     """Test extracting data when no date is found."""
     post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(TIMEZONE) - timedelta(days=1)
+    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
     account = "test_account"
 
     data = extract_post_data(post_url, cutoff_date, account, mock_page)
@@ -178,14 +182,14 @@ def test_setup_browser(mock_playwright, mock_sleep, mock_popen):
 def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
     """Test processing a single account."""
     account = 'test_account'
-    cutoff_date = datetime.now(TIMEZONE) - timedelta(days=1)
+    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
     mock_get_urls.return_value = ['url1', 'url2', 'url3', 'url4']
     mock_extract.side_effect = [{'data': 1}, {'data': 2}, {'data': 3}, None]
 
     posts = process_account(account, mock_page, cutoff_date)
 
     assert len(posts) == 3
-    assert mock_extract.call_count == INSTAGRAM_MAX_POSTS_PER_ACCOUNT
+    assert mock_extract.call_count == MOCK_INSTAGRAM_MAX_POSTS_PER_ACCOUNT
 
 
 @patch('main.extract_post_data')
@@ -194,7 +198,7 @@ def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
 def test_process_account_stops_on_old_post(mock_sleep, mock_get_urls, mock_extract, mock_page):
     """Test that processing stops when an old post is found."""
     account = 'test_account'
-    cutoff_date = datetime.now(TIMEZONE) - timedelta(days=1)
+    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
     mock_get_urls.return_value = ['url1', 'url2']
     mock_extract.side_effect = [{'data': 1}, None]
 
@@ -209,7 +213,7 @@ def test_process_account_stops_on_old_post(mock_sleep, mock_get_urls, mock_extra
 def test_process_account_no_posts(mock_sleep, mock_get_urls, mock_page):
     """Test processing an account with no posts."""
     account = 'test_account'
-    cutoff_date = datetime.now(TIMEZONE) - timedelta(days=1)
+    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
 
     posts = process_account(account, mock_page, cutoff_date)
 
