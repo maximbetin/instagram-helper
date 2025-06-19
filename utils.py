@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-# Logging configuration - simplified for less verbose output
+# Logging configuration
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = '[%(levelname)s] %(message)s'
 LOG_DATE_FORMAT = '%H:%M:%S'

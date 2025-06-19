@@ -74,7 +74,7 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
     generated_on = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
     desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
 
-    filename = f"ig_report_{generated_on.split(' ')[0]}.html"
+    filename = f"instagram_updates_{generated_on.split(' ')[0].replace('-', '')}.html"
     output_file = os.path.join(desktop_path, filename)
 
     date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
