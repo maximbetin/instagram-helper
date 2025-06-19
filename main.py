@@ -1,6 +1,7 @@
 """Instagram browser launcher with post fetching."""
 
 import os
+import pdb
 import re
 import subprocess
 import time
@@ -15,82 +16,26 @@ from utils import logger
 
 
 def get_post_caption(page: Page) -> str:
-    # TODO: Find the specific selector that works consistently
-    """Extract caption from Instagram post."""
+    """Extract post's caption from Instagram post."""
     for selector in HTML_SELECTORS['caption']:
-        try:
-            caption_element = page.query_selector(selector)
-            if caption_element:
-                caption_text = caption_element.inner_text().strip()
-                if caption_text and len(caption_text) > 5:
-                    return caption_text
-        except Exception as e:
-            if ERROR_EXECUTION_CONTEXT in str(e):
-                logger.warning("Execution context destroyed while extracting caption")
-                break
-            continue
+        caption_element = page.query_selector(selector)
+        if caption_element:
+            caption_text = caption_element.inner_text().strip()
+            if caption_text and len(caption_text) > 5:
+                return caption_text
     return ''
 
 
-def get_post_date(page: Page, post_url: Optional[str] = None) -> str:
-    # TODO: Seems a bit overkill, this likely can be simplified
-    """Extract post date from Instagram post page."""
-    try:
-        if post_url:
-            logger.debug(f"Date extraction for: {post_url}")
-            # Navigate to post if URL provided
-            page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
-            time.sleep(1)  # Brief wait for content
-
-        # Try to extract date from current page
-        for selector in HTML_SELECTORS['date']:
-            try:
-                date_element = page.query_selector(selector)
-                if not date_element:
-                    continue
-
-                # Try datetime attribute first
-                datetime_attr = date_element.get_attribute('datetime')
-                if datetime_attr:
-                    try:
-                        dt = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
-                        dt_madrid = dt.astimezone(TIMEZONE)
-                        return dt_madrid.strftime('%Y-%m-%d %H:%M:%S %Z')
-                    except Exception:
-                        return datetime_attr
-
-                # Try title attribute
-                title_attr = date_element.get_attribute('title')
-                if title_attr:
-                    return title_attr
-
-                # Try inner text
-                inner_text = date_element.inner_text().strip()
-                if inner_text and re.search(r'\d{4}', inner_text):
-                    return inner_text
-
-            except Exception as e:
-                if ERROR_EXECUTION_CONTEXT in str(e):
-                    logger.warning("Execution context destroyed while extracting date")
-                    break
-                continue
-
-        return ''
-
-    except Exception as e:
-        logger.debug(f"Date extraction failed: {e}")
-        return ''
-
-
-def create_base_post_data(account: str, post_url: str) -> Dict:
-    # TODO: Perfect candidate for a class
-    """Create base post data structure."""
-    return {
-        'account': account,
-        'url': post_url,
-        'caption': '',
-        'date_posted': '',
-    }
+def get_post_date(page: Page, post_url: str) -> Optional[datetime]:
+    """Extract post's date from Instagram post page."""
+    page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
+    time.sleep(BROWSER_LOAD_DELAY)
+    date_element = page.query_selector('time[datetime]')
+    if date_element:
+        datetime_attr = date_element.get_attribute('datetime')
+        if datetime_attr:
+            return datetime.fromisoformat(datetime_attr.replace('Z', '+02:00'))
+    return None
 
 
 def get_post_urls(page: Page) -> List[str]:
@@ -115,28 +60,29 @@ def get_recent_posts(post_urls: List[str], cutoff_date: datetime, account: str, 
     posts_checked = 0
 
     for post_url in post_urls:
+        post = {
+            'account': account,
+            'url': post_url,
+            'caption': '',
+            'date_posted': '',
+        }
+
         # Stop if we have reached the maximum number of posts to check
         if posts_checked >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
             break
 
         posts_checked += 1
+        post_date_dt = get_post_date(page, post_url)
+        if post_date_dt:
+            # If the date is older than the cutoff date, stop processing more posts
+            if post_date_dt < cutoff_date:
+                break
 
-        # Obtain the date in string format
-        post_date_str = get_post_date(page, post_url)
+            # Extract details from current page
+            post['caption'] = get_post_caption(page)
+            post['date_posted'] = post_date_dt.strftime('%d-%m-%Y')
 
-        # Convert the date to a datetime object
-        post_date_dt = datetime.fromisoformat(post_date_str.replace('UTC', ''))
-
-        # If the date is older than the cutoff date, stop processing more posts
-        if post_date_dt < cutoff_date:
-            break
-
-        # Extract details from current page
-        post_object = create_base_post_data(account, post_url)
-        post_object['caption'] = get_post_caption(page)
-        post_object['date_posted'] = post_date_dt.strftime('%d-%m-%Y')
-
-        recent_posts.append(post_object)
+            recent_posts.append(post)
 
     return recent_posts
 
@@ -189,20 +135,19 @@ def main():
             logger.debug("Getting the cutoff date...")
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=INSTAGRAM_MAX_POST_AGE)
 
-            logger.info("Iterating over each account...")
             posts = []
-
             for account in INSTAGRAM_ACCOUNTS:
+                logger.info(f"@{account}: Processing posts...")
                 account_url = f"{INSTAGRAM_URL}{account}/"
 
                 logger.debug(f"Navigating to {account_url}...")
                 page.goto(account_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
                 time.sleep(BROWSER_LOAD_DELAY)
 
-                logger.info(f"@{account}: Fetching posts URLs...")
+                logger.debug(f"@{account}: Fetching posts URLs...")
                 post_urls = get_post_urls(page)
 
-                logger.info(f"@{account}: Fetching recent posts...")
+                logger.debug(f"@{account}: Fetching recent posts...")
                 account_posts = get_recent_posts(post_urls, cutoff_date, account, page)
                 posts.extend(account_posts)
                 logger.info(f"@{account}: {len(account_posts)} recent post(s) found")

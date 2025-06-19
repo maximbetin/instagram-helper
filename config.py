@@ -7,9 +7,9 @@ from datetime import timedelta, timezone
 BROWSER_DEBUG_PORT = 9222
 TIMEZONE = timezone(timedelta(hours=2))
 ERROR_EXECUTION_CONTEXT = "Execution context was destroyed"
-BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
-BROWSER_LOAD_DELAY = 3  # seconds
+BROWSER_LOAD_DELAY = 2  # seconds
 BROWSER_LOAD_TIMEOUT = 10000  # milliseconds
+BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
 
 # HTML selectors
 HTML_SELECTORS = {
@@ -36,14 +36,6 @@ HTML_SELECTORS = {
         'article span',
         'h1',
         'p'
-    ],
-    'date': [
-        'time[datetime]',
-        'a time',
-        'time',
-        'span[title*="202"]',
-        'a[title*="202"]',
-        'time[title*="202"]'
     ],
     'post': [
         'a[href*="/p/"]',
