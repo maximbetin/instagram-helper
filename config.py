@@ -48,6 +48,7 @@ INSTAGRAM_ACCOUNTS = [
     "patioh_laboral",
     "centroniemeyer",
     "culturacolunga",
+    "aytocastrillon",
     "ferialibroxixon",
     "conocerasturias",
     "kuivi_almacenes",
