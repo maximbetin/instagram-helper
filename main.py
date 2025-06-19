@@ -66,7 +66,7 @@ def extract_post_data(post_url: str, cutoff_date: datetime, account: str, page: 
     }
 
 
-def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
+def generate_html_report(posts: List[Dict], cutoff_date: datetime, output_dir: str, template_path: str) -> str:
     """Generate a stylized HTML report of fetched posts using a template."""
     # Sort posts by date, newest first, regardless of the account
     posts.sort(key=lambda p: p['date_posted'], reverse=True)
@@ -76,7 +76,6 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
         post['date_posted'] = post['date_posted'].strftime('%d-%m-%Y')
 
     generated_on = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-    output_dir = os.path.join(os.path.expanduser('~'), 'Desktop')
     filename = f"instagram_updates_{datetime.now().strftime('%Y%m%d')}.html"
     output_file = os.path.join(output_dir, filename)
 
@@ -91,8 +90,8 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
         'total_accounts': len(INSTAGRAM_ACCOUNTS),
     }
 
-    env = Environment(loader=FileSystemLoader(output_dir))
-    template = env.get_template('template.html')
+    env = Environment(loader=FileSystemLoader(os.path.dirname(template_path)))
+    template = env.get_template(os.path.basename(template_path))
     html_content = template.render(**template_data)
 
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -160,7 +159,9 @@ def main():
 
             if all_posts:
                 logger.info("Generating the HTML report...")
-                report_path = generate_html_report(all_posts, cutoff_date)
+                output_dir = os.path.join(os.path.expanduser('~'), 'Desktop')
+                template_path = 'template.html'
+                report_path = generate_html_report(all_posts, cutoff_date, output_dir, template_path)
                 logger.info("Opening the HTML report...")
                 os.startfile(report_path)
             else:
@@ -172,5 +173,5 @@ def main():
         raise
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

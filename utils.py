@@ -14,7 +14,8 @@ def setup_logging(name: Optional[str] = None) -> logging.Logger:
     logging.basicConfig(
         level=LOG_LEVEL,
         format=LOG_FORMAT,
-        datefmt=LOG_DATE_FORMAT
+        datefmt=LOG_DATE_FORMAT,
+        force=True
     )
     return logging.getLogger(name or __name__)
 
