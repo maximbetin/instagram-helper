@@ -7,20 +7,9 @@ from datetime import timedelta, timezone
 BROWSER_DEBUG_PORT = 9222
 TIMEZONE = timezone(timedelta(hours=2))
 ERROR_EXECUTION_CONTEXT = "Execution context was destroyed"
-BROWSER_LOAD_DELAY = 2  # seconds
+BROWSER_LOAD_DELAY = 3  # seconds
 BROWSER_LOAD_TIMEOUT = 10000  # milliseconds
 BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
-
-# HTML selectors
-HTML_SELECTORS = {
-    'post': [
-        'a[href*="/p/"]',
-        'article a[href*="/p/"]',
-        'a[href*="/p/"]:not([href*="/p/explore/"])',
-        'a[href*="/reel/"]',
-        'a[href*="/tv/"]'
-    ]
-}
 
 # Instagram settings
 INSTAGRAM_MAX_POST_AGE = 3  # days

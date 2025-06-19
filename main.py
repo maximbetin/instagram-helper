@@ -1,8 +1,6 @@
 """Instagram browser launcher with post fetching."""
 
 import os
-import pdb
-import re
 import subprocess
 import time
 from datetime import datetime, timedelta
@@ -13,6 +11,20 @@ from playwright.sync_api import Page, sync_playwright
 
 from config import *
 from utils import logger
+
+
+def get_account_post_urls(page: Page) -> List[str]:
+    """Fetch recent posts from a specific Instagram account."""
+    links = page.query_selector_all('a[href*="/p/"]')
+    if links:
+        post_urls = []
+        for link in links:
+            post_url = link.get_attribute('href')
+            if post_url and any(path in post_url for path in ['/p/', '/reel/', '/tv/']):
+                full_url = (f"https://www.instagram.com{post_url}" if post_url.startswith('/') else post_url)
+                post_urls.append(full_url)
+        return post_urls
+    return []
 
 
 def get_post_caption(page: Page) -> str:
@@ -35,29 +47,13 @@ def get_post_date(page: Page) -> Optional[datetime]:
     return None
 
 
-def get_post_urls(page: Page) -> List[str]:
-    """Fetch recent posts from a specific Instagram account."""
-    # TODO: Find specifically which is the one that works consistently
-    for selector in HTML_SELECTORS['post']:
-        links = page.query_selector_all(selector)
-        if links:
-            post_urls = []
-            for link in links[:INSTAGRAM_MAX_POSTS_PER_ACCOUNT]:
-                post_url = link.get_attribute('href')
-                if post_url and any(path in post_url for path in ['/p/', '/reel/', '/tv/']):
-                    full_url = (f"https://www.instagram.com{post_url}" if post_url.startswith('/') else post_url)
-                    post_urls.append(full_url)
-            return post_urls
-    return []
-
-
-def get_post_data(post_url: str, cutoff_date: datetime, account: str, page: Page) -> Optional[Dict]:
-    """Goes over the post URLs and returns a list of the recent ones."""
+def extract_post_data(post_url: str, cutoff_date: datetime, account: str, page: Page) -> Optional[Dict]:
+    """Extracts the post data from the post URL."""
     post = {
-        'account': account,
-        'url': post_url,
         'caption': '',
         'date_posted': '',
+        'url': post_url,
+        'account': account,
     }
 
     post_date_dt = get_post_date(page)
@@ -78,7 +74,7 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime) -> str:
     generated_on = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
     desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
 
-    filename = f"ig_posts_report_{generated_on.replace(' ', '_').replace(':', '-')}.html"
+    filename = f"ig_report_{generated_on.split(' ')[0]}.html"
     output_file = os.path.join(desktop_path, filename)
 
     date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
@@ -132,7 +128,7 @@ def main():
                 time.sleep(BROWSER_LOAD_DELAY)
 
                 logger.debug(f"@{account}: Fetching posts URLs...")
-                post_urls = get_post_urls(page)
+                post_urls = get_account_post_urls(page)
 
                 logger.debug(f"@{account}: Fetching recent posts...")
                 posts_checked = 0
@@ -143,7 +139,7 @@ def main():
                     logger.debug(f"@{account}: Fetching post {post_url}...")
                     page.goto(post_url, wait_until="domcontentloaded", timeout=BROWSER_LOAD_TIMEOUT)
                     time.sleep(BROWSER_LOAD_DELAY)
-                    post = get_post_data(post_url, cutoff_date, account, page)
+                    post = extract_post_data(post_url, cutoff_date, account, page)
                     if post:
                         account_posts.append(post)
                     posts_checked += 1
