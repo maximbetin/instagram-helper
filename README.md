@@ -75,6 +75,7 @@ Reports are automatically saved to your Desktop folder with the format:
 
 ## TODO
 
+- Add back the sorting of posts by date.
 - Do some cleaning up of the code since it's a bit overly complex in some parts.
 - Once cleaned up, unit tests and even a GitHub Actions workflow would be interesting to consider.
 - It may be worth looking into using a more modular and maintainable approach to the code, with separate files for each functionality - even OOP perhaps.
