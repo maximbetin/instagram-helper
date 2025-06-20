@@ -198,13 +198,13 @@
     }
   </style>
   <script>
-    function copyToClipboard(text) {
+    function copyToClipboard(text, event) {
+      const button = event.target;
+
       // Try modern clipboard API first
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function () {
           // Show success feedback
-          const event = window.event;
-          const button = event.target;
           const originalText = button.textContent;
           button.textContent = '✅ Copied!';
           button.style.background = '#007bff';
@@ -215,11 +215,11 @@
         }).catch(function (err) {
           console.error('Clipboard API failed: ', err);
           // Fallback to document.execCommand
-          fallbackCopyToClipboard(text, event.target);
+          fallbackCopyToClipboard(text, button);
         });
       } else {
         // Fallback for older browsers
-        fallbackCopyToClipboard(text, event.target);
+        fallbackCopyToClipboard(text, button);
       }
     }
 
@@ -291,7 +291,7 @@
             <div class='post-caption'>{{ post.caption|e }}</div>
             <div class='post-actions'>
               <a href='{{ post.url }}' target='_blank' class='post-link'>View on Instagram →</a>
-              <button class='copy-link-btn' onclick='copyToClipboard("{{ post.url }}")'
+              <button class='copy-link-btn' onclick='copyToClipboard("{{ post.url }}", event)'
                 title='Copy clean link for sharing'>
                 📋 Copy Link
               </button>
