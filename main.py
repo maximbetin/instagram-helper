@@ -181,8 +181,13 @@ def main():
 
         logger.info("Done :)")
     except Exception as e:
-        logger.error(f"An error occurred: {e}", exc_info=True)
-        raise
+        if "ECONNREFUSED" in str(e):
+            logger.error(
+                "Failed to connect to the browser. Please close all browser windows and try again."
+            )
+        else:
+            logger.error(f"An error occurred: {e}", exc_info=True)
+            raise
 
 
 if __name__ == "__main__":  # pragma: no cover
