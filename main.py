@@ -14,8 +14,9 @@ from utils import logger
 
 
 def get_account_post_urls(page: Page) -> List[str]:
-    """Fetch all post URLs from a specific Instagram account page."""
-    post_urls = []
+    """Fetch all post URLs from a specific Instagram account page, preserving order."""
+    post_urls = []  # Use a list to preserve order.
+    seen_urls = set()  # Use a set for efficient duplicate checking.
     # Selectors for posts, reels, and tagged content might need updates if Instagram changes layout.
     # Using a broad selector and filtering is more robust than specific selectors that break often.
     links = page.query_selector_all('a')
@@ -23,9 +24,19 @@ def get_account_post_urls(page: Page) -> List[str]:
     for link in links:
         post_url = link.get_attribute('href')
         if post_url and any(path in post_url for path in ['/p/', '/reel/']):
-            full_url = f"{INSTAGRAM_URL.rstrip('/')}{post_url}" if post_url.startswith('/') else post_url
-            if full_url not in post_urls:
+            # Clean up the URL for better mobile compatibility
+            if post_url.startswith('/'):
+                # Build a full, clean URL from a relative path
+                full_url = f"{INSTAGRAM_URL.rstrip('/')}{post_url}"
+            else:
+                full_url = post_url
+
+            # Remove trailing slashes and query parameters for the cleanest possible URL
+            full_url = full_url.split('?')[0].rstrip('/')
+
+            if full_url not in seen_urls:
                 post_urls.append(full_url)
+                seen_urls.add(full_url)
     return post_urls
 
 
@@ -136,8 +147,8 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> List[Dic
         if post_data:
             account_posts.append(post_data)
         else:
-            # Post is older than cutoff date, assuming posts are ordered chronologically.
-            logger.info(f"@{account}: Found post older than cutoff date, stopping.")
+            # If we find one older than the cutoff, we can safely assume the rest are also old.
+            logger.info(f"@{account}: Found post older than cutoff date, stopping for this account.")
             break
 
     logger.info(f"@{account}: Found {len(account_posts)} recent post(s).")

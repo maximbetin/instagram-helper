@@ -173,6 +173,25 @@
       background: #1e7e34;
     }
 
+    .copy-full-btn {
+      background: #6f42c1;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .copy-full-btn:hover {
+      background: #5a32a3;
+    }
+
+    .copy-full-btn:active {
+      background: #4c2d91;
+    }
+
     .no-posts {
       text-align: center;
       padding: 30px;
@@ -198,60 +217,52 @@
     }
   </style>
   <script>
-    function copyToClipboard(text, event) {
-      const button = event.target;
+    function copyHandler(button, textToCopy) {
+      const originalText = button.textContent;
+      const originalBg = window.getComputedStyle(button).backgroundColor;
 
-      // Try modern clipboard API first
+      const clipboardSuccess = () => {
+        button.textContent = '✅ Copied!';
+        button.style.background = '#007bff';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = originalBg;
+        }, 2000);
+      };
+
+      const clipboardFailure = (err) => {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy to clipboard.');
+      };
+
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () {
-          // Show success feedback
-          const originalText = button.textContent;
-          button.textContent = '✅ Copied!';
-          button.style.background = '#007bff';
-          setTimeout(function () {
-            button.textContent = originalText;
-            button.style.background = '#28a745';
-          }, 2000);
-        }).catch(function (err) {
-          console.error('Clipboard API failed: ', err);
-          // Fallback to document.execCommand
-          fallbackCopyToClipboard(text, button);
-        });
+        navigator.clipboard.writeText(textToCopy).then(clipboardSuccess).catch(clipboardFailure);
       } else {
-        // Fallback for older browsers
-        fallbackCopyToClipboard(text, button);
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = textToCopy;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          clipboardSuccess();
+        } catch (err) {
+          clipboardFailure(err);
+        }
       }
     }
 
-    function fallbackCopyToClipboard(text, button) {
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
+    function copyFullPost(button) {
+      const account = button.getAttribute('data-account');
+      const date = button.getAttribute('data-date');
+      const caption = button.getAttribute('data-caption');
+      const url = button.getAttribute('data-url');
 
-        if (successful) {
-          // Show success feedback
-          const originalText = button.textContent;
-          button.textContent = '✅ Copied!';
-          button.style.background = '#007bff';
-          setTimeout(function () {
-            button.textContent = originalText;
-            button.style.background = '#28a745';
-          }, 2000);
-        } else {
-          alert('Failed to copy link to clipboard');
-        }
-      } catch (err) {
-        console.error('Fallback copy failed: ', err);
-        alert('Failed to copy link to clipboard');
-      }
+      const formattedText = `📸 Instagram Post by @${account}\n📅 ${date}\n\n${caption}\n\n🔗 ${url}`;
+      copyHandler(button, formattedText);
     }
   </script>
 </head>
@@ -291,9 +302,14 @@
             <div class='post-caption'>{{ post.caption|e }}</div>
             <div class='post-actions'>
               <a href='{{ post.url }}' target='_blank' class='post-link'>View on Instagram →</a>
-              <button class='copy-link-btn' onclick='copyToClipboard("{{ post.url }}", event)'
+              <button class='copy-link-btn' onclick='copyHandler(this, "{{ post.url }}")'
                 title='Copy clean link for sharing'>
                 📋 Copy Link
+              </button>
+              <button class='copy-full-btn' data-account="{{ post.account }}" data-date="{{ post.date_posted }}"
+                data-caption="{{ post.caption|e }}" data-url="{{ post.url }}" onclick='copyFullPost(this)'
+                title='Copy full post text + link for sharing'>
+                📝 Copy Full Post
               </button>
             </div>
           </div>
