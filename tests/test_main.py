@@ -43,8 +43,8 @@ def test_get_account_post_urls(mock_page, mock_element):
 
     urls = get_account_post_urls(mock_page)
 
-    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/p/C12345/" in urls
-    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/reel/R67890/" in urls
+    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/p/C12345" in urls
+    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/reel/R67890" in urls
     assert len(urls) == 2
 
 
