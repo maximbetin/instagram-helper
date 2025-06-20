@@ -15,7 +15,7 @@ from utils import logger
 
 def get_account_post_urls(page: Page) -> List[str]:
     """Fetch all post URLs from a specific Instagram account page."""
-    post_urls = set()
+    post_urls = []
     # Selectors for posts, reels, and tagged content might need updates if Instagram changes layout.
     # Using a broad selector and filtering is more robust than specific selectors that break often.
     links = page.query_selector_all('a')
@@ -24,8 +24,9 @@ def get_account_post_urls(page: Page) -> List[str]:
         post_url = link.get_attribute('href')
         if post_url and any(path in post_url for path in ['/p/', '/reel/']):
             full_url = f"{INSTAGRAM_URL.rstrip('/')}{post_url}" if post_url.startswith('/') else post_url
-            post_urls.add(full_url)
-    return list(post_urls)
+            if full_url not in post_urls:
+                post_urls.append(full_url)
+    return post_urls
 
 
 def get_post_caption(page: Page) -> str:
