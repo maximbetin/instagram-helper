@@ -189,7 +189,7 @@ def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
     posts = process_account(account, mock_page, cutoff_date)
 
     assert len(posts) == 3
-    assert mock_extract.call_count == MOCK_INSTAGRAM_MAX_POSTS_PER_ACCOUNT
+    assert mock_extract.call_count == 3  # Should stop when encountering None (old post)
 
 
 @patch('main.extract_post_data')
