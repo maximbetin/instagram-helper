@@ -57,6 +57,7 @@ INSTAGRAM_ACCOUNTS = [
     "asturias_en_vena",
     "museosgijonxixon",
     "lasalvaje.oviedo",
+    "trivilorioyeimpro",
     "laboralcinemateca",
     "lacompaniadelalba",
     "gteatrolospintores",
