@@ -32,4 +32,4 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest --cov=. --cov-report=xml --cov-report=term-missing
+        pytest
