@@ -8,13 +8,13 @@ TIMEZONE = timezone(timedelta(hours=2))
 
 # Browser settings
 BROWSER_DEBUG_PORT = 9222
-BROWSER_LOAD_DELAY = 5  # seconds
+BROWSER_LOAD_DELAY = 2  # seconds
 BROWSER_LOAD_TIMEOUT = 10000  # milliseconds
 BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
 
 # Instagram settings
-INSTAGRAM_MAX_POST_AGE = 2  # days
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 3  # posts
+INSTAGRAM_MAX_POST_AGE = 1  # days
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 2  # posts
 INSTAGRAM_URL = "https://www.instagram.com/"
 
 # Instagram accounts to track
