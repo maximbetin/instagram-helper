@@ -68,7 +68,6 @@ INSTAGRAM_ACCOUNTS = [
     "laboralciudadcultura",
     "ayuntamientocabranes",
     "bandinalagarrapiella",
-    "oviedoorigendelcamino",
     "asturiesculturaenrede",
     "bibliotecasdegijonxixon",
     "museudelpuebludasturies",
