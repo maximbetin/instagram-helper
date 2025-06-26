@@ -34,6 +34,7 @@ INSTAGRAM_ACCOUNTS = [
     "prestosofest",
     "deportesayov",
     "cultura.grau",
+    "allandestars",
     "meidinerzclub",
     "exprime.gijon",
     "mierescultura",
