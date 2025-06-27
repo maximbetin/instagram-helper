@@ -44,16 +44,46 @@ jobs:
     - name: Build package
       run: |
         python -m build
+        # Debug: List contents of dist directory
+        Write-Host "Contents of dist directory:"
+        Get-ChildItem dist/ -Recurse
 
     - name: Test package installation
       run: |
+        # Debug: Check if dist directory exists and list contents
+        Write-Host "Current directory: $(Get-Location)"
+        Write-Host "Dist directory exists: $(Test-Path dist)"
+        if (Test-Path dist) {
+          Write-Host "Contents of dist directory:"
+          Get-ChildItem dist/ -Recurse
+        }
+
+        # Create virtual environment
         python -m venv test_env
         .\test_env\Scripts\activate
-        pip install dist/*.whl
-        # Test the CLI entry point (try both ways)
-        instagram-updates --help || python -m instagram_updates.cli --help
-        # Test that modules can be imported
-        python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
+
+        # Install the wheel file (use specific filename)
+        $wheelFile = Get-ChildItem dist/*.whl | Select-Object -First 1
+        if ($wheelFile) {
+          Write-Host "Installing wheel: $($wheelFile.FullName)"
+          pip install $wheelFile.FullName
+
+          # Test CLI entry point
+          Write-Host "Testing CLI entry point..."
+          try {
+            instagram-updates --help
+          } catch {
+            Write-Host "Direct CLI failed, trying module approach..."
+            python -m instagram_updates.cli --help
+          }
+
+          # Test module imports
+          Write-Host "Testing module imports..."
+          python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
+        } else {
+          Write-Host "No wheel file found in dist directory!"
+          exit 1
+        }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
