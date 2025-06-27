@@ -9,7 +9,7 @@ setup(
     name="instagram-updates",
     version="1.0.0",
     author="Maxim",
-    author_email="",
+    author_email="betinmaxim@gmail.com",
     description="A tool that automatically fetches recent posts from Instagram accounts and generates HTML reports",
     long_description=long_description,
     long_description_content_type="text/markdown",
