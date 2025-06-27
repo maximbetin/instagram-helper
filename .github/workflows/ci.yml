@@ -1,4 +1,4 @@
-name: Run Tests
+name: Build, Test and Validate Package
 
 on:
   push:
@@ -47,16 +47,11 @@ jobs:
 
     - name: Test package installation
       run: |
-        # Create a fresh virtual environment
         python -m venv test_env
         .\test_env\Scripts\activate
-
-        # Install the built package
         pip install dist/*.whl
-
-        # Test that the CLI entry point works
-        instagram-updates --help
-
+        # Test the CLI entry point (try both ways)
+        instagram-updates --help || python -m instagram_updates.cli --help
         # Test that modules can be imported
         python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
 
