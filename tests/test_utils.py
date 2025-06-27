@@ -20,11 +20,11 @@ def test_setup_logging():
     """Test that the logger is configured correctly."""
     logger = setup_logging('test_logger')
     assert logger.name == 'test_logger'
-    assert logging.root.level == LOG_LEVEL
+    assert logger.level == LOG_LEVEL
 
     # Check that the handler is configured correctly
-    assert len(logging.getLogger().handlers) > 0
-    handler = logging.getLogger().handlers[0]
+    assert len(logger.handlers) > 0
+    handler = logger.handlers[0]
     formatter = handler.formatter
     assert formatter is not None
     assert formatter._fmt == LOG_FORMAT

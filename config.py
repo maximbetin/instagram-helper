@@ -4,18 +4,20 @@ import os
 from datetime import timedelta, timezone
 
 # General settings
-TIMEZONE = timezone(timedelta(hours=2))
+TIMEZONE = timezone(timedelta(hours=int(os.getenv('TIMEZONE_OFFSET', '2'))))
 
 # Browser settings
-BROWSER_DEBUG_PORT = 9222
-BROWSER_LOAD_DELAY = 2  # seconds
-BROWSER_LOAD_TIMEOUT = 10000  # milliseconds
-BROWSER_PATH = os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe")
+BROWSER_DEBUG_PORT = int(os.getenv('BROWSER_DEBUG_PORT', '9222'))
+BROWSER_LOAD_DELAY = int(os.getenv('BROWSER_LOAD_DELAY', '3'))  # seconds
+BROWSER_LOAD_TIMEOUT = int(os.getenv('BROWSER_LOAD_TIMEOUT', '10000'))  # milliseconds
+BROWSER_PATH = os.getenv('BROWSER_PATH', os.path.expandvars(r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe"))
 
 # Instagram settings
-INSTAGRAM_MAX_POST_AGE = 1  # days
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 2  # posts
-INSTAGRAM_URL = "https://www.instagram.com/"
+INSTAGRAM_URL = os.getenv('INSTAGRAM_URL', "https://www.instagram.com/")
+INSTAGRAM_MAX_POST_AGE = int(os.getenv('INSTAGRAM_MAX_POST_AGE', '1'))  # days
+INSTAGRAM_POST_LOAD_DELAY = int(os.getenv('INSTAGRAM_POST_LOAD_DELAY', '1'))  # seconds
+INSTAGRAM_ACCOUNT_LOAD_DELAY = int(os.getenv('INSTAGRAM_ACCOUNT_LOAD_DELAY', '1'))  # seconds
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT = int(os.getenv('INSTAGRAM_MAX_POSTS_PER_ACCOUNT', '2'))  # posts
 
 # Instagram accounts to track
 INSTAGRAM_ACCOUNTS = [
@@ -74,3 +76,7 @@ INSTAGRAM_ACCOUNTS = [
     "museudelpuebludasturies",
     "chigreculturallatadezinc",
 ]
+
+# Output settings
+OUTPUT_DIR = os.getenv('OUTPUT_DIR', os.path.join(os.path.expanduser('~'), 'Desktop'))
+LOG_DIR = os.getenv('LOG_DIR', "C:/instagram_logs")

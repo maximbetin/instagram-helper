@@ -6,6 +6,9 @@ on:
     paths:
       - '**.py'
       - '.github/workflows/**'
+      - 'setup.py'
+      - 'pyproject.toml'
+      - 'requirements.txt'
 
 jobs:
   test:
@@ -33,3 +36,33 @@ jobs:
     - name: Run tests with coverage
       run: |
         pytest
+
+    - name: Install build tools
+      run: |
+        pip install build
+
+    - name: Build package
+      run: |
+        python -m build
+
+    - name: Test package installation
+      run: |
+        # Create a fresh virtual environment
+        python -m venv test_env
+        .\test_env\Scripts\activate
+
+        # Install the built package
+        pip install dist/*.whl
+
+        # Test that the CLI entry point works
+        instagram-updates --help
+
+        # Test that modules can be imported
+        python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package
+        path: dist/
+        retention-days: 30

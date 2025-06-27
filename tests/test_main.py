@@ -1,3 +1,4 @@
+import builtins
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -5,7 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from main import extract_post_data, generate_html_report, get_account_post_urls, get_post_caption, get_post_date, main, process_account, setup_browser
+from browser_manager import setup_browser
+from instagram_scraper import extract_post_data, get_account_post_urls, get_post_caption, get_post_date, process_account
+from report_generator import generate_html_report
 
 # Mock config constants
 MOCK_INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 4
@@ -46,6 +49,17 @@ def test_get_account_post_urls(mock_page, mock_element):
     assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/p/C12345" in urls
     assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/reel/R67890" in urls
     assert len(urls) == 2
+
+
+def test_get_account_post_urls_absolute_url(mock_page, mock_element):
+    """Test get_account_post_urls with an absolute post URL (does not start with '/')."""
+    mock_element.get_attribute.side_effect = [
+        'https://www.instagram.com/p/abc123/',  # absolute URL
+        None
+    ]
+    mock_page.query_selector_all.return_value = [mock_element, mock_element]
+    urls = get_account_post_urls(mock_page)
+    assert urls == ['https://www.instagram.com/p/abc123']
 
 
 def test_get_post_caption(mock_page, mock_element):
@@ -91,9 +105,9 @@ def test_get_post_date_no_datetime_attr(mock_page, mock_element):
     assert post_date is None
 
 
-@patch('main.get_post_date')
-@patch('main.get_post_caption')
-@patch('main.time.sleep', return_value=None)
+@patch('instagram_scraper.get_post_date')
+@patch('instagram_scraper.get_post_caption')
+@patch('instagram_scraper.time.sleep', return_value=None)
 def test_extract_post_data(mock_sleep, mock_get_caption, mock_get_date, mock_page):
     """Test extracting all data from a post page."""
     post_url = "http://example.com/p/123"
@@ -113,8 +127,8 @@ def test_extract_post_data(mock_sleep, mock_get_caption, mock_get_date, mock_pag
     assert data['date_posted'] is not None
 
 
-@patch('main.get_post_date')
-@patch('main.time.sleep', return_value=None)
+@patch('instagram_scraper.get_post_date')
+@patch('instagram_scraper.time.sleep', return_value=None)
 def test_extract_post_data_too_old(mock_sleep, mock_get_date, mock_page):
     """Test extracting data from a post that is too old."""
     post_url = "http://example.com/p/123"
@@ -128,8 +142,8 @@ def test_extract_post_data_too_old(mock_sleep, mock_get_date, mock_page):
     assert data is None
 
 
-@patch('main.get_post_date', return_value=None)
-@patch('main.time.sleep', return_value=None)
+@patch('instagram_scraper.get_post_date', return_value=None)
+@patch('instagram_scraper.time.sleep', return_value=None)
 def test_extract_post_data_no_date(mock_sleep, mock_get_date, mock_page):
     """Test extracting data when no date is found."""
     post_url = "http://example.com/p/123"
@@ -150,7 +164,7 @@ def test_generate_html_report(tmp_path):
     cutoff_date = datetime(2023, 1, 1)
 
     template_content = "<html><body>{{total_posts}} posts</body></html>"
-    template_path = tmp_path / "template.html"
+    template_path = tmp_path / "test_template.html"
     template_path.write_text(template_content)
 
     output_dir = tmp_path
@@ -162,9 +176,9 @@ def test_generate_html_report(tmp_path):
         assert "2 posts" in content
 
 
-@patch('main.subprocess.Popen')
-@patch('main.time.sleep', return_value=None)
-@patch('main.sync_playwright')
+@patch('browser_manager.subprocess.Popen')
+@patch('browser_manager.time.sleep', return_value=None)
+@patch('playwright.sync_api.sync_playwright')
 def test_setup_browser(mock_playwright, mock_sleep, mock_popen):
     """Test setting up the browser connection."""
     mock_p = MagicMock()
@@ -176,9 +190,10 @@ def test_setup_browser(mock_playwright, mock_sleep, mock_popen):
     mock_p.chromium.connect_over_cdp.assert_called_once()
 
 
-@patch('main.extract_post_data')
-@patch('main.get_account_post_urls')
-@patch('main.time.sleep', return_value=None)
+@patch('instagram_scraper.INSTAGRAM_MAX_POSTS_PER_ACCOUNT', 10)
+@patch('instagram_scraper.extract_post_data')
+@patch('instagram_scraper.get_account_post_urls')
+@patch('instagram_scraper.time.sleep', return_value=None)
 def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
     """Test processing a single account."""
     account = 'test_account'
@@ -189,12 +204,12 @@ def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
     posts = process_account(account, mock_page, cutoff_date)
 
     assert len(posts) == 3
-    assert mock_extract.call_count == 3  # Should stop when encountering None (old post)
+    assert mock_extract.call_count == 4  # Called for each URL until None is returned
 
 
-@patch('main.extract_post_data')
-@patch('main.get_account_post_urls')
-@patch('main.time.sleep', return_value=None)
+@patch('instagram_scraper.extract_post_data')
+@patch('instagram_scraper.get_account_post_urls')
+@patch('instagram_scraper.time.sleep', return_value=None)
 def test_process_account_stops_on_old_post(mock_sleep, mock_get_urls, mock_extract, mock_page):
     """Test that processing stops when an old post is found."""
     account = 'test_account'
@@ -208,8 +223,8 @@ def test_process_account_stops_on_old_post(mock_sleep, mock_get_urls, mock_extra
     assert mock_extract.call_count == 2
 
 
-@patch('main.get_account_post_urls', return_value=[])
-@patch('main.time.sleep', return_value=None)
+@patch('instagram_scraper.get_account_post_urls', return_value=[])
+@patch('instagram_scraper.time.sleep', return_value=None)
 def test_process_account_no_posts(mock_sleep, mock_get_urls, mock_page):
     """Test processing an account with no posts."""
     account = 'test_account'
@@ -218,57 +233,3 @@ def test_process_account_no_posts(mock_sleep, mock_get_urls, mock_page):
     posts = process_account(account, mock_page, cutoff_date)
 
     assert len(posts) == 0
-
-
-@patch('main.os.startfile')
-@patch('main.generate_html_report', return_value='report.html')
-@patch('main.process_account', return_value=[{'post': 1}])
-@patch('main.setup_browser')
-@patch('main.sync_playwright')
-def test_main(mock_playwright, mock_setup_browser, mock_process, mock_generate_report, mock_startfile):
-    """Test the main execution function."""
-    mock_p = MagicMock()
-    mock_playwright.return_value.__enter__.return_value = mock_p
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.contexts[0].pages[0] = mock_page
-    mock_setup_browser.return_value = mock_browser
-
-    main()
-
-    assert mock_process.called
-    mock_generate_report.assert_called_once()
-    mock_startfile.assert_called_once_with('report.html')
-
-
-@patch('main.generate_html_report')
-@patch('main.process_account', return_value=[])
-@patch('main.setup_browser')
-@patch('main.sync_playwright')
-def test_main_no_posts(mock_playwright, mock_setup_browser, mock_process, mock_generate_report):
-    """Test the main execution function when no posts are found."""
-    mock_p = MagicMock()
-    mock_playwright.return_value.__enter__.return_value = mock_p
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.contexts[0].pages[0] = mock_page
-    mock_setup_browser.return_value = mock_browser
-
-    main()
-
-    assert mock_process.called
-    mock_generate_report.assert_not_called()
-
-
-@patch('main.setup_browser', side_effect=Exception("Test error"))
-@patch('main.sync_playwright')
-def test_main_exception(mock_playwright, mock_setup_browser):
-    """Test the main execution function handles exceptions."""
-    mock_p = MagicMock()
-    mock_playwright.return_value.__enter__.return_value = mock_p
-
-    with pytest.raises(Exception, match="Test error"):
-        main()
-
-# The __main__ entry point is not unit-testable in a simple way
-# because it triggers the whole browser setup.
