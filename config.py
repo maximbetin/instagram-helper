@@ -15,7 +15,7 @@ BROWSER_PATH = os.getenv('BROWSER_PATH', os.path.expandvars(r"%PROGRAMFILES%\Bra
 # Instagram settings
 INSTAGRAM_URL = os.getenv('INSTAGRAM_URL', "https://www.instagram.com/")
 INSTAGRAM_MAX_POST_AGE = int(os.getenv('INSTAGRAM_MAX_POST_AGE', '1'))  # days
-INSTAGRAM_POST_LOAD_DELAY = int(os.getenv('INSTAGRAM_POST_LOAD_DELAY', '1'))  # seconds
+INSTAGRAM_POST_LOAD_DELAY = int(os.getenv('INSTAGRAM_POST_LOAD_DELAY', '2'))  # seconds
 INSTAGRAM_ACCOUNT_LOAD_DELAY = int(os.getenv('INSTAGRAM_ACCOUNT_LOAD_DELAY', '1'))  # seconds
 INSTAGRAM_MAX_POSTS_PER_ACCOUNT = int(os.getenv('INSTAGRAM_MAX_POSTS_PER_ACCOUNT', '2'))  # posts
 
