@@ -1,4 +1,4 @@
-[![Run Tests](https://github.com/maximbetin/instagram-updates/actions/workflows/test.yml/badge.svg)](https://github.com/maximbetin/instagram-updates/actions/workflows/test.yml)
+[![Run Tests](https://github.com/maximbetin/instagram-updates/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-updates/actions/workflows/ci.yml)
 
 # Instagram Updates
 
