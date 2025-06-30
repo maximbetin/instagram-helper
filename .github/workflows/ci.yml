@@ -1,4 +1,4 @@
-name: Build, Test and Validate Package
+name: Test, Build and Validate Package
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - 'requirements.txt'
 
 jobs:
-  test:
+  ci:
     permissions:
       contents: write
     runs-on: windows-latest
