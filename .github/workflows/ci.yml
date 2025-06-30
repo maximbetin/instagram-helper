@@ -44,18 +44,27 @@ jobs:
     - name: Build package
       run: |
         python -m build
+        Get-ChildItem dist/ -Name
 
     - name: Test package installation
       run: |
         python -m venv test_env
         .\test_env\Scripts\activate
-        pip install dist/*.whl
 
-        # Test CLI entry point
-        instagram-updates --help
+        # Install the built package
+        $wheelFile = Get-ChildItem dist/ -Filter "*.whl" | Select-Object -First 1
+        if ($wheelFile) {
+            pip install $wheelFile.FullName
 
-        # Test module imports
-        python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
+            # Test CLI entry point
+            instagram-updates --help
+
+            # Test module imports
+            python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
+        } else {
+            Write-Error "No wheel file found in dist/ directory"
+            exit 1
+        }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
