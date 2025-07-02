@@ -44,7 +44,7 @@ def setup_logging(name: Optional[str] = None, log_dir: Optional[str] = None) -> 
         os.makedirs(log_dir, exist_ok=True)
 
         # Generate log filename with current date
-        log_filename = f"instagram_updates_{datetime.now().strftime('%Y%m%d')}.log"
+        log_filename = f"{datetime.now().strftime('%d-%m-%Y')}.log"
         log_filepath = os.path.join(log_dir, log_filename)
 
         # File formatter with more detailed information

@@ -22,7 +22,7 @@ def generate_html_report(posts: List[Dict], cutoff_date: datetime, output_dir: s
         post['date_posted'] = post['date_posted'].strftime('%d-%m-%Y')
 
     generated_on = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-    filename = f"instagram_updates_{datetime.now().strftime('%Y%m%d')}.html"
+    filename = f"{datetime.now().strftime('%d-%m-%Y')}.html"
     output_file = os.path.join(output_dir, filename)
 
     date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"

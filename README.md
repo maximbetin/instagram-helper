@@ -27,6 +27,8 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
+**Note:** The tool is configured to use Brave browser by default. If you don't have Brave installed, you can change the browser path in `config.py` or set the `BROWSER_PATH` environment variable.
+
 ## Usage
 
 ### Basic Usage
@@ -41,6 +43,18 @@ python main.py
 python cli.py
 ```
 
+3. Or install the package and use the command-line tool:
+```bash
+pip install -e .
+instagram-updates
+```
+
+**Default Behavior:**
+- Fetches posts from the last 3 days
+- Processes all configured Instagram accounts
+- Saves HTML reports and logs to `Desktop/IG Updates/`
+- Automatically opens the generated report
+
 ### CLI Options
 
 ```bash
@@ -49,8 +63,8 @@ python cli.py [OPTIONS]
 Options:
   --days, -d INT          Number of days back to fetch posts from (default: 1)
   --accounts, -a TEXT...  Specific Instagram accounts to fetch from
-  --output, -o PATH       Output directory for reports
-  --log-dir PATH          Directory for log files
+  --output, -o PATH       Output directory for reports (default: Desktop/IG Updates)
+  --log-dir PATH          Directory for log files (default: Desktop/IG Updates)
   --no-open               Do not automatically open the generated report
   --verbose, -v           Enable verbose logging
   --help                  Show this message and exit
@@ -59,7 +73,7 @@ Options:
 ### Examples
 
 ```bash
-# Use default settings
+# Use default settings (saves to Desktop/IG Updates folder)
 python cli.py
 
 # Fetch posts from last 3 days
@@ -92,8 +106,8 @@ export BROWSER_LOAD_TIMEOUT=10000
 export BROWSER_PATH="/path/to/browser"
 
 # Instagram settings
-export INSTAGRAM_MAX_POST_AGE=1
-export INSTAGRAM_MAX_POSTS_PER_ACCOUNT=2
+export INSTAGRAM_MAX_POST_AGE=3
+export INSTAGRAM_MAX_POSTS_PER_ACCOUNT=3
 export INSTAGRAM_URL="https://www.instagram.com/"
 
 # Output settings
@@ -106,25 +120,35 @@ export TIMEZONE_OFFSET=2
 
 Edit `config.py` to modify:
 
-- **Post Fetching Settings**: Days back to fetch, max posts per account, load delays
+- **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3), load delays
 - **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias cultural accounts)
-- **Browser Settings**: Browser path, debug port, timeouts
-- **Output Settings**: Output and log directories
+- **Browser Settings**: Browser path (default: Brave), debug port, timeouts
+- **Output Settings**: Output and log directories (default: Desktop/IG Updates)
 
 ## Output
 
-The tool generates an interactive HTML report with:
+The tool generates an interactive HTML report and detailed logs:
 
+**HTML Report:**
 - Summary statistics (total accounts checked, total posts found, date range)
 - All posts sorted by date (newest first) with captions, dates, and account information
 - Direct links to original Instagram posts
 - Copy-to-clipboard buttons for post URLs and captions
 - Responsive design that works on desktop and mobile
 
+**Log Files:**
+- Detailed logging of the scraping process
+- Account processing status and results
+- Error messages and debugging information
+- Timestamps for all operations
+
 ## File Naming
 
-Reports are automatically saved with the format:
-- `instagram_updates_YYYYMMDD.html` (e.g., `instagram_updates_20241219.html`)
+Reports and logs are automatically saved with the format:
+- HTML reports: `DD-MM-YYYY.html` (e.g., `19-12-2024.html`)
+- Log files: `DD-MM-YYYY.log` (e.g., `19-12-2024.log`)
+
+Both files are saved in the "IG Updates" folder on your Desktop by default.
 
 ## Project Structure
 
