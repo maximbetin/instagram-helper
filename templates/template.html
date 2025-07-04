@@ -158,11 +158,18 @@
       background: #28a745;
       color: white;
       border: none;
-      padding: 6px 12px;
+      padding: 8px 16px;
       border-radius: 15px;
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s ease;
+      min-height: 44px;
+      /* Touch-friendly minimum size */
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
 
     .copy-link-btn:hover {
@@ -171,17 +178,25 @@
 
     .copy-link-btn:active {
       background: #1e7e34;
+      transform: scale(0.95);
     }
 
     .copy-full-btn {
       background: #6f42c1;
       color: white;
       border: none;
-      padding: 6px 12px;
+      padding: 8px 16px;
       border-radius: 15px;
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s ease;
+      min-height: 44px;
+      /* Touch-friendly minimum size */
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
 
     .copy-full-btn:hover {
@@ -190,6 +205,7 @@
 
     .copy-full-btn:active {
       background: #4c2d91;
+      transform: scale(0.95);
     }
 
     .no-posts {
@@ -214,6 +230,39 @@
       .header h1 {
         font-size: 2rem;
       }
+
+      .post-actions {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .post-link,
+      .copy-link-btn,
+      .copy-full-btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+      }
+
+      .post-content {
+        padding: 20px;
+      }
+
+      .container {
+        margin: 10px;
+        border-radius: 8px;
+      }
+
+      .header {
+        padding: 20px;
+      }
+
+      .stats {
+        padding: 15px;
+        gap: 15px;
+      }
     }
   </style>
   <script>
@@ -232,27 +281,137 @@
 
       const clipboardFailure = (err) => {
         console.error('Failed to copy: ', err);
-        alert('Failed to copy to clipboard.');
+        // Try fallback method
+        fallbackCopy(textToCopy, clipboardSuccess);
       };
 
+      // Try modern clipboard API first
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(textToCopy).then(clipboardSuccess).catch(clipboardFailure);
       } else {
-        try {
-          const textArea = document.createElement('textarea');
-          textArea.value = textToCopy;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
+        // Use fallback immediately if clipboard API is not available
+        fallbackCopy(textToCopy, clipboardSuccess);
+      }
+    }
+
+    function fallbackCopy(textToCopy, successCallback) {
+      try {
+        // Create a temporary textarea element
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+
+        // Style it to be invisible but accessible
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.style.opacity = '0';
+        textArea.style.pointerEvents = 'none';
+        textArea.style.zIndex = '-1';
+
+        // Add to DOM
+        document.body.appendChild(textArea);
+
+        // For mobile devices, we need to handle this differently
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+          // On mobile, try to make the textarea visible briefly
+          textArea.style.position = 'absolute';
+          textArea.style.left = '50%';
+          textArea.style.top = '50%';
+          textArea.style.transform = 'translate(-50%, -50%)';
+          textArea.style.opacity = '0.01';
+          textArea.style.fontSize = '16px'; // Prevents zoom on iOS
+
+          // Focus and select
           textArea.focus();
           textArea.select();
-          document.execCommand('copy');
+
+          // Try to copy
+          const successful = document.execCommand('copy');
+
+          // Clean up
           document.body.removeChild(textArea);
-          clipboardSuccess();
-        } catch (err) {
-          clipboardFailure(err);
+
+          if (successful) {
+            successCallback();
+          } else {
+            // If execCommand fails, try alternative approach for mobile
+            mobileCopyFallback(textToCopy, successCallback);
+          }
+        } else {
+          // Desktop fallback
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+
+          if (successful) {
+            successCallback();
+          } else {
+            alert('Failed to copy to clipboard. Please copy manually: ' + textToCopy);
+          }
         }
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+        // Last resort: show the text to user
+        alert('Copy failed. Text to copy: ' + textToCopy);
       }
+    }
+
+    function mobileCopyFallback(textToCopy, successCallback) {
+      // For mobile devices that don't support clipboard well
+      // Create a temporary input that's visible and let user copy manually
+      const tempInput = document.createElement('input');
+      tempInput.type = 'text';
+      tempInput.value = textToCopy;
+      tempInput.style.position = 'fixed';
+      tempInput.style.top = '50%';
+      tempInput.style.left = '50%';
+      tempInput.style.transform = 'translate(-50%, -50%)';
+      tempInput.style.zIndex = '9999';
+      tempInput.style.fontSize = '16px';
+      tempInput.style.padding = '10px';
+      tempInput.style.border = '2px solid #667eea';
+      tempInput.style.borderRadius = '5px';
+      tempInput.style.backgroundColor = 'white';
+
+      document.body.appendChild(tempInput);
+      tempInput.focus();
+      tempInput.select();
+
+      // Show instructions
+      const instructions = document.createElement('div');
+      instructions.style.position = 'fixed';
+      instructions.style.top = '60%';
+      instructions.style.left = '50%';
+      instructions.style.transform = 'translate(-50%, -50%)';
+      instructions.style.zIndex = '10000';
+      instructions.style.backgroundColor = 'rgba(0,0,0,0.8)';
+      instructions.style.color = 'white';
+      instructions.style.padding = '10px';
+      instructions.style.borderRadius = '5px';
+      instructions.style.fontSize = '14px';
+      instructions.style.textAlign = 'center';
+      instructions.textContent = 'Text selected! Long press to copy, then tap here to close.';
+      instructions.style.cursor = 'pointer';
+
+      document.body.appendChild(instructions);
+
+      // Remove elements after user interaction
+      const cleanup = () => {
+        document.body.removeChild(tempInput);
+        document.body.removeChild(instructions);
+        successCallback();
+      };
+
+      instructions.addEventListener('click', cleanup);
+      instructions.addEventListener('touchend', cleanup);
+
+      // Auto-cleanup after 10 seconds
+      setTimeout(() => {
+        if (document.body.contains(tempInput)) {
+          cleanup();
+        }
+      }, 10000);
     }
 
     function copyFullPost(button) {
@@ -264,6 +423,25 @@
       const formattedText = `📸 Instagram Post by @${account}\n📅 ${date}\n\n${caption}\n\n🔗 ${url}`;
       copyHandler(button, formattedText);
     }
+
+    // Add touch event support for better mobile interaction
+    document.addEventListener('DOMContentLoaded', function () {
+      const copyButtons = document.querySelectorAll('.copy-link-btn, .copy-full-btn');
+
+      copyButtons.forEach(button => {
+        // Add touch event listeners for better mobile response
+        button.addEventListener('touchstart', function (e) {
+          // Prevent default to avoid double-tap zoom
+          e.preventDefault();
+          this.style.transform = 'scale(0.95)';
+        });
+
+        button.addEventListener('touchend', function (e) {
+          e.preventDefault();
+          this.style.transform = 'scale(1)';
+        });
+      });
+    });
   </script>
 </head>
 
