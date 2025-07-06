@@ -158,18 +158,12 @@
       background: #28a745;
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 6px 12px;
       border-radius: 15px;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       cursor: pointer;
-      transition: all 0.2s ease;
-      min-height: 44px;
-      /* Touch-friendly minimum size */
+      transition: background 0.2s;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
     }
 
     .copy-link-btn:hover {
@@ -178,25 +172,18 @@
 
     .copy-link-btn:active {
       background: #1e7e34;
-      transform: scale(0.95);
     }
 
     .copy-full-btn {
       background: #6f42c1;
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 6px 12px;
       border-radius: 15px;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       cursor: pointer;
-      transition: all 0.2s ease;
-      min-height: 44px;
-      /* Touch-friendly minimum size */
+      transition: background 0.2s;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
     }
 
     .copy-full-btn:hover {
@@ -205,7 +192,6 @@
 
     .copy-full-btn:active {
       background: #4c2d91;
-      transform: scale(0.95);
     }
 
     .no-posts {
@@ -267,10 +253,13 @@
   </style>
   <script>
     function copyHandler(button, textToCopy) {
+      console.log('copyHandler called with:', textToCopy);
+
       const originalText = button.textContent;
       const originalBg = window.getComputedStyle(button).backgroundColor;
 
       const clipboardSuccess = () => {
+        console.log('Clipboard copy successful');
         button.textContent = '✅ Copied!';
         button.style.background = '#007bff';
         setTimeout(() => {
@@ -287,14 +276,17 @@
 
       // Try modern clipboard API first
       if (navigator.clipboard && navigator.clipboard.writeText) {
+        console.log('Using navigator.clipboard API');
         navigator.clipboard.writeText(textToCopy).then(clipboardSuccess).catch(clipboardFailure);
       } else {
+        console.log('Using fallback copy method');
         // Use fallback immediately if clipboard API is not available
         fallbackCopy(textToCopy, clipboardSuccess);
       }
     }
 
     function fallbackCopy(textToCopy, successCallback) {
+      console.log('fallbackCopy called');
       try {
         // Create a temporary textarea element
         const textArea = document.createElement('textarea');
@@ -310,108 +302,100 @@
 
         // Add to DOM
         document.body.appendChild(textArea);
+        console.log('Textarea added to DOM');
 
-        // For mobile devices, we need to handle this differently
-        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-          // On mobile, try to make the textarea visible briefly
-          textArea.style.position = 'absolute';
-          textArea.style.left = '50%';
-          textArea.style.top = '50%';
-          textArea.style.transform = 'translate(-50%, -50%)';
-          textArea.style.opacity = '0.01';
-          textArea.style.fontSize = '16px'; // Prevents zoom on iOS
+        // Focus and select
+        textArea.focus();
+        textArea.select();
+        console.log('Textarea focused and selected');
 
-          // Focus and select
-          textArea.focus();
-          textArea.select();
+        // Try to copy
+        const successful = document.execCommand('copy');
+        console.log('execCommand result:', successful);
 
-          // Try to copy
-          const successful = document.execCommand('copy');
+        // Clean up
+        document.body.removeChild(textArea);
 
-          // Clean up
-          document.body.removeChild(textArea);
-
-          if (successful) {
-            successCallback();
-          } else {
-            // If execCommand fails, try alternative approach for mobile
-            mobileCopyFallback(textToCopy, successCallback);
-          }
+        if (successful) {
+          console.log('Fallback copy successful');
+          successCallback();
         } else {
-          // Desktop fallback
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-
-          if (successful) {
-            successCallback();
-          } else {
-            alert('Failed to copy to clipboard. Please copy manually: ' + textToCopy);
-          }
+          console.log('execCommand failed, showing manual interface');
+          // If execCommand fails, show manual copy interface
+          showManualCopyInterface(textToCopy, successCallback);
         }
       } catch (err) {
         console.error('Fallback copy failed:', err);
-        // Last resort: show the text to user
-        alert('Copy failed. Text to copy: ' + textToCopy);
+        // Show manual copy interface as last resort
+        showManualCopyInterface(textToCopy, successCallback);
       }
     }
 
-    function mobileCopyFallback(textToCopy, successCallback) {
-      // For mobile devices that don't support clipboard well
-      // Create a temporary input that's visible and let user copy manually
-      const tempInput = document.createElement('input');
-      tempInput.type = 'text';
-      tempInput.value = textToCopy;
-      tempInput.style.position = 'fixed';
-      tempInput.style.top = '50%';
-      tempInput.style.left = '50%';
-      tempInput.style.transform = 'translate(-50%, -50%)';
-      tempInput.style.zIndex = '9999';
-      tempInput.style.fontSize = '16px';
-      tempInput.style.padding = '10px';
-      tempInput.style.border = '2px solid #667eea';
-      tempInput.style.borderRadius = '5px';
-      tempInput.style.backgroundColor = 'white';
+    function showManualCopyInterface(textToCopy, successCallback) {
+      // Create a modal-like interface for manual copying
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
+      overlay.style.zIndex = '9999';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
 
-      document.body.appendChild(tempInput);
-      tempInput.focus();
-      tempInput.select();
+      const modal = document.createElement('div');
+      modal.style.backgroundColor = 'white';
+      modal.style.padding = '20px';
+      modal.style.borderRadius = '10px';
+      modal.style.maxWidth = '90%';
+      modal.style.maxHeight = '80%';
+      modal.style.overflow = 'auto';
+      modal.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
 
-      // Show instructions
-      const instructions = document.createElement('div');
-      instructions.style.position = 'fixed';
-      instructions.style.top = '60%';
-      instructions.style.left = '50%';
-      instructions.style.transform = 'translate(-50%, -50%)';
-      instructions.style.zIndex = '10000';
-      instructions.style.backgroundColor = 'rgba(0,0,0,0.8)';
-      instructions.style.color = 'white';
-      instructions.style.padding = '10px';
-      instructions.style.borderRadius = '5px';
-      instructions.style.fontSize = '14px';
-      instructions.style.textAlign = 'center';
-      instructions.textContent = 'Text selected! Long press to copy, then tap here to close.';
-      instructions.style.cursor = 'pointer';
+      modal.innerHTML = `
+        <h3 style="margin-top: 0; color: #333;">Copy Text</h3>
+        <p style="color: #666; margin-bottom: 15px;">Select the text below and copy it manually:</p>
+        <textarea
+          style="width: 100%; height: 120px; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 14px; resize: vertical;"
+          readonly
+        >${textToCopy}</textarea>
+        <div style="margin-top: 15px; text-align: center;">
+          <button id="closeModal" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+            Close
+          </button>
+        </div>
+      `;
 
-      document.body.appendChild(instructions);
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
 
-      // Remove elements after user interaction
-      const cleanup = () => {
-        document.body.removeChild(tempInput);
-        document.body.removeChild(instructions);
+      // Focus the textarea and select all text
+      const textarea = modal.querySelector('textarea');
+      textarea.focus();
+      textarea.select();
+
+      // Close modal when close button is clicked
+      const closeBtn = modal.querySelector('#closeModal');
+      const closeModal = () => {
+        document.body.removeChild(overlay);
         successCallback();
       };
 
-      instructions.addEventListener('click', cleanup);
-      instructions.addEventListener('touchend', cleanup);
-
-      // Auto-cleanup after 10 seconds
-      setTimeout(() => {
-        if (document.body.contains(tempInput)) {
-          cleanup();
+      closeBtn.addEventListener('click', closeModal);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          closeModal();
         }
-      }, 10000);
+      });
+
+      // Auto-close after 30 seconds
+      setTimeout(() => {
+        if (document.body.contains(overlay)) {
+          closeModal();
+        }
+      }, 30000);
     }
 
     function copyFullPost(button) {
@@ -424,14 +408,42 @@
       copyHandler(button, formattedText);
     }
 
-    // Add touch event support for better mobile interaction
+    // Add event listeners for copy buttons
     document.addEventListener('DOMContentLoaded', function () {
-      const copyButtons = document.querySelectorAll('.copy-link-btn, .copy-full-btn');
+      const copyLinkButtons = document.querySelectorAll('.copy-link-btn');
+      const copyFullButtons = document.querySelectorAll('.copy-full-btn');
 
-      copyButtons.forEach(button => {
+      // Add click listeners for copy link buttons
+      copyLinkButtons.forEach(button => {
+        button.addEventListener('click', function (e) {
+          e.preventDefault();
+          const url = this.getAttribute('data-url');
+          console.log('Copy link button clicked, URL:', url);
+          copyHandler(this, url);
+        });
+
         // Add touch event listeners for better mobile response
         button.addEventListener('touchstart', function (e) {
-          // Prevent default to avoid double-tap zoom
+          e.preventDefault();
+          this.style.transform = 'scale(0.95)';
+        });
+
+        button.addEventListener('touchend', function (e) {
+          e.preventDefault();
+          this.style.transform = 'scale(1)';
+        });
+      });
+
+      // Add click listeners for copy full post buttons
+      copyFullButtons.forEach(button => {
+        button.addEventListener('click', function (e) {
+          e.preventDefault();
+          console.log('Copy full post button clicked');
+          copyFullPost(this);
+        });
+
+        // Add touch event listeners for better mobile response
+        button.addEventListener('touchstart', function (e) {
           e.preventDefault();
           this.style.transform = 'scale(0.95)';
         });
@@ -480,12 +492,11 @@
             <div class='post-caption'>{{ post.caption|e }}</div>
             <div class='post-actions'>
               <a href='{{ post.url }}' target='_blank' class='post-link'>View on Instagram →</a>
-              <button class='copy-link-btn' onclick='copyHandler(this, "{{ post.url }}")'
-                title='Copy clean link for sharing'>
+              <button class='copy-link-btn' data-url="{{ post.url }}" title='Copy clean link for sharing'>
                 📋 Copy Link
               </button>
               <button class='copy-full-btn' data-account="{{ post.account }}" data-date="{{ post.date_posted }}"
-                data-caption="{{ post.caption|e }}" data-url="{{ post.url }}" onclick='copyFullPost(this)'
+                data-caption="{{ post.caption|e }}" data-url="{{ post.url }}"
                 title='Copy full post text + link for sharing'>
                 📝 Copy Full Post
               </button>
