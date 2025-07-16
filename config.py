@@ -44,6 +44,7 @@ INSTAGRAM_ACCOUNTS = [
     "conectaoviedo",
     "juventudgijon",
     "culturallanes",
+    "asturiasacoge",
     "gonggalaxyclub",
     "juventudoviedo",
     "cinesfoncalada",
@@ -61,6 +62,7 @@ INSTAGRAM_ACCOUNTS = [
     "museosgijonxixon",
     "lasalvaje.oviedo",
     "prial_asociacion",
+    "clubsemperludens",
     "trivilorioyeimpro",
     "laboralcinemateca",
     "lacompaniadelalba",
@@ -75,6 +77,7 @@ INSTAGRAM_ACCOUNTS = [
     "asturiesculturaenrede",
     "bibliotecasdegijonxixon",
     "museudelpuebludasturies",
+    "centros_sociales_oviedo",
     "chigreculturallatadezinc",
 ]
 
