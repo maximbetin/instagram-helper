@@ -1,4 +1,4 @@
-"""Command-line interface for Instagram Updates."""
+"""Command-line interface for Instagram Helper."""
 
 import argparse
 import sys

@@ -57,7 +57,7 @@ jobs:
             pip install $wheelFile.FullName
 
             # Test CLI entry point
-            instagram-updates --help
+            instagram-helper --help
 
             # Test module imports
             python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"

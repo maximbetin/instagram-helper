@@ -82,6 +82,6 @@ INSTAGRAM_ACCOUNTS = [
 ]
 
 # Output settings
-BASE_DIR = os.path.join(os.path.expanduser('~'), 'Desktop', 'IG Updates')
+BASE_DIR = os.path.join(os.path.expanduser('~'), 'Desktop', 'IG Helper')
 OUTPUT_DIR = os.getenv('OUTPUT_DIR', BASE_DIR)
 LOG_DIR = os.getenv('LOG_DIR', BASE_DIR)

@@ -1,6 +1,6 @@
-[![Run Tests](https://github.com/maximbetin/instagram-updates/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-updates/actions/workflows/ci.yml)
+[![Run Tests](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
 
-# Instagram Updates
+# Instagram Helper
 
 A tool that automatically fetches recent posts from specified Instagram accounts and generates a stylized HTML report with global date sorting and corresponding links.
 
@@ -46,13 +46,13 @@ python cli.py
 3. Or install the package and use the command-line tool:
 ```bash
 pip install -e .
-instagram-updates
+instagram-helper
 ```
 
 **Default Behavior:**
 - Fetches posts from the last 3 days
 - Processes all configured Instagram accounts
-- Saves HTML reports and logs to `Desktop/IG Updates/`
+- Saves HTML reports and logs to `Desktop/IG Helper/`
 - Automatically opens the generated report
 
 ### CLI Options
@@ -63,8 +63,8 @@ python cli.py [OPTIONS]
 Options:
   --days, -d INT          Number of days back to fetch posts from (default: 1)
   --accounts, -a TEXT...  Specific Instagram accounts to fetch from
-  --output, -o PATH       Output directory for reports (default: Desktop/IG Updates)
-  --log-dir PATH          Directory for log files (default: Desktop/IG Updates)
+  --output, -o PATH       Output directory for reports (default: Desktop/IG Helper)
+  --log-dir PATH          Directory for log files (default: Desktop/IG Helper)
   --no-open               Do not automatically open the generated report
   --verbose, -v           Enable verbose logging
   --help                  Show this message and exit
@@ -73,7 +73,7 @@ Options:
 ### Examples
 
 ```bash
-# Use default settings (saves to Desktop/IG Updates folder)
+# Use default settings (saves to Desktop/IG Helper folder)
 python cli.py
 
 # Fetch posts from last 3 days
@@ -123,7 +123,7 @@ Edit `config.py` to modify:
 - **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3), load delays
 - **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias cultural accounts)
 - **Browser Settings**: Browser path (default: Brave), debug port, timeouts
-- **Output Settings**: Output and log directories (default: Desktop/IG Updates)
+- **Output Settings**: Output and log directories (default: Desktop/IG Helper)
 
 ## Output
 
@@ -148,12 +148,12 @@ Reports and logs are automatically saved with the format:
 - HTML reports: `DD-MM-YYYY.html` (e.g., `19-12-2024.html`)
 - Log files: `DD-MM-YYYY.log` (e.g., `19-12-2024.log`)
 
-Both files are saved in the "IG Updates" folder on your Desktop by default.
+Both files are saved in the "IG Helper" folder on your Desktop by default.
 
 ## Project Structure
 
 ```
-instagram-updates/
+instagram-helper/
 ├── main.py                 # Main script (legacy entry point)
 ├── cli.py                  # Command-line interface
 ├── config.py               # Configuration settings

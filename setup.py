@@ -1,4 +1,4 @@
-"""Setup configuration for Instagram Updates."""
+"""Setup configuration for Instagram Helper."""
 
 from setuptools import find_packages, setup
 
@@ -6,14 +6,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="instagram-updates",
+    name="instagram-helper",
     version="1.0.0",
     author="Maxim",
     author_email="",
     description="A tool that automatically fetches recent posts from Instagram accounts and generates HTML reports",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/maximbetin/instagram-updates",
+    url="https://github.com/maximbetin/instagram-helper",
     packages=find_packages(),
     py_modules=["cli", "main", "config", "utils", "instagram_scraper", "report_generator", "browser_manager"],
     classifiers=[
@@ -35,7 +35,7 @@ setup(
     install_requires=[],  # Let pyproject.toml handle dependencies
     entry_points={
         "console_scripts": [
-            "instagram-updates=cli:main",
+            "instagram-helper=cli:main",
         ],
     },
     include_package_data=True,
@@ -44,7 +44,7 @@ setup(
     },
     keywords="instagram scraper browser automation reports",
     project_urls={
-        "Bug Reports": "https://github.com/maximbetin/instagram-updates/issues",
-        "Source": "https://github.com/maximbetin/instagram-updates",
+        "Bug Reports": "https://github.com/maximbetin/instagram-helper/issues",
+        "Source": "https://github.com/maximbetin/instagram-helper",
     },
 )

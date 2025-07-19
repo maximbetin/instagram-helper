@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "instagram-updates"
+name = "instagram-helper"
 version = "1.0.0"
 description = "A tool that automatically fetches recent posts from Instagram accounts and generates HTML reports"
 readme = "README.md"
@@ -40,12 +40,12 @@ dev = [
 ]
 
 [project.scripts]
-instagram-updates = "cli:main"
+instagram-helper = "cli:main"
 
 [project.urls]
-Homepage = "https://github.com/maximbetin/instagram-updates"
-Repository = "https://github.com/maximbetin/instagram-updates"
-Issues = "https://github.com/maximbetin/instagram-updates/issues"
+Homepage = "https://github.com/maximbetin/instagram-helper"
+Repository = "https://github.com/maximbetin/instagram-helper"
+Issues = "https://github.com/maximbetin/instagram-helper/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
