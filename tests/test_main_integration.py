@@ -1,15 +1,15 @@
 """Integration tests for the main function."""
 
-from main import main
 import os
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from main import main
+
 # Add project root to path to allow absolute imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 
 @patch('main.os.startfile')
 @patch('main.generate_html_report', return_value='report.html')
@@ -31,7 +31,6 @@ def test_main(mock_playwright, mock_setup_browser, mock_process, mock_generate_r
     mock_generate_report.assert_called_once()
     mock_startfile.assert_called_once_with('report.html')
 
-
 @patch('main.generate_html_report')
 @patch('main.process_account', return_value=[])
 @patch('main.setup_browser')
@@ -49,7 +48,6 @@ def test_main_no_posts(mock_playwright, mock_setup_browser, mock_process, mock_g
 
     assert mock_process.called
     mock_generate_report.assert_not_called()
-
 
 def test_main_econnrefused_branch(monkeypatch):
     """Covers the ECONNREFUSED error branch in main()."""
@@ -79,7 +77,6 @@ def test_main_econnrefused_branch(monkeypatch):
         mock_logger.error.side_effect = log_side_effect
         main()
     assert any("Failed to connect to the browser" in msg for msg in main_logger_calls)
-
 
 def test_main_generic_error_branch(monkeypatch):
     """Covers the generic error/raise branch in main()."""
@@ -112,7 +109,6 @@ def test_main_generic_error_branch(monkeypatch):
         with pytest.raises(Exception, match="Some other error"):
             main()
     assert any("An error occurred:" in msg for msg in main_logger_calls)
-
 
 def test_main_exact_econnrefused(monkeypatch):
     """Guarantee coverage for the ECONNREFUSED error branch in main()."""

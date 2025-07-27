@@ -10,7 +10,6 @@ LOG_LEVEL = logging.INFO
 LOG_FORMAT = '[%(levelname)s] %(message)s'
 LOG_DATE_FORMAT = '%H:%M:%S'
 
-
 def setup_logging(name: Optional[str] = None, log_dir: Optional[str] = None) -> logging.Logger:
     """
     Configure and return a logger instance with consistent formatting.
@@ -62,7 +61,6 @@ def setup_logging(name: Optional[str] = None, log_dir: Optional[str] = None) -> 
         logger.info(f"File logging enabled. Log file: {log_filepath}")
 
     return logger
-
 
 # Create a default logger instance
 logger = setup_logging()

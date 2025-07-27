@@ -12,7 +12,6 @@ from instagram_scraper import process_account
 from report_generator import generate_html_report
 from utils import setup_logging
 
-
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -67,7 +66,6 @@ Examples:
 
     return parser.parse_args()
 
-
 def main():
     """Main CLI function."""
     args = parse_args()
@@ -118,7 +116,6 @@ def main():
         else:
             logger.error(f"An error occurred: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

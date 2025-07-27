@@ -1,6 +1,7 @@
 """Instagram browser launcher with post fetching."""
 
 import os
+import time
 from datetime import datetime, timedelta
 
 from playwright.sync_api import sync_playwright
@@ -14,7 +15,6 @@ from utils import setup_logging
 # Initialize logger with file logging
 logger = setup_logging(log_dir=LOG_DIR)
 
-
 def main():
     """Main function to run the Instagram scraper."""
     try:
@@ -26,8 +26,21 @@ def main():
             logger.info(f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}.")
 
             all_posts = []
+            failed_accounts = []
+
             for account in INSTAGRAM_ACCOUNTS:
-                all_posts.extend(process_account(account, page, cutoff_date))
+                try:
+                    account_posts = process_account(account, page, cutoff_date)
+                    all_posts.extend(account_posts)
+                    # Brief pause between accounts to avoid rate limiting
+                    time.sleep(1)
+                except Exception as e:
+                    logger.error(f"Failed to process account @{account}: {e}")
+                    failed_accounts.append(account)
+                    continue
+
+            if failed_accounts:
+                logger.warning(f"Failed to process {len(failed_accounts)} account(s): {', '.join(failed_accounts)}")
 
             if all_posts:
                 logger.info("Generating the HTML report...")
@@ -47,7 +60,6 @@ def main():
         else:
             logger.error(f"An error occurred: {e}", exc_info=True)
             raise
-
 
 if __name__ == "__main__":  # pragma: no cover
     main()

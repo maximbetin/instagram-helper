@@ -11,7 +11,6 @@ from utils import setup_logging
 
 logger = setup_logging(__name__)
 
-
 def generate_html_report(posts: List[Dict], cutoff_date: datetime, output_dir: str, template_path: str) -> str:
     """Generate a stylized HTML report of fetched posts using a template."""
     # Sort posts by date, newest first, regardless of the account
