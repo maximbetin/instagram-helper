@@ -10,7 +10,7 @@ TIMEZONE = timezone(timedelta(hours=int(os.getenv('TIMEZONE_OFFSET', '2'))))
 BROWSER_DEBUG_PORT = int(os.getenv('BROWSER_DEBUG_PORT', '9222'))
 BROWSER_LOAD_DELAY = int(os.getenv('BROWSER_LOAD_DELAY', '5000'))  # milliseconds
 BROWSER_LOAD_TIMEOUT = int(os.getenv('BROWSER_LOAD_TIMEOUT', '15000'))  # milliseconds
-BROWSER_PATH = os.getenv('BROWSER_PATH', os.path.expandvars('%LOCALAPPDATA%/Chromium/Application/chrome.exe'))
+BROWSER_PATH = os.getenv('BROWSER_PATH', os.path.expandvars('C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'))
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv('INSTAGRAM_URL', "https://www.instagram.com/")
