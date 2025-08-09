@@ -2,7 +2,7 @@
 
 from setuptools import find_packages, setup
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
@@ -10,7 +10,7 @@ setup(
     version="1.0.0",
     author="Maxim",
     author_email="",
-    description="A tool that automatically fetches recent posts from Instagram accounts and generates HTML reports",
+    description="Fetches recent posts from Instagram accounts and generates HTML reports",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/maximbetin/instagram-helper",

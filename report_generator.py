@@ -2,7 +2,6 @@
 
 import os
 from datetime import datetime
-from typing import Dict, List
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -13,7 +12,7 @@ logger = setup_logging(__name__)
 
 
 def generate_html_report(
-    posts: List[Dict], cutoff_date: datetime, output_dir: str, template_path: str
+    posts: list[dict], cutoff_date: datetime, output_dir: str, template_path: str
 ) -> str:
     """Generate a stylized HTML report of fetched posts using a template."""
     # Sort posts by date, newest first, regardless of the account
@@ -27,9 +26,7 @@ def generate_html_report(
     filename = f"{datetime.now().strftime('%d-%m-%Y')}.html"
     output_file = os.path.join(output_dir, filename)
 
-    date_range = (
-        f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
-    )
+    date_range = f"{cutoff_date.strftime('%d-%m-%Y')} to {datetime.now().strftime('%d-%m-%Y')}"
 
     template_data = {
         "posts": posts,

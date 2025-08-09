@@ -96,9 +96,9 @@ def test_get_post_date(mock_page, mock_element):
 
     post_date = get_post_date(mock_page)
 
-    expected_date = datetime.fromisoformat(
-        utc_time_str.replace("Z", "+00:00")
-    ).astimezone(MOCK_TIMEZONE)
+    expected_date = datetime.fromisoformat(utc_time_str.replace("Z", "+00:00")).astimezone(
+        MOCK_TIMEZONE
+    )
     assert post_date == expected_date
 
 
@@ -131,9 +131,7 @@ def test_extract_post_data(mock_sleep, mock_get_caption, mock_get_date, mock_pag
 
     data = extract_post_data(post_url, cutoff_date, account, mock_page)
 
-    mock_page.goto.assert_called_once_with(
-        post_url, wait_until="domcontentloaded", timeout=20000
-    )
+    mock_page.goto.assert_called_once_with(post_url, wait_until="domcontentloaded", timeout=20000)
     assert data is not None
     assert data["url"] == post_url
     assert data["account"] == account
@@ -172,9 +170,7 @@ def test_extract_post_data_no_date(mock_sleep, mock_get_date, mock_page):
 @patch("instagram_scraper.get_post_date")
 @patch("instagram_scraper.get_post_caption")
 @patch("instagram_scraper.time.sleep", return_value=None)
-def test_extract_post_data_timeout_retry(
-    mock_sleep, mock_get_caption, mock_get_date, mock_page
-):
+def test_extract_post_data_timeout_retry(mock_sleep, mock_get_caption, mock_get_date, mock_page):
     """Test that extract_post_data retries on timeout errors."""
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
@@ -201,9 +197,7 @@ def test_extract_post_data_timeout_retry(
 @patch("instagram_scraper.get_post_date")
 @patch("instagram_scraper.get_post_caption")
 @patch("instagram_scraper.time.sleep", return_value=None)
-def test_extract_post_data_timeout_failure(
-    mock_sleep, mock_get_caption, mock_get_date, mock_page
-):
+def test_extract_post_data_timeout_failure(mock_sleep, mock_get_caption, mock_get_date, mock_page):
     """Test that extract_post_data returns None after all retries fail."""
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
@@ -246,12 +240,10 @@ def test_generate_html_report(tmp_path):
     template_path.write_text(template_content)
 
     output_dir = tmp_path
-    report_path = generate_html_report(
-        posts, cutoff_date, str(output_dir), str(template_path)
-    )
+    report_path = generate_html_report(posts, cutoff_date, str(output_dir), str(template_path))
 
     assert os.path.exists(report_path)
-    with open(report_path, "r") as f:
+    with open(report_path) as f:
         content = f.read()
         assert "2 posts" in content
 
@@ -290,9 +282,7 @@ def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
 @patch("instagram_scraper.extract_post_data")
 @patch("instagram_scraper.get_account_post_urls")
 @patch("instagram_scraper.time.sleep", return_value=None)
-def test_process_account_stops_on_old_post(
-    mock_sleep, mock_get_urls, mock_extract, mock_page
-):
+def test_process_account_stops_on_old_post(mock_sleep, mock_get_urls, mock_extract, mock_page):
     """Test that processing stops when an old post is found."""
     account = "test_account"
     cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)

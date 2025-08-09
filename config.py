@@ -12,23 +12,15 @@ BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # millisecond
 BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
 BROWSER_PATH = os.getenv(
     "BROWSER_PATH",
-    os.path.expandvars(
-        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-    ),
+    os.path.expandvars("C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
 )
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")
 INSTAGRAM_MAX_POST_AGE = int(os.getenv("INSTAGRAM_MAX_POST_AGE", "2"))  # days
-INSTAGRAM_POST_LOAD_DELAY = int(
-    os.getenv("INSTAGRAM_POST_LOAD_DELAY", "3000")
-)  # milliseconds
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT = int(
-    os.getenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "2")
-)  # posts
-INSTAGRAM_POST_LOAD_TIMEOUT = int(
-    os.getenv("INSTAGRAM_POST_LOAD_TIMEOUT", "20000")
-)  # milliseconds
+INSTAGRAM_POST_LOAD_DELAY = int(os.getenv("INSTAGRAM_POST_LOAD_DELAY", "3000"))  # milliseconds
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT = int(os.getenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "2"))  # posts
+INSTAGRAM_POST_LOAD_TIMEOUT = int(os.getenv("INSTAGRAM_POST_LOAD_TIMEOUT", "20000"))  # milliseconds
 INSTAGRAM_ACCOUNT_LOAD_DELAY = int(
     os.getenv("INSTAGRAM_ACCOUNT_LOAD_DELAY", "3000")
 )  # milliseconds

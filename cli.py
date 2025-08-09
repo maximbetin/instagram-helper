@@ -62,9 +62,7 @@ Examples:
         help="Do not automatically open the generated report",
     )
 
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     return parser.parse_args()
 
@@ -87,9 +85,7 @@ def main():
             page = browser.contexts[0].pages[0]
 
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=args.days)
-            logger.info(
-                f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}."
-            )
+            logger.info(f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}.")
             logger.info(
                 f"Processing {len(accounts_to_process)} accounts: {', '.join(accounts_to_process)}"
             )

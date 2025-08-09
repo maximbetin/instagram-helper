@@ -43,9 +43,7 @@ def test_main(
 @patch("main.process_account", return_value=[])
 @patch("main.setup_browser")
 @patch("main.sync_playwright")
-def test_main_no_posts(
-    mock_playwright, mock_setup_browser, mock_process, mock_generate_report
-):
+def test_main_no_posts(mock_playwright, mock_setup_browser, mock_process, mock_generate_report):
     """Test the main execution function when no posts are found."""
     mock_p = MagicMock()
     mock_playwright.return_value.__enter__.return_value = mock_p

@@ -19,15 +19,13 @@ stylized HTML report with global date sorting and corresponding links.
 
 ## Installation
 
-1. Install Python dependencies:
-
 ```bash
+# 1. Install Python dependencies
 pip install -r requirements.txt
 ```
 
-2. Install Playwright browsers:
-
 ```bash
+# 2. Install Playwright browsers
 playwright install chromium
 ```
 
@@ -38,22 +36,21 @@ you can change the browser path in `config.py` or set the `BROWSER_PATH` environ
 
 ### Basic Usage
 
-1. Run the script with default settings:
-
 ```bash
+# 1. Run the script with default settings
 python main.py
 ```
 
-2. Or use the CLI interface for more options:
-
 ```bash
+# 2. Or use the CLI interface for more options
 python cli.py
 ```
 
-3. Or install the package and use the command-line tool:
-
 ```bash
-pip install -e .
+# 3. Install the package and use the command-line tool
+pip install '.[dev]'
+
+# 4. Run the tool with default settings
 instagram-helper
 ```
 
@@ -166,7 +163,7 @@ Both files are saved in the "IG Helper" folder on your Desktop by default.
 
 ## Project Structure
 
-```
+```text
 instagram-helper/
 ├── main.py                 # Main script (legacy entry point)
 ├── cli.py                  # Command-line interface

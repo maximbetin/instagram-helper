@@ -29,12 +29,8 @@ def main():
             browser = setup_browser(p)
             page = browser.contexts[0].pages[0]
 
-            cutoff_date = datetime.now(TIMEZONE) - timedelta(
-                days=INSTAGRAM_MAX_POST_AGE
-            )
-            logger.info(
-                f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}."
-            )
+            cutoff_date = datetime.now(TIMEZONE) - timedelta(days=INSTAGRAM_MAX_POST_AGE)
+            logger.info(f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}.")
 
             all_posts = []
             failed_accounts = []
