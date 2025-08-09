@@ -1,8 +1,9 @@
-[![Run Tests](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
-
 # Instagram Helper
 
-A tool that automatically fetches recent posts from specified Instagram accounts and generates a stylized HTML report with global date sorting and corresponding links.
+[![Run Tests](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
+
+A tool that automatically fetches recent posts from specified Instagram accounts and generates a
+stylized HTML report with global date sorting and corresponding links.
 
 ## Features
 
@@ -10,7 +11,8 @@ A tool that automatically fetches recent posts from specified Instagram accounts
 - **Date filtering**: Only fetches posts from the last few days (configurable)
 - **HTML report generation**: Creates a stylized, responsive HTML report with all fetched posts
 - **Global date sorting**: All posts are sorted by date across all accounts (newest first)
-- **Interactive report**: HTML report includes copy-to-clipboard functionality for post links and captions
+- **Interactive report**: HTML report includes copy-to-clipboard functionality for post links and
+  captions
 - **Progress tracking**: Real-time console output showing processing progress
 - **CLI interface**: Command-line options for flexible usage
 - **Environment configuration**: Support for environment variables
@@ -18,38 +20,45 @@ A tool that automatically fetches recent posts from specified Instagram accounts
 ## Installation
 
 1. Install Python dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 2. Install Playwright browsers:
+
 ```bash
 playwright install chromium
 ```
 
-**Note:** The tool is configured to use Brave browser by default. If you don't have Brave installed, you can change the browser path in `config.py` or set the `BROWSER_PATH` environment variable.
+**Note:** The tool is configured to use Brave browser by default. If you don't have Brave installed,
+you can change the browser path in `config.py` or set the `BROWSER_PATH` environment variable.
 
 ## Usage
 
 ### Basic Usage
 
 1. Run the script with default settings:
+
 ```bash
 python main.py
 ```
 
 2. Or use the CLI interface for more options:
+
 ```bash
 python cli.py
 ```
 
 3. Or install the package and use the command-line tool:
+
 ```bash
 pip install -e .
 instagram-helper
 ```
 
 **Default Behavior:**
+
 - Fetches posts from the last 3 days
 - Processes all configured Instagram accounts
 - Saves HTML reports and logs to `Desktop/IG Helper/`
@@ -120,8 +129,10 @@ export TIMEZONE_OFFSET=2
 
 Edit `config.py` to modify:
 
-- **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3), load delays
-- **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias cultural accounts)
+- **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3),
+  load delays
+- **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias
+  cultural accounts)
 - **Browser Settings**: Browser path (default: Brave), debug port, timeouts
 - **Output Settings**: Output and log directories (default: Desktop/IG Helper)
 
@@ -130,6 +141,7 @@ Edit `config.py` to modify:
 The tool generates an interactive HTML report and detailed logs:
 
 **HTML Report:**
+
 - Summary statistics (total accounts checked, total posts found, date range)
 - All posts sorted by date (newest first) with captions, dates, and account information
 - Direct links to original Instagram posts
@@ -137,6 +149,7 @@ The tool generates an interactive HTML report and detailed logs:
 - Responsive design that works on desktop and mobile
 
 **Log Files:**
+
 - Detailed logging of the scraping process
 - Account processing status and results
 - Error messages and debugging information
@@ -145,6 +158,7 @@ The tool generates an interactive HTML report and detailed logs:
 ## File Naming
 
 Reports and logs are automatically saved with the format:
+
 - HTML reports: `DD-MM-YYYY.html` (e.g., `19-12-2024.html`)
 - Log files: `DD-MM-YYYY.log` (e.g., `19-12-2024.log`)
 
@@ -181,11 +195,13 @@ instagram-helper/
 ## Testing
 
 Run the test suite:
+
 ```bash
 pytest
 ```
 
 Run specific test files:
+
 ```bash
 pytest tests/test_main.py
 pytest tests/test_main_integration.py

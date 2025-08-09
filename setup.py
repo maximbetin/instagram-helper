@@ -15,7 +15,15 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/maximbetin/instagram-helper",
     packages=find_packages(),
-    py_modules=["cli", "main", "config", "utils", "instagram_scraper", "report_generator", "browser_manager"],
+    py_modules=[
+        "cli",
+        "main",
+        "config",
+        "utils",
+        "instagram_scraper",
+        "report_generator",
+        "browser_manager",
+    ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: End Users/Desktop",
