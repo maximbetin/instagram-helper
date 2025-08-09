@@ -16,7 +16,8 @@ def setup_logging(name: str | None = None, log_dir: str | None = None) -> loggin
 
     Args:
         name: Logger name (optional)
-        log_dir: Directory path for file logging (optional). If provided, logs will be written to both console and file.
+        log_dir: Directory path for file logging (optional).
+        If provided, logs will be written to both console and file.
 
     Returns:
         Configured logger instance

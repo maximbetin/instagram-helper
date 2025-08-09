@@ -7,12 +7,10 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import Browser
 
 from config import BROWSER_DEBUG_PORT, BROWSER_LOAD_DELAY, BROWSER_PATH, INSTAGRAM_URL
-from utils import setup_logging
+from utils import logger
 
 if TYPE_CHECKING:
     from playwright.sync_api import Playwright
-
-logger = setup_logging(__name__)
 
 
 def setup_browser(playwright: "Playwright") -> Browser:

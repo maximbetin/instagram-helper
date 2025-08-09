@@ -1,10 +1,18 @@
 """Instagram browser launcher with post fetching."""
 
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 
-from playwright.sync_api import sync_playwright
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    print("Error: Playwright not found. Please activate the virtual environment first:")
+    print("  source .venv/bin/activate")
+    print("Then install dependencies if needed:")
+    print("  pip install -e .")
+    sys.exit(1)
 
 from browser_manager import setup_browser
 from config import (
@@ -48,7 +56,8 @@ def main():
 
             if failed_accounts:
                 logger.warning(
-                    f"Failed to process {len(failed_accounts)} account(s): {', '.join(failed_accounts)}"
+                    f"Failed to process {len(failed_accounts)} account(s): "
+                    f"{', '.join(failed_accounts)}"
                 )
 
             if all_posts:

@@ -1,0 +1,65 @@
+# EditorConfig: https://EditorConfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Python + stubs (matches Ruff/mypy expectations)
+[*.{py,pyi}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Tests (same as python, explicit pattern)
+[tests/**/*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# JSON/JSONC
+[*.{json,jsonc}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# YAML (K8s/Helm)
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# TOML (pyproject, etc.)
+[*.toml]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Markdown (avoid editor hard-wrapping)
+[*.md]
+indent_style = space
+indent_size = 2
+max_line_length = off
+trim_trailing_whitespace = false
+
+# HTML/CSS (keep readable, 2-space common)
+[*.{html,css}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Dockerfile
+[Dockerfile]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Makefile: must use tabs
+[Makefile]
+indent_style = tab
+indent_size = tab

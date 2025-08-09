@@ -19,12 +19,12 @@ def parse_args():
         description="Fetch recent Instagram posts and generate HTML reports",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  python cli.py                           # Use default settings
-  python cli.py --days 3                  # Fetch posts from last 3 days
-  python cli.py --accounts gijon biodevas # Only fetch from specific accounts
-  python cli.py --output ./reports        # Save reports to custom directory
-  python cli.py --no-open                 # Don't automatically open the report
+        Examples:
+            python cli.py                           # Use default settings
+            python cli.py --days 3                  # Fetch posts from last 3 days
+            python cli.py --accounts gijon biodevas # Only fetch from specific accounts
+            python cli.py --output ./reports        # Save reports to custom directory
+            python cli.py --no-open                 # Don't automatically open the report
         """,
     )
 

@@ -3,8 +3,7 @@
 import time
 from datetime import datetime
 
-from playwright.sync_api import Page
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from config import (
     BROWSER_LOAD_TIMEOUT,
@@ -87,13 +86,15 @@ def extract_post_data(
         except PlaywrightTimeoutError as e:
             if attempt < max_retries:
                 logger.warning(
-                    f"@{account}: Timeout loading post {post_url} (attempt {attempt + 1}/{max_retries + 1}). Retrying..."
+                    f"@{account}: Timeout loading post {post_url} "
+                    f"(attempt {attempt + 1}/{max_retries + 1}). Retrying..."
                 )
                 time.sleep(2)  # Brief pause before retry
                 continue
             else:
                 logger.error(
-                    f"@{account}: Failed to load post {post_url} after {max_retries + 1} attempts: {e}"
+                    f"@{account}: Failed to load post {post_url} "
+                    f"after {max_retries + 1} attempts: {e}"
                 )
                 return None
         except Exception as e:

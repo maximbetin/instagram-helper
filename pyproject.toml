@@ -1,74 +1,139 @@
 [build-system]
-requires = ["setuptools>=70"]
+requires = ["setuptools>=80.9.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "instagram-helper"
 version = "1.0.0"
-description = "Fetch recent Instagram posts and generate HTML reports"
-readme = { file = "README.md", content-type = "text/markdown" }
-license = { text = "MIT" }
+description = "A tool that automatically fetches recent posts from Instagram accounts and generates HTML reports"
+readme = "README.md"
+license = "MIT"
 authors = [{ name = "Maxim" }]
-requires-python = ">=3.10"
 keywords = ["instagram", "scraper", "browser", "automation", "reports"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: Browsers",
-    "Topic :: Software Development :: Libraries :: Python Modules"
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+requires-python = ">=3.10"
 dependencies = [
-    "jinja2>=3.1",
-    "playwright>=1.45",
-    "pytest>=8",
-    "pytest-cov>=5",
-    "pytest-mock>=3",
-    "ruff>=0.5",
-    "mypy>=1",
+    "playwright>=1.54.0",
+    "jinja2>=3.1.6",
 ]
 
 [project.scripts]
-instagram-helper = "cli:main"
+instagram-helper = "instagram_helper.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/maximbetin/instagram-helper"
 Repository = "https://github.com/maximbetin/instagram-helper"
 Issues = "https://github.com/maximbetin/instagram-helper/issues"
 
-[tool.setuptools]
-include-package-data = true
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["*"]
+where = ["src"]
+include = ["instagram_helper*"]
 exclude = ["tests*", "*.tests*"]
 
 [tool.setuptools.package-data]
-"*" = ["templates/*.html"]
+"instagram_helper" = ["templates/*.html"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "pytest-mock>=3.14",
+    "ruff>=0.6",
+    "pre-commit>=3.7",
+    "coverage>=7.6",
+    "mypy>=1.11",
+]
 
 [tool.pytest.ini_options]
-addopts = "-v --tb=short"
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-testpaths = ["tests"]
+addopts = "-v --tb=short"
 
+# ---------------------------
+# Ruff: formatting + linting
+# ---------------------------
 [tool.ruff]
+target-version = "py310"
 line-length = 100
-target-version = "py313"
+extend-exclude = [".venv", "dist", "build", ".mypy_cache", ".ruff_cache"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+docstring-code-format = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
-ignore = []
+# Keep this focused on general linting and imports; avoid typing-style rules (mypy owns types).
+select = ["E", "F", "I", "B", "UP", "PL"]
+ignore = [
+    "ANN",  # flake8-annotations (typing style)
+    "TCH",  # flake8-type-checking (moving imports under TYPE_CHECKING)
+    "D",    # pydocstyle (enable later if you want)
+]
+fixable = ["ALL"]
+unfixable = []
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["PLR2004"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["instagram_helper"]
+
+# ---------------------------
+# mypy: type checking only
+# ---------------------------
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+# Keep caches out of tree and avoid noise in VCS
+cache_dir = ".mypy_cache"
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+# ---------------------------
+# Coverage
+# ---------------------------
 [tool.coverage.run]
 branch = true
-source = ["instagram_helper"]
+source = ["."]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == '__main__':",
+    "if __name__ == \"__main__\":",
+]
+show_missing = true
