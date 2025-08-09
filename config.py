@@ -1,7 +1,80 @@
 """Configuration settings."""
 
 import os
+import platform
+import subprocess
 from datetime import timedelta, timezone
+
+
+def find_brave_browser_path() -> str:
+    """Find the Brave browser executable path, with special handling for WSL2."""
+    # Check if BROWSER_PATH is set via environment variable
+    env_path = os.getenv("BROWSER_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    system = platform.system().lower()
+    paths_to_check = []
+    default_path = "brave-browser"
+
+    # Determine paths to check based on system
+    if system == "linux" and "microsoft" in platform.release().lower():
+        # WSL2 detected
+        paths_to_check = [
+            "/usr/bin/brave-browser",
+            "/usr/bin/brave-browser-stable",
+            "/snap/bin/brave-browser",
+            "/opt/brave.com/brave/brave-browser",
+            os.path.expanduser("~/.local/bin/brave-browser"),
+            "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
+            "/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
+        ]
+        default_path = "/usr/bin/brave-browser"
+    elif system == "linux":
+        # Regular Linux
+        paths_to_check = [
+            "/usr/bin/brave-browser",
+            "/usr/bin/brave-browser-stable",
+            "/snap/bin/brave-browser",
+            "/opt/brave.com/brave/brave-browser",
+            os.path.expanduser("~/.local/bin/brave-browser"),
+        ]
+        default_path = "/usr/bin/brave-browser"
+    elif system == "windows":
+        # Windows
+        paths_to_check = [
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+        ]
+        default_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+    elif system == "darwin":
+        # macOS
+        paths_to_check = [
+            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+            "/usr/bin/brave-browser",
+        ]
+        default_path = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+
+    # Check all paths
+    for path in paths_to_check:
+        if os.path.exists(path):
+            return path
+
+    # Try 'which' command for Unix-like systems
+    if system in ["linux", "darwin"]:
+        try:
+            result = subprocess.run(
+                ["which", "brave-browser"], check=False, capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                brave_path = result.stdout.strip()
+                if os.path.exists(brave_path):
+                    return brave_path
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+    return default_path
+
 
 # General settings
 TIMEZONE = timezone(timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", "2"))))
@@ -10,10 +83,7 @@ TIMEZONE = timezone(timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", "2"))))
 BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
 BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # milliseconds
 BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
-BROWSER_PATH = os.getenv(
-    "BROWSER_PATH",
-    os.path.expandvars("C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-)
+BROWSER_PATH = find_brave_browser_path()
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")
