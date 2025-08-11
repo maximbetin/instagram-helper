@@ -19,6 +19,21 @@ stylized HTML report with global date sorting and corresponding links.
 
 ## Installation
 
+### Quick Setup for WSL2 Users
+
+If you're running from WSL2 and want to use Windows Brave browser:
+
+```bash
+# 1. Launch Windows Brave with remote debugging
+./scripts/launch_brave_wsl2.sh
+
+# 2. Run the Instagram Helper
+python cli.py
+```
+
+The tool automatically detects WSL2 and connects to your Windows Brave instance with your existing
+profile (cookies, sessions, etc.).
+
 ### Quick Setup (Recommended)
 
 For development and testing:
@@ -173,6 +188,93 @@ Edit `config.py` to modify:
 - **Browser Settings**: Browser path (default: Brave), debug port, timeouts
 - **Output Settings**: Output and log directories (default: Desktop/IG Helper)
 
+### WSL2 Support
+
+The tool automatically detects when running in WSL2 and adapts to use Windows Brave browser with
+your existing user profile (cookies, sessions, etc.).
+
+#### Automatic WSL2 Detection
+
+The tool automatically detects WSL2 environment and configures itself accordingly:
+
+- Detects WSL2 by checking `/proc/version` for "microsoft"
+- Automatically finds Windows host IP from `/etc/resolv.conf`
+- Switches to Windows Brave paths when in WSL2 mode
+
+#### WSL2 Configuration
+
+```bash
+# WSL2-specific environment variables (auto-detected, but can be overridden)
+export WSL2_MODE=auto                    # Set to "disabled" to force Linux mode
+export WSL_HOST_IP=172.27.48.1          # Auto-detected from /etc/resolv.conf
+export BROWSER_PATH="/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+```
+
+#### Manual WSL2 Setup
+
+If you prefer to manually launch Brave with remote debugging:
+
+#### Option 1: From WSL2 (Recommended)
+
+```bash
+# Launch Windows Brave with remote debugging
+./scripts/launch_brave_wsl2.sh
+
+# Or with custom port/URL
+./scripts/launch_brave_wsl2.sh -p 9223 -u https://www.instagram.com/
+```
+
+#### Option 2: From Windows
+
+```cmd
+# Run from Windows Command Prompt or PowerShell
+scripts\launch_brave_wsl2.bat
+
+# Or with custom port/URL
+scripts\launch_brave_wsl2.bat -p 9223 -u https://www.instagram.com/
+```
+
+#### Option 3: Manual Launch
+
+```bash
+# From WSL2, launch Windows Brave with debugging
+/mnt/c/Program\ Files/BraveSoftware/Brave-Browser/Application/brave.exe \
+  --remote-debugging-port=9222 \
+  --remote-debugging-address=0.0.0.0 \
+  https://www.instagram.com/ &
+```
+
+#### Testing and Verification
+
+Test your WSL2 setup with these helper scripts:
+
+```bash
+# Test WSL2 detection and configuration
+python scripts/test_wsl2_detection.py
+
+# See WSL2 integration demo
+python scripts/demo_wsl2.py
+```
+
+#### WSL2 Security Notes
+
+- The debugging port is exposed on your Windows host network
+- Consider using Windows Firewall to restrict access to localhost and WSL2 IPs only
+- Only use on trusted networks
+
+#### Troubleshooting WSL2
+
+**Connection refused errors:**
+
+- Ensure Brave is running with `--remote-debugging-port=9222 --remote-debugging-address=0.0.0.0`
+- Check Windows Firewall isn't blocking port 9222
+- Verify the Windows host IP is correct (check `/etc/resolv.conf` in WSL2)
+
+**Profile mismatch:**
+
+- Don't use custom `--user-data-dir` unless you want a separate profile
+- The tool uses your normal Windows Brave profile by default
+
 ## Output
 
 The tool generates an interactive HTML report and detailed logs:
@@ -214,6 +316,11 @@ instagram-helper/
 ├── templates/              # HTML templates
 │   ├── template.html       # Main report template
 │   └── test_template.html  # Test template
+├── scripts/                # Helper scripts
+│   ├── launch_brave_wsl2.sh    # WSL2 Brave launcher (Linux)
+│   ├── launch_brave_wsl2.bat   # WSL2 Brave launcher (Windows)
+│   ├── test_wsl2_detection.py  # WSL2 configuration test
+│   └── demo_wsl2.py            # WSL2 integration demo
 ├── tests/                  # Test suite
 │   ├── test_main.py        # Unit tests
 │   ├── test_main_integration.py  # Integration tests

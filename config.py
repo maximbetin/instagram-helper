@@ -1,6 +1,7 @@
 """Configuration settings for Instagram Helper."""
 
 import os
+import subprocess
 from datetime import timedelta, timezone
 
 # Time constants
@@ -19,20 +20,58 @@ TIMEZONE = timezone(
     timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", str(DEFAULT_TIMEZONE_OFFSET))))
 )
 
+# WSL2 detection and configuration
+def is_wsl2() -> bool:
+    """Check if running in WSL2 environment."""
+    try:
+        with open('/proc/version', 'r') as f:
+            return 'microsoft' in f.read().lower()
+    except (FileNotFoundError, OSError):
+        return False
+
+def get_wsl_host_ip() -> str:
+    """Get Windows host IP address from WSL2 resolv.conf."""
+    try:
+        result = subprocess.run(
+            ["awk", "/nameserver/ {print $2; exit}", "/etc/resolv.conf"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return "127.0.0.1"
+
 # Browser settings
 BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
 BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # milliseconds
 BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
 
-# Prefer an explicit override, otherwise try common browser locations; fall back to a generic 'chromium' in PATH
-_default_browser_candidates = [
-    os.getenv("BROWSER_PATH"),
-    "/usr/bin/brave-browser",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-]
+# WSL2-specific browser configuration
+WSL2_MODE = is_wsl2() and os.getenv("WSL2_MODE", "auto").lower() != "disabled"
+WSL_HOST_IP = get_wsl_host_ip() if WSL2_MODE else "127.0.0.1"
+
+# Browser paths for different environments
+if WSL2_MODE:
+    # Windows Brave paths accessible from WSL2
+    _default_browser_candidates = [
+        os.getenv("BROWSER_PATH"),
+        "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
+        "/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
+        "/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
+        "/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
+    ]
+else:
+    # Linux browser paths
+    _default_browser_candidates = [
+        os.getenv("BROWSER_PATH"),
+        "/usr/bin/brave-browser",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+    ]
+
 BROWSER_PATH = next((p for p in _default_browser_candidates if p), "chromium")
 
 # Instagram settings
