@@ -15,36 +15,53 @@ def generate_html_report(
     posts: list[dict], cutoff_date: datetime, output_dir: str, template_path: str
 ) -> str:
     """Generate a stylized HTML report of fetched posts using a template."""
+    if not posts:
+        logger.warning("No posts provided for report generation")
+        return ""
+
     # Sort posts by date, newest first
     posts.sort(key=lambda post: post["date_posted"], reverse=True)
 
     # Format dates after sorting
     for post in posts:
-        post["date_posted"] = post["date_posted"].strftime("%d-%m-%Y")
+        if isinstance(post["date_posted"], datetime):
+            post["date_posted"] = post["date_posted"].strftime("%d-%m-%Y")
 
     current_time = datetime.now()
     generated_on = current_time.strftime("%d-%m-%Y %H:%M:%S")
     filename = f"{current_time.strftime('%d-%m-%Y')}.html"
-    output_file = os.path.join(output_dir, filename)
 
-    date_range = (
-        f"{cutoff_date.strftime('%d-%m-%Y')} to {current_time.strftime('%d-%m-%Y')}"
-    )
+    try:
+        output_file = os.path.join(output_dir, filename)
 
-    template_data = {
-        "posts": posts,
-        "date_range": date_range,
-        "total_posts": len(posts),
-        "generated_on": generated_on,
-        "total_accounts": len(INSTAGRAM_ACCOUNTS),
-    }
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
 
-    env = Environment(loader=FileSystemLoader(os.path.dirname(template_path)))
-    template = env.get_template(os.path.basename(template_path))
-    html_content = template.render(**template_data)
+        date_range = (
+            f"{cutoff_date.strftime('%d-%m-%Y')} to {current_time.strftime('%d-%m-%Y')}"
+        )
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(html_content)
+        template_data = {
+            "posts": posts,
+            "date_range": date_range,
+            "total_posts": len(posts),
+            "generated_on": generated_on,
+            "total_accounts": len(INSTAGRAM_ACCOUNTS),
+        }
 
-    logger.info(f"HTML report generated: {output_file}")
-    return output_file
+        env = Environment(loader=FileSystemLoader(os.path.dirname(template_path)))
+        template = env.get_template(os.path.basename(template_path))
+        html_content = template.render(**template_data)
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        logger.info(f"HTML report generated: {output_file}")
+        return output_file
+
+    except (OSError, ValueError) as e:
+        logger.error(f"Failed to generate HTML report: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error generating HTML report: {e}")
+        raise

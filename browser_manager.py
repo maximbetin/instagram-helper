@@ -35,6 +35,9 @@ def setup_browser(playwright: Playwright) -> Browser:
     except subprocess.SubprocessError as e:
         logger.error(f"Failed to start browser: {e}")
         raise
+    except (ValueError, OSError) as e:
+        logger.error(f"System error connecting to browser: {e}")
+        raise
     except Exception as e:
-        logger.error(f"Failed to connect to browser: {e}")
+        logger.error(f"Unexpected error connecting to browser: {e}")
         raise

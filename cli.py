@@ -78,8 +78,11 @@ def open_report(report_path: str, logger: logging.Logger) -> None:
         # Use webbrowser module for cross-platform compatibility
         webbrowser.open(f"file://{os.path.abspath(report_path)}")
         logger.info("Opening the HTML report...")
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.warning(f"Could not automatically open report: {e}")
+        logger.info(f"Please open manually: {report_path}")
+    except Exception as e:
+        logger.warning(f"Unexpected error opening report: {e}")
         logger.info(f"Please open manually: {report_path}")
 
 

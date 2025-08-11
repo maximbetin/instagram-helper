@@ -93,7 +93,7 @@ def extract_post_data(
                     f"@{account}: Timeout loading post {post_url} "
                     f"(attempt {attempt + 1}/{max_retries + 1}). Retrying..."
                 )
-                time.sleep(INSTAGRAM_RETRY_DELAY / 1000)  # Brief pause before retry
+                time.sleep(INSTAGRAM_RETRY_DELAY / 1000)
                 continue
             else:
                 logger.error(
@@ -101,8 +101,11 @@ def extract_post_data(
                     f"after {max_retries + 1} attempts: {e}"
                 )
                 return None
+        except (ValueError, OSError) as e:
+            logger.error(f"@{account}: System error loading post {post_url}: {e}")
+            return None
         except Exception as e:
-            logger.error(f"@{account}: Error loading post {post_url}: {e}")
+            logger.error(f"@{account}: Unexpected error loading post {post_url}: {e}")
             return None
 
     return None
@@ -123,8 +126,11 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
     except PlaywrightTimeoutError as e:
         logger.error(f"@{account}: Failed to load account page: {e}")
         return []
+    except (ValueError, OSError) as e:
+        logger.error(f"@{account}: System error loading account page: {e}")
+        return []
     except Exception as e:
-        logger.error(f"@{account}: Error loading account page: {e}")
+        logger.error(f"@{account}: Unexpected error loading account page: {e}")
         return []
 
     logger.debug(f"@{account}: Fetching post URLs...")

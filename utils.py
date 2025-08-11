@@ -42,25 +42,28 @@ def setup_logging(
 
     # Add file logging if directory is specified
     if log_dir:
-        # Create log directory if it doesn't exist
-        os.makedirs(log_dir, exist_ok=True)
+        try:
+            # Create log directory if it doesn't exist
+            os.makedirs(log_dir, exist_ok=True)
 
-        # Generate log filename with current date
-        log_filename = f"{datetime.now().strftime('%d-%m-%Y')}.log"
-        log_filepath = os.path.join(log_dir, log_filename)
+            # Generate log filename with current date
+            log_filename = f"{datetime.now().strftime('%d-%m-%Y')}.log"
+            log_filepath = os.path.join(log_dir, log_filename)
 
-        # File formatter with more detailed information
-        file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+            # File formatter with more detailed information
+            file_formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
 
-        # File handler
-        file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
-        file_handler.setLevel(LOG_LEVEL)
-        file_handler.setFormatter(file_formatter)
-        logger.addHandler(file_handler)
+            # File handler
+            file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
+            file_handler.setLevel(LOG_LEVEL)
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
 
-        logger.info(f"File logging enabled. Log file: {log_filepath}")
+            logger.info(f"File logging enabled. Log file: {log_filepath}")
+        except (OSError, ValueError) as e:
+            logger.warning(f"Failed to setup file logging: {e}")
 
     return logger
