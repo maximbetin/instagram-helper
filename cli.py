@@ -10,10 +10,20 @@ from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
 from browser_manager import setup_browser
-from config import INSTAGRAM_ACCOUNTS, LOG_DIR, OUTPUT_DIR, TIMEZONE
+from config import (
+    BROWSER_CONNECTION_ERROR,
+    FILE_PROTOCOL,
+    INSTAGRAM_ACCOUNTS,
+    LOG_DIR,
+    OUTPUT_DIR,
+    TIMEZONE,
+)
 from instagram_scraper import process_account
 from report_generator import generate_html_report
 from utils import setup_logging
+
+# Constants
+TEMPLATE_PATH = "templates/template.html"
 
 
 def parse_args() -> argparse.Namespace:
@@ -76,7 +86,7 @@ def open_report(report_path: str, logger: logging.Logger) -> None:
     """Open the generated report in the default browser."""
     try:
         # Use webbrowser module for cross-platform compatibility
-        webbrowser.open(f"file://{os.path.abspath(report_path)}")
+        webbrowser.open(f"{FILE_PROTOCOL}{os.path.abspath(report_path)}")
         logger.info("Opening the HTML report...")
     except (OSError, ValueError) as e:
         logger.warning(f"Could not automatically open report: {e}")
@@ -118,9 +128,8 @@ def main() -> int:
 
             if all_posts:
                 logger.info(f"Found {len(all_posts)} posts. Generating HTML report...")
-                template_path = "templates/template.html"
                 report_path = generate_html_report(
-                    all_posts, cutoff_date, args.output, template_path
+                    all_posts, cutoff_date, args.output, TEMPLATE_PATH
                 )
 
                 if not args.no_open:
@@ -134,7 +143,7 @@ def main() -> int:
         return 0
 
     except Exception as e:
-        if "ECONNREFUSED" in str(e):
+        if BROWSER_CONNECTION_ERROR in str(e):
             logger.error(
                 "Failed to connect to the browser. Please close all browser windows and try again."
             )

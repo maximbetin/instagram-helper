@@ -5,7 +5,14 @@ import time
 
 from playwright.sync_api import Browser, Playwright
 
-from config import BROWSER_DEBUG_PORT, BROWSER_LOAD_DELAY, BROWSER_PATH, INSTAGRAM_URL
+from config import (
+    BROWSER_DEBUG_PORT,
+    BROWSER_LOAD_DELAY,
+    BROWSER_PATH,
+    INSTAGRAM_URL,
+    LOCALHOST_URL,
+    SECONDS_IN_MS,
+)
 from utils import setup_logging
 
 logger = setup_logging(__name__)
@@ -24,20 +31,19 @@ def setup_browser(playwright: Playwright) -> Browser:
             ]
         )
 
-        logger.debug(f"Waiting {BROWSER_LOAD_DELAY / 1000}s for browser to load...")
-        time.sleep(BROWSER_LOAD_DELAY / 1000)
+        logger.debug(
+            f"Waiting {BROWSER_LOAD_DELAY / SECONDS_IN_MS}s for browser to load..."
+        )
+        time.sleep(BROWSER_LOAD_DELAY / SECONDS_IN_MS)
 
         logger.debug(f"Connecting to browser at port {BROWSER_DEBUG_PORT}...")
         return playwright.chromium.connect_over_cdp(
-            f"http://localhost:{BROWSER_DEBUG_PORT}"
+            f"{LOCALHOST_URL}{BROWSER_DEBUG_PORT}"
         )
 
-    except subprocess.SubprocessError as e:
-        logger.error(f"Failed to start browser: {e}")
-        raise
-    except (ValueError, OSError) as e:
-        logger.error(f"System error connecting to browser: {e}")
+    except (subprocess.SubprocessError, ValueError, OSError) as e:
+        logger.error(f"Failed to start or connect to browser: {e}")
         raise
     except Exception as e:
-        logger.error(f"Unexpected error connecting to browser: {e}")
+        logger.error(f"Unexpected error setting up browser: {e}")
         raise

@@ -15,11 +15,30 @@ from config import (
     INSTAGRAM_POST_LOAD_TIMEOUT,
     INSTAGRAM_RETRY_DELAY,
     INSTAGRAM_URL,
+    SECONDS_IN_MS,
     TIMEZONE,
 )
 from utils import setup_logging
 
 logger = setup_logging(__name__)
+
+
+def _handle_scraping_error(
+    account: str, operation: str, error: Exception, retry_attempt: Optional[int] = None
+) -> None:
+    """Handle common scraping errors with consistent logging."""
+    if isinstance(error, PlaywrightTimeoutError):
+        if retry_attempt is not None:
+            logger.warning(
+                f"@{account}: Timeout during {operation} "
+                f"(attempt {retry_attempt + 1}). Retrying..."
+            )
+        else:
+            logger.error(f"@{account}: Timeout during {operation}: {error}")
+    elif isinstance(error, (ValueError, OSError)):
+        logger.error(f"@{account}: System error during {operation}: {error}")
+    else:
+        logger.error(f"@{account}: Unexpected error during {operation}: {error}")
 
 
 def get_account_post_urls(page: Page) -> list[str]:
@@ -74,7 +93,7 @@ def extract_post_data(
                 wait_until="domcontentloaded",
                 timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
             )
-            time.sleep(INSTAGRAM_POST_LOAD_DELAY / 1000)
+            time.sleep(INSTAGRAM_POST_LOAD_DELAY / SECONDS_IN_MS)
 
             post_date = get_post_date(page)
             if not post_date or post_date < cutoff_date:
@@ -89,23 +108,17 @@ def extract_post_data(
 
         except PlaywrightTimeoutError as e:
             if attempt < max_retries:
-                logger.warning(
-                    f"@{account}: Timeout loading post {post_url} "
-                    f"(attempt {attempt + 1}/{max_retries + 1}). Retrying..."
-                )
-                time.sleep(INSTAGRAM_RETRY_DELAY / 1000)
+                _handle_scraping_error(account, f"loading post {post_url}", e, attempt)
+                time.sleep(INSTAGRAM_RETRY_DELAY / SECONDS_IN_MS)
                 continue
             else:
-                logger.error(
-                    f"@{account}: Failed to load post {post_url} "
-                    f"after {max_retries + 1} attempts: {e}"
-                )
+                _handle_scraping_error(account, f"loading post {post_url}", e)
                 return None
         except (ValueError, OSError) as e:
-            logger.error(f"@{account}: System error loading post {post_url}: {e}")
+            _handle_scraping_error(account, f"loading post {post_url}", e)
             return None
         except Exception as e:
-            logger.error(f"@{account}: Unexpected error loading post {post_url}: {e}")
+            _handle_scraping_error(account, f"loading post {post_url}", e)
             return None
 
     return None
@@ -122,15 +135,15 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
             wait_until="domcontentloaded",
             timeout=BROWSER_LOAD_TIMEOUT,
         )
-        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / 1000)
+        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / SECONDS_IN_MS)
     except PlaywrightTimeoutError as e:
-        logger.error(f"@{account}: Failed to load account page: {e}")
+        _handle_scraping_error(account, "loading account page", e)
         return []
     except (ValueError, OSError) as e:
-        logger.error(f"@{account}: System error loading account page: {e}")
+        _handle_scraping_error(account, "loading account page", e)
         return []
     except Exception as e:
-        logger.error(f"@{account}: Unexpected error loading account page: {e}")
+        _handle_scraping_error(account, "loading account page", e)
         return []
 
     logger.debug(f"@{account}: Fetching post URLs...")
