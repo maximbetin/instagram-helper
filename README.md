@@ -1,6 +1,6 @@
-[![Run Tests](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
-
 # Instagram Helper
+
+[![Build Executable](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
 
 A tool that automatically fetches recent posts from specified Instagram accounts and generates a
 stylized HTML report with global date sorting and corresponding links.
@@ -37,26 +37,26 @@ make dev-setup
 
 ### Manual Setup
 
-1. Create and activate a virtual environment:
+#### Step 1: Create and activate a virtual environment
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-2. Install the package with development dependencies:
+#### Step 2: Install the package with development dependencies
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-3. Install Playwright browsers:
+#### Step 3: Install Playwright browsers
 
 ```bash
 playwright install
 ```
 
-### Runtime Dependencies Only
+#### Runtime Dependencies Only
 
 For production use:
 
@@ -72,26 +72,26 @@ you can change the browser path in `config.py` or set the `BROWSER_PATH` environ
 
 ### Basic Usage
 
-1. Run the script with default settings:
+#### Step 1: Run the script with default settings
 
 ```bash
 python cli.py
 ```
 
-2. Or use the CLI interface for more options:
+#### Step 2: Or use the CLI interface for more options
 
 ```bash
 python cli.py --help
 ```
 
-3. Or install the package and use the command-line tool:
+#### Step 3: Or install the package and use the command-line tool
 
 ```bash
 pip install -e .
 instagram-helper
 ```
 
-**Default Behavior:**
+**Default Behavior**:
 
 - Fetches posts from the last 3 days
 - Processes all configured Instagram accounts
@@ -174,7 +174,7 @@ Edit `config.py` to modify:
 
 The tool generates an interactive HTML report and detailed logs:
 
-**HTML Report:**
+**HTML Report**:
 
 - Summary statistics (total accounts checked, total posts found, date range)
 - All posts sorted by date (newest first) with captions, dates, and account information
@@ -182,7 +182,7 @@ The tool generates an interactive HTML report and detailed logs:
 - Copy-to-clipboard buttons for post URLs and captions
 - Responsive design that works on desktop and mobile
 
-**Log Files:**
+**Log Files**:
 
 - Detailed logging of the scraping process
 - Account processing status and results
@@ -200,7 +200,7 @@ Both files are saved in the "IG Helper" folder on your Desktop by default.
 
 ## Project Structure
 
-```
+```bash
 instagram-helper/
 ├── cli.py                  # Command-line interface (main entry point)
 ├── config.py               # Configuration settings
@@ -234,7 +234,7 @@ instagram-helper/
 - `ruff` - Code formatting and linting
 - `mypy` - Static type checking
 
-### Installation
+### Dependency Installation
 
 ```bash
 # Runtime dependencies only

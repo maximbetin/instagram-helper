@@ -1,14 +1,14 @@
-name: Test, Build and Validate Package
+name: Build Executable
 
 on:
   push:
     branches: [main]
     paths:
-      - '**.py'
-      - '.github/workflows/**'
-      - 'setup.py'
-      - 'pyproject.toml'
-      - 'requirements.txt'
+      - "**.py"
+      - ".github/workflows/**"
+      - "setup.py"
+      - "pyproject.toml"
+      - "requirements.txt"
 
 jobs:
   ci:
@@ -20,55 +20,55 @@ jobs:
         shell: pwsh
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13.4'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.4"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run tests with coverage
-      run: |
-        pytest
+      - name: Run tests with coverage
+        run: |
+          pytest
 
-    - name: Install build tools
-      run: |
-        pip install build
+      - name: Install build tools
+        run: |
+          pip install build
 
-    - name: Build package
-      run: |
-        python -m build
-        Get-ChildItem dist/ -Name
+      - name: Build package
+        run: |
+          python -m build
+          Get-ChildItem dist/ -Name
 
-    - name: Test package installation
-      run: |
-        python -m venv test_env
-        .\test_env\Scripts\activate
+      - name: Test package installation
+        run: |
+          python -m venv test_env
+          .\test_env\Scripts\activate
 
-        # Install the built package
-        $wheelFile = Get-ChildItem dist/ -Filter "*.whl" | Select-Object -First 1
-        if ($wheelFile) {
-            pip install $wheelFile.FullName
+          # Install the built package
+          $wheelFile = Get-ChildItem dist/ -Filter "*.whl" | Select-Object -First 1
+          if ($wheelFile) {
+              pip install $wheelFile.FullName
 
-            # Test CLI entry point
-            instagram-helper --help
+              # Test CLI entry point
+              instagram-helper --help
 
-            # Test module imports
-            python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
-        } else {
-            Write-Error "No wheel file found in dist/ directory"
-            exit 1
-        }
+              # Test module imports
+              python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
+          } else {
+              Write-Error "No wheel file found in dist/ directory"
+              exit 1
+          }
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package
-        path: dist/
-        retention-days: 30
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/
+          retention-days: 30
