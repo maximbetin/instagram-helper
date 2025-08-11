@@ -104,7 +104,7 @@ instagram-helper
 python cli.py [OPTIONS]
 
 Options:
-  --days, -d INT          Number of days back to fetch posts from (default: 1)
+  --days, -d INT          Number of days back to fetch posts from (default: 3)
   --accounts, -a TEXT...  Specific Instagram accounts to fetch from
   --output, -o PATH       Output directory for reports (default: Desktop/IG Helper)
   --log-dir PATH          Directory for log files (default: Desktop/IG Helper)
@@ -144,13 +144,16 @@ You can configure the tool using environment variables:
 ```bash
 # Browser settings
 export BROWSER_DEBUG_PORT=9222
-export BROWSER_LOAD_DELAY=2
-export BROWSER_LOAD_TIMEOUT=10000
-export BROWSER_PATH="/path/to/browser"
+export BROWSER_LOAD_DELAY=5000     # milliseconds
+export BROWSER_LOAD_TIMEOUT=15000  # milliseconds
+export BROWSER_PATH="/usr/bin/brave-browser"  # Or any Chromium-based browser
 
 # Instagram settings
-export INSTAGRAM_MAX_POST_AGE=3
+export INSTAGRAM_POST_LOAD_DELAY=3000         # milliseconds
 export INSTAGRAM_MAX_POSTS_PER_ACCOUNT=3
+export INSTAGRAM_POST_LOAD_TIMEOUT=20000      # milliseconds
+export INSTAGRAM_ACCOUNT_LOAD_DELAY=3000      # milliseconds
+export INSTAGRAM_RETRY_DELAY=2000             # milliseconds
 export INSTAGRAM_URL="https://www.instagram.com/"
 
 # Output settings

@@ -12,7 +12,9 @@ LOG_DATE_FORMAT = "%H:%M:%S"
 
 
 def setup_logging(
-    name: Optional[str] = None, log_dir: Optional[str] = None
+    name: Optional[str] = None,
+    log_dir: Optional[str] = None,
+    log_level: Optional[int] = None,
 ) -> logging.Logger:
     """
     Configure and return a logger instance with consistent formatting.
@@ -20,13 +22,17 @@ def setup_logging(
     Args:
         name: Logger name (optional)
         log_dir: Directory path for file logging (optional). If provided, logs will be written to both console and file.
+        log_level: Logging level to apply to the logger and its handlers (optional). If not provided, defaults to LOG_LEVEL.
 
     Returns:
         Configured logger instance
     """
     # Create logger
     logger = logging.getLogger(name or __name__)
-    logger.setLevel(LOG_LEVEL)
+
+    # Determine effective level
+    effective_level = log_level if log_level is not None else LOG_LEVEL
+    logger.setLevel(effective_level)
 
     # Clear any existing handlers to avoid duplicates
     logger.handlers.clear()
@@ -36,7 +42,7 @@ def setup_logging(
 
     # Console handler
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(LOG_LEVEL)
+    console_handler.setLevel(effective_level)
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
@@ -58,7 +64,7 @@ def setup_logging(
 
             # File handler
             file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
-            file_handler.setLevel(LOG_LEVEL)
+            file_handler.setLevel(effective_level)
             file_handler.setFormatter(file_formatter)
             logger.addHandler(file_handler)
 

@@ -23,6 +23,7 @@ def setup_browser(playwright: Playwright) -> Browser:
     logger.info(f"Starting browser at {INSTAGRAM_URL}...")
 
     try:
+        # Attempt to launch the configured browser; rely on environment override for portability
         subprocess.Popen(
             [
                 BROWSER_PATH,

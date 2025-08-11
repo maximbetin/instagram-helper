@@ -23,9 +23,17 @@ TIMEZONE = timezone(
 BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
 BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # milliseconds
 BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
-BROWSER_PATH = os.getenv(
-    "BROWSER_PATH", os.path.expandvars("%LOCALAPPDATA%/Chromium/Application/chrome.exe")
-)
+
+# Prefer an explicit override, otherwise try common browser locations; fall back to a generic 'chromium' in PATH
+_default_browser_candidates = [
+    os.getenv("BROWSER_PATH"),
+    "/usr/bin/brave-browser",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+]
+BROWSER_PATH = next((p for p in _default_browser_candidates if p), "chromium")
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")

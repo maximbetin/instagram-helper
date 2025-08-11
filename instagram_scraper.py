@@ -167,8 +167,7 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
             account_posts.append(post_data)
         else:
             logger.info(
-                f"@{account}: Found post older than cutoff date, "
-                f"stopping for this account."
+                f"@{account}: Found post older than cutoff date, stopping for this account."
             )
             break
 

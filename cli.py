@@ -45,8 +45,8 @@ Examples:
         "--days",
         "-d",
         type=int,
-        default=1,
-        help="Number of days back to fetch posts from (default: 1)",
+        default=3,
+        help="Number of days back to fetch posts from (default: 3)",
     )
 
     parser.add_argument(
@@ -101,9 +101,9 @@ def main() -> int:
     args = parse_args()
 
     # Setup logging
-    log_level = "DEBUG" if args.verbose else "INFO"
-    logger = setup_logging(log_dir=args.log_dir)
-    logger.setLevel(log_level)
+    logger = setup_logging(
+        log_dir=args.log_dir, log_level=logging.DEBUG if args.verbose else logging.INFO
+    )
 
     # Determine accounts to process
     accounts_to_process = args.accounts if args.accounts else INSTAGRAM_ACCOUNTS
@@ -111,7 +111,9 @@ def main() -> int:
     try:
         with sync_playwright() as p:
             browser = setup_browser(p)
-            page = browser.contexts[0].pages[0]
+            # Safely get an existing page or create a new page if none exists
+            context = browser.contexts[0]
+            page = context.pages[0] if context.pages else context.new_page()
 
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=args.days)
             logger.info(
@@ -132,7 +134,7 @@ def main() -> int:
                     all_posts, cutoff_date, args.output, TEMPLATE_PATH
                 )
 
-                if not args.no_open:
+                if not args.no_open and report_path:
                     open_report(report_path, logger)
                 else:
                     logger.info(f"Report saved to: {report_path}")
