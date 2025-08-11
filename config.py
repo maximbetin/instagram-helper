@@ -1,7 +1,6 @@
 """Configuration settings for Instagram Helper."""
 
 import os
-import subprocess
 from datetime import timedelta, timezone
 
 # Time constants
@@ -20,90 +19,29 @@ TIMEZONE = timezone(
     timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", str(DEFAULT_TIMEZONE_OFFSET))))
 )
 
-# WSL2 detection and configuration
-def is_wsl2() -> bool:
-    """Check if running in WSL2 environment."""
-    try:
-        with open('/proc/version', 'r') as f:
-            return 'microsoft' in f.read().lower()
-    except (FileNotFoundError, OSError):
-        return False
-
-def get_wsl_host_ip() -> str:
-    """Get Windows host IP address from WSL2 resolv.conf."""
-    try:
-        result = subprocess.run(
-            ["awk", "/nameserver/ {print $2; exit}", "/etc/resolv.conf"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return result.stdout.strip()
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return "127.0.0.1"
-
 # Browser settings
 BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
 BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # milliseconds
 BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
 
-# WSL2-specific browser configuration
-WSL2_MODE = is_wsl2() and os.getenv("WSL2_MODE", "auto").lower() != "disabled"
-WSL_HOST_IP = get_wsl_host_ip() if WSL2_MODE else "127.0.0.1"
+# Remote/WSL2 bridging settings
+# If set, connect to this host instead of localhost (e.g., Windows host IP from /etc/resolv.conf)
+BROWSER_REMOTE_HOST = os.getenv("BROWSER_REMOTE_HOST")
+# When true, do not spawn a local browser process; only attach to an existing one via CDP
+BROWSER_ATTACH_ONLY = os.getenv("BROWSER_ATTACH_ONLY", "false").lower() in {"1", "true", "yes", "on"}
+# Scheme for CDP connection (http or ws). http://<host>:<port> works for Chromium-based browsers
+BROWSER_CONNECT_SCHEME = os.getenv("BROWSER_CONNECT_SCHEME", "http")
 
-def _select_browser_path(candidates: list[str]) -> str:
-    """Select the first usable browser path or command from candidates.
-
-    Prefers existing absolute paths; otherwise returns the first non-empty value
-    (to allow command names in PATH). Falls back to "chromium" if none found.
-    """
-    for candidate in candidates:
-        if not candidate:
-            continue
-        try:
-            # If absolute path, ensure it exists
-            if os.path.isabs(candidate):
-                if os.path.exists(candidate):
-                    return candidate
-                # Skip non-existing absolute paths
-                continue
-            # For command names (non-absolute), return as-is
-            return candidate
-        except Exception:
-            # Be resilient to any unexpected errors while probing
-            continue
-    return "chromium"
-
-# Browser paths for different environments
-if WSL2_MODE:
-    # Windows Brave paths accessible from WSL2
-    _default_browser_candidates = [
-        os.getenv("BROWSER_PATH"),
-        "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
-        "/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
-        "/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
-        "/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
-        # As a last resort, allow command name in PATH
-        "brave.exe",
-    ]
-else:
-    # Linux browser paths
-    _default_browser_candidates = [
-        os.getenv("BROWSER_PATH"),
-        "/usr/bin/brave-browser",
-        "/usr/bin/google-chrome-stable",
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium",
-        "/usr/bin/chromium-browser",
-        # Allow command names in PATH
-        "brave-browser",
-        "google-chrome-stable",
-        "google-chrome",
-        "chromium",
-        "chromium-browser",
-    ]
-
-BROWSER_PATH = _select_browser_path(_default_browser_candidates)
+# Prefer an explicit override, otherwise try common browser locations; fall back to a generic 'chromium' in PATH
+_default_browser_candidates = [
+    os.getenv("BROWSER_PATH"),
+    "/usr/bin/brave-browser",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+]
+BROWSER_PATH = next((p for p in _default_browser_candidates if p), "chromium")
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")

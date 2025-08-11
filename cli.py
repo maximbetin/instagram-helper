@@ -111,8 +111,8 @@ def main() -> int:
     try:
         with sync_playwright() as p:
             browser = setup_browser(p)
-            # Safely get an existing page or create a new page if none exists
-            context = browser.contexts[0]
+            # Safely get an existing context/page or create new ones
+            context = browser.contexts[0] if browser.contexts else browser.new_context()
             page = context.pages[0] if context.pages else context.new_page()
 
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=args.days)
