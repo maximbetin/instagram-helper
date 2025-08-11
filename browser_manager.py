@@ -59,8 +59,11 @@ def connect_to_existing_browser(playwright: Playwright) -> Browser:
         ws_url = ws_info["webSocketDebuggerUrl"]
         
         # Replace the host IP in the WebSocket URL if needed
-        if WSL2_MODE and "127.0.0.1" in ws_url:
-            ws_url = ws_url.replace("127.0.0.1", WSL_HOST_IP)
+        if WSL2_MODE:
+            if "127.0.0.1" in ws_url:
+                ws_url = ws_url.replace("127.0.0.1", WSL_HOST_IP)
+            if "localhost" in ws_url:
+                ws_url = ws_url.replace("localhost", WSL_HOST_IP)
         
         logger.debug(f"Connecting via WebSocket: {ws_url}")
         return playwright.chromium.connect_over_cdp(ws_url)

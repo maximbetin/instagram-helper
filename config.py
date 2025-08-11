@@ -51,6 +51,29 @@ BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # millis
 WSL2_MODE = is_wsl2() and os.getenv("WSL2_MODE", "auto").lower() != "disabled"
 WSL_HOST_IP = get_wsl_host_ip() if WSL2_MODE else "127.0.0.1"
 
+def _select_browser_path(candidates: list[str]) -> str:
+    """Select the first usable browser path or command from candidates.
+
+    Prefers existing absolute paths; otherwise returns the first non-empty value
+    (to allow command names in PATH). Falls back to "chromium" if none found.
+    """
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            # If absolute path, ensure it exists
+            if os.path.isabs(candidate):
+                if os.path.exists(candidate):
+                    return candidate
+                # Skip non-existing absolute paths
+                continue
+            # For command names (non-absolute), return as-is
+            return candidate
+        except Exception:
+            # Be resilient to any unexpected errors while probing
+            continue
+    return "chromium"
+
 # Browser paths for different environments
 if WSL2_MODE:
     # Windows Brave paths accessible from WSL2
@@ -60,6 +83,8 @@ if WSL2_MODE:
         "/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
         "/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
         "/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe",
+        # As a last resort, allow command name in PATH
+        "brave.exe",
     ]
 else:
     # Linux browser paths
@@ -70,9 +95,15 @@ else:
         "/usr/bin/google-chrome",
         "/usr/bin/chromium",
         "/usr/bin/chromium-browser",
+        # Allow command names in PATH
+        "brave-browser",
+        "google-chrome-stable",
+        "google-chrome",
+        "chromium",
+        "chromium-browser",
     ]
 
-BROWSER_PATH = next((p for p in _default_browser_candidates if p), "chromium")
+BROWSER_PATH = _select_browser_path(_default_browser_candidates)
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")
