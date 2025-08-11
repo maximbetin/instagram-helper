@@ -2,7 +2,8 @@
 
 # Instagram Helper
 
-A tool that automatically fetches recent posts from specified Instagram accounts and generates a stylized HTML report with global date sorting and corresponding links.
+A tool that automatically fetches recent posts from specified Instagram accounts and generates a
+stylized HTML report with global date sorting and corresponding links.
 
 ## Features
 
@@ -10,46 +11,88 @@ A tool that automatically fetches recent posts from specified Instagram accounts
 - **Date filtering**: Only fetches posts from the last few days (configurable)
 - **HTML report generation**: Creates a stylized, responsive HTML report with all fetched posts
 - **Global date sorting**: All posts are sorted by date across all accounts (newest first)
-- **Interactive report**: HTML report includes copy-to-clipboard functionality for post links and captions
+- **Interactive report**: HTML report includes copy-to-clipboard functionality for post links and
+  captions
 - **Progress tracking**: Real-time console output showing processing progress
 - **CLI interface**: Command-line options for flexible usage
 - **Environment configuration**: Support for environment variables
 
 ## Installation
 
-1. Install Python dependencies:
+### Quick Setup (Recommended)
+
+For development and testing:
+
 ```bash
-pip install -r requirements.txt
+# Clone the repository
+git clone <your-repo-url>
+cd instagram-helper
+
+# Run the automated setup script (WSL2 optimized)
+./scripts/setup_dev.sh
+
+# Or use the Makefile
+make dev-setup
 ```
 
-2. Install Playwright browsers:
+### Manual Setup
+
+1. Create and activate a virtual environment:
+
 ```bash
-playwright install chromium
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-**Note:** The tool is configured to use Brave browser by default. If you don't have Brave installed, you can change the browser path in `config.py` or set the `BROWSER_PATH` environment variable.
+2. Install the package with development dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+3. Install Playwright browsers:
+
+```bash
+playwright install
+```
+
+### Runtime Dependencies Only
+
+For production use:
+
+```bash
+pip install -e .
+playwright install
+```
+
+**Note:** The tool is configured to use Brave browser by default. If you don't have Brave installed,
+you can change the browser path in `config.py` or set the `BROWSER_PATH` environment variable.
 
 ## Usage
 
 ### Basic Usage
 
 1. Run the script with default settings:
-```bash
-python main.py
-```
 
-2. Or use the CLI interface for more options:
 ```bash
 python cli.py
 ```
 
+2. Or use the CLI interface for more options:
+
+```bash
+python cli.py --help
+```
+
 3. Or install the package and use the command-line tool:
+
 ```bash
 pip install -e .
 instagram-helper
 ```
 
 **Default Behavior:**
+
 - Fetches posts from the last 3 days
 - Processes all configured Instagram accounts
 - Saves HTML reports and logs to `Desktop/IG Helper/`
@@ -120,8 +163,10 @@ export TIMEZONE_OFFSET=2
 
 Edit `config.py` to modify:
 
-- **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3), load delays
-- **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias cultural accounts)
+- **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3),
+  load delays
+- **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias
+  cultural accounts)
 - **Browser Settings**: Browser path (default: Brave), debug port, timeouts
 - **Output Settings**: Output and log directories (default: Desktop/IG Helper)
 
@@ -130,6 +175,7 @@ Edit `config.py` to modify:
 The tool generates an interactive HTML report and detailed logs:
 
 **HTML Report:**
+
 - Summary statistics (total accounts checked, total posts found, date range)
 - All posts sorted by date (newest first) with captions, dates, and account information
 - Direct links to original Instagram posts
@@ -137,6 +183,7 @@ The tool generates an interactive HTML report and detailed logs:
 - Responsive design that works on desktop and mobile
 
 **Log Files:**
+
 - Detailed logging of the scraping process
 - Account processing status and results
 - Error messages and debugging information
@@ -145,6 +192,7 @@ The tool generates an interactive HTML report and detailed logs:
 ## File Naming
 
 Reports and logs are automatically saved with the format:
+
 - HTML reports: `DD-MM-YYYY.html` (e.g., `19-12-2024.html`)
 - Log files: `DD-MM-YYYY.log` (e.g., `19-12-2024.log`)
 
@@ -154,8 +202,7 @@ Both files are saved in the "IG Helper" folder on your Desktop by default.
 
 ```
 instagram-helper/
-├── main.py                 # Main script (legacy entry point)
-├── cli.py                  # Command-line interface
+├── cli.py                  # Command-line interface (main entry point)
 ├── config.py               # Configuration settings
 ├── utils.py                # Logging utilities
 ├── instagram_scraper.py    # Instagram scraping logic
@@ -168,28 +215,100 @@ instagram-helper/
 │   ├── test_main.py        # Unit tests
 │   ├── test_main_integration.py  # Integration tests
 │   └── test_utils.py       # Utility tests
-├── requirements.txt        # Python dependencies
+├── pyproject.toml         # Project configuration and dependencies
 └── README.md              # This file
 ```
 
 ## Dependencies
 
+### Runtime Dependencies
+
 - `playwright` - Browser automation
 - `jinja2` - HTML template rendering
-- `pytest` - Testing framework (for development)
 
-## Testing
+### Development Dependencies
+
+- `pytest` - Testing framework
+- `pytest-cov` - Coverage reporting
+- `pytest-mock` - Mocking utilities
+- `ruff` - Code formatting and linting
+- `mypy` - Static type checking
+
+### Installation
+
+```bash
+# Runtime dependencies only
+pip install -e .
+
+# With development dependencies
+pip install -e ".[dev]"
+
+# With testing dependencies only
+pip install -e ".[test]"
+```
+
+## Development
+
+### Available Commands
+
+The project includes a Makefile for common development tasks:
+
+```bash
+# Show all available commands
+make help
+
+# Install with development dependencies
+make setup-dev
+
+# Run tests
+make test
+
+# Run tests with coverage
+make test-cov
+
+# Format code
+make format
+
+# Lint code
+make lint
+
+# Clean build artifacts
+make clean
+
+# Install Playwright browsers
+make install-browsers
+```
+
+### Code Quality
+
+The project uses several tools to maintain code quality:
+
+- **Ruff**: Code formatting and linting (88 character line length)
+- **MyPy**: Static type checking
+- **Pytest**: Testing framework
+
+### Testing
 
 Run the test suite:
+
 ```bash
 pytest
+# or
+make test
 ```
 
 Run specific test files:
+
 ```bash
 pytest tests/test_main.py
 pytest tests/test_main_integration.py
 pytest tests/test_utils.py
+```
+
+Run tests with coverage:
+
+```bash
+make test-cov
 ```
 
 ## License

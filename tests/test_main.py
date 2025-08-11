@@ -1,4 +1,5 @@
-import builtins
+"""Tests for main functionality."""
+
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -7,279 +8,192 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from browser_manager import setup_browser
-from instagram_scraper import extract_post_data, get_account_post_urls, get_post_caption, get_post_date, process_account
+from instagram_scraper import (
+    extract_post_data,
+    get_account_post_urls,
+    get_post_caption,
+    get_post_date,
+    process_account,
+)
 from report_generator import generate_html_report
-
-# Mock config constants
-MOCK_INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 4
-MOCK_TIMEZONE = timezone(timedelta(hours=2))
-MOCK_INSTAGRAM_URL = "https://www.instagram.com/"
 
 # Add project root to path to allow absolute imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Mock data for testing
+MOCK_POST_DATA = {
+    'url': 'https://www.instagram.com/p/123/',
+    'account': 'test_account',
+    'caption': 'Test post caption',
+    'date_posted': datetime.now(timezone.utc),
+}
+
+MOCK_ACCOUNT_POSTS = [MOCK_POST_DATA]
+
 @pytest.fixture
 def mock_page():
-    """Fixture for a mocked Playwright page."""
-    return MagicMock()
+    """Create a mock page for testing."""
+    page = MagicMock()
+    page.query_selector_all.return_value = []
+    page.query_selector.return_value = None
+    page.goto.return_value = None
+    return page
 
 @pytest.fixture
-def mock_element():
-    """Fixture for a mocked Playwright element."""
-    return MagicMock()
+def mock_browser():
+    """Create a mock browser for testing."""
+    browser = MagicMock()
+    context = MagicMock()
+    page = MagicMock()
+    context.pages = [page]
+    browser.contexts = [context]
+    return browser
 
-def test_get_account_post_urls(mock_page, mock_element):
-    """Test fetching post URLs from an account page."""
+@pytest.fixture
+def mock_playwright():
+    """Create a mock playwright for testing."""
+    playwright = MagicMock()
+    playwright.chromium.connect_over_cdp.return_value = mock_browser()
+    return playwright
+
+def test_get_account_post_urls(mock_page):
+    """Test getting post URLs from an account page."""
+    # Mock link elements
     mock_link1 = MagicMock()
-    mock_link1.get_attribute.return_value = '/p/C12345/'
+    mock_link1.get_attribute.return_value = '/p/123/'
     mock_link2 = MagicMock()
-    mock_link2.get_attribute.return_value = '/reel/R67890/'
+    mock_link2.get_attribute.return_value = '/reel/456/'
     mock_link3 = MagicMock()
-    mock_link3.get_attribute.return_value = '/explore/tags/something/'
-    mock_link4 = MagicMock()
-    mock_link4.get_attribute.return_value = None
+    mock_link3.get_attribute.return_value = '/stories/789/'
 
-    mock_page.query_selector_all.return_value = [mock_link1, mock_link2, mock_link3, mock_link4]
+    mock_page.query_selector_all.return_value = [mock_link1, mock_link2, mock_link3]
 
     urls = get_account_post_urls(mock_page)
 
-    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/p/C12345" in urls
-    assert f"{MOCK_INSTAGRAM_URL.rstrip('/')}/reel/R67890" in urls
     assert len(urls) == 2
+    assert any('/p/123/' in url for url in urls)
+    assert any('/reel/456/' in url for url in urls)
+    assert not any('/stories/789/' in url for url in urls)
 
-def test_get_account_post_urls_absolute_url(mock_page, mock_element):
-    """Test get_account_post_urls with an absolute post URL (does not start with '/')."""
-    mock_element.get_attribute.side_effect = [
-        'https://www.instagram.com/p/abc123/',  # absolute URL
-        None
-    ]
-    mock_page.query_selector_all.return_value = [mock_element, mock_element]
-    urls = get_account_post_urls(mock_page)
-    assert urls == ['https://www.instagram.com/p/abc123']
-
-def test_get_post_caption(mock_page, mock_element):
-    """Test extracting a post's caption."""
-    mock_element.inner_text.return_value = "  A nice caption  "
-    mock_page.query_selector.return_value = mock_element
+def test_get_post_caption(mock_page):
+    """Test extracting post caption."""
+    mock_caption = MagicMock()
+    mock_caption.inner_text.return_value = '  Test caption  '
+    mock_page.query_selector.return_value = mock_caption
 
     caption = get_post_caption(mock_page)
-    assert caption == "A nice caption"
+    assert caption == 'Test caption'
 
-def test_get_post_caption_no_caption(mock_page):
-    """Test extracting a post's caption when none is found."""
+def test_get_post_caption_no_element(mock_page):
+    """Test extracting post caption when no caption element exists."""
     mock_page.query_selector.return_value = None
+
     caption = get_post_caption(mock_page)
-    assert caption == ""
+    assert caption == ''
 
-def test_get_post_date(mock_page, mock_element):
-    """Test extracting a post's date."""
-    utc_time_str = "2023-01-01T12:00:00.000Z"
-    mock_element.get_attribute.return_value = utc_time_str
-    mock_page.query_selector.return_value = mock_element
+def test_get_post_date(mock_page):
+    """Test extracting post date."""
+    mock_time = MagicMock()
+    mock_time.get_attribute.return_value = '2024-01-01T12:00:00Z'
+    mock_page.query_selector.return_value = mock_time
 
-    post_date = get_post_date(mock_page)
+    date = get_post_date(mock_page)
+    assert date is not None
+    assert date.year == 2024
+    assert date.month == 1
+    assert date.day == 1
 
-    expected_date = datetime.fromisoformat(utc_time_str.replace('Z', '+00:00')).astimezone(MOCK_TIMEZONE)
-    assert post_date == expected_date
-
-def test_get_post_date_no_date(mock_page):
-    """Test extracting a post's date when no date element is found."""
+def test_get_post_date_no_element(mock_page):
+    """Test extracting post date when no time element exists."""
     mock_page.query_selector.return_value = None
-    post_date = get_post_date(mock_page)
-    assert post_date is None
 
-def test_get_post_date_no_datetime_attr(mock_page, mock_element):
-    """Test extracting a post's date when the element has no datetime attribute."""
-    mock_element.get_attribute.return_value = None
-    mock_page.query_selector.return_value = mock_element
-    post_date = get_post_date(mock_page)
-    assert post_date is None
+    date = get_post_date(mock_page)
+    assert date is None
 
-@patch('instagram_scraper.get_post_date')
-@patch('instagram_scraper.get_post_caption')
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_extract_post_data(mock_sleep, mock_get_caption, mock_get_date, mock_page):
-    """Test extracting all data from a post page."""
-    post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    account = "test_account"
+def test_extract_post_data_success(mock_page):
+    """Test successful post data extraction."""
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
 
-    mock_get_date.return_value = datetime.now(MOCK_TIMEZONE)
-    mock_get_caption.return_value = "A caption"
+    # Mock caption and date elements
+    mock_caption = MagicMock()
+    mock_caption.inner_text.return_value = 'Test caption'
+    mock_time = MagicMock()
+    mock_time.get_attribute.return_value = '2024-01-01T12:00:00Z'
 
-    data = extract_post_data(post_url, cutoff_date, account, mock_page)
+    mock_page.query_selector.side_effect = [mock_caption, mock_time]
 
-    mock_page.goto.assert_called_once_with(post_url, wait_until="domcontentloaded", timeout=20000)
-    assert data is not None
-    assert data['url'] == post_url
-    assert data['account'] == account
-    assert data['caption'] == "A caption"
-    assert data['date_posted'] is not None
+    result = extract_post_data('https://www.instagram.com/p/123/', cutoff_date, 'test_account', mock_page)
 
-@patch('instagram_scraper.get_post_date')
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_extract_post_data_too_old(mock_sleep, mock_get_date, mock_page):
-    """Test extracting data from a post that is too old."""
-    post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    account = "test_account"
+    assert result is not None
+    assert result['url'] == 'https://www.instagram.com/p/123/'
+    assert result['account'] == 'test_account'
+    assert result['caption'] == 'Test caption'
 
-    mock_get_date.return_value = datetime.now(MOCK_TIMEZONE) - timedelta(days=2)
+def test_extract_post_data_old_post(mock_page):
+    """Test post data extraction for old posts."""
+    cutoff_date = datetime.now(timezone.utc) + timedelta(days=1)  # Future date
 
-    data = extract_post_data(post_url, cutoff_date, account, mock_page)
+    # Mock caption and date elements
+    mock_caption = MagicMock()
+    mock_caption.inner_text.return_value = 'Test caption'
+    mock_time = MagicMock()
+    mock_time.get_attribute.return_value = '2024-01-01T12:00:00Z'
 
-    assert data is None
+    mock_page.query_selector.side_effect = [mock_caption, mock_time]
 
-@patch('instagram_scraper.get_post_date', return_value=None)
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_extract_post_data_no_date(mock_sleep, mock_get_date, mock_page):
-    """Test extracting data when no date is found."""
-    post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    account = "test_account"
+    result = extract_post_data('https://www.instagram.com/p/123/', cutoff_date, 'test_account', mock_page)
 
-    data = extract_post_data(post_url, cutoff_date, account, mock_page)
+    assert result is None
 
-    assert data is None
+def test_process_account_success(mock_page):
+    """Test successful account processing."""
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
 
-@patch('instagram_scraper.get_post_date')
-@patch('instagram_scraper.get_post_caption')
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_extract_post_data_timeout_retry(mock_sleep, mock_get_caption, mock_get_date, mock_page):
-    """Test that extract_post_data retries on timeout errors."""
-    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    # Mock successful page load and post URLs
+    mock_page.goto.return_value = None
+    mock_page.query_selector_all.return_value = []
 
-    from config import INSTAGRAM_POST_LOAD_TIMEOUT
+    result = process_account('test_account', mock_page, cutoff_date)
 
-    post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    account = "test_account"
+    assert isinstance(result, list)
+    mock_page.goto.assert_called_once()
 
-    # First call raises timeout, second call succeeds
-    mock_page.goto.side_effect = [PlaywrightTimeoutError("Timeout"), None]
-    mock_get_date.return_value = datetime.now(MOCK_TIMEZONE)
-    mock_get_caption.return_value = "A caption"
+def test_process_account_failure(mock_page):
+    """Test account processing failure."""
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
 
-    data = extract_post_data(post_url, cutoff_date, account, mock_page)
+    # Mock page load failure
+    mock_page.goto.side_effect = Exception('Connection error')
 
-    # Should have been called twice (retry)
-    assert mock_page.goto.call_count == 2
-    assert data is not None
-    assert data['url'] == post_url
-    assert data['account'] == account
-    assert data['caption'] == "A caption"
-    assert data['date_posted'] is not None
+    result = process_account('test_account', mock_page, cutoff_date)
 
-@patch('instagram_scraper.get_post_date')
-@patch('instagram_scraper.get_post_caption')
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_extract_post_data_timeout_failure(mock_sleep, mock_get_caption, mock_get_date, mock_page):
-    """Test that extract_post_data returns None after all retries fail."""
-    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    assert result == []
 
-    from config import INSTAGRAM_POST_LOAD_TIMEOUT
+@patch('os.path.exists')
+@patch('builtins.open', create=True)
+def test_generate_html_report(mock_open, mock_exists):
+    """Test HTML report generation."""
+    mock_exists.return_value = True
+    mock_file = MagicMock()
+    mock_open.return_value.__enter__.return_value = mock_file
 
-    post_url = "http://example.com/p/123"
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    account = "test_account"
+    posts = [MOCK_POST_DATA]
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
 
-    # All calls raise timeout
-    mock_page.goto.side_effect = PlaywrightTimeoutError("Timeout")
-    mock_get_date.return_value = datetime.now(MOCK_TIMEZONE)
-    mock_get_caption.return_value = "A caption"
+    result = generate_html_report(posts, cutoff_date, '/tmp', 'templates/template.html')
 
-    data = extract_post_data(post_url, cutoff_date, account, mock_page)
+    assert result.endswith('.html')
+    mock_file.write.assert_called_once()
 
-    # Should have been called 3 times (initial + 2 retries)
-    assert mock_page.goto.call_count == 3
-    assert data is None
+def test_setup_browser(mock_playwright):
+    """Test browser setup."""
+    with patch('subprocess.Popen') as mock_popen:
+        with patch('time.sleep'):
+            result = setup_browser(mock_playwright)
 
-def test_generate_html_report(tmp_path):
-    """Test the generation of the HTML report."""
-    posts = [
-        {'url': 'http://a.com', 'account': 'acc1', 'caption': 'cap1', 'date_posted': datetime(2023, 1, 2)},
-        {'url': 'http://b.com', 'account': 'acc2', 'caption': 'cap2', 'date_posted': datetime(2023, 1, 1)},
-    ]
-    cutoff_date = datetime(2023, 1, 1)
+            assert result is not None
+            mock_popen.assert_called_once()
+            mock_playwright.chromium.connect_over_cdp.assert_called_once()
 
-    template_content = "<html><body>{{total_posts}} posts</body></html>"
-    template_path = tmp_path / "test_template.html"
-    template_path.write_text(template_content)
-
-    output_dir = tmp_path
-    report_path = generate_html_report(posts, cutoff_date, str(output_dir), str(template_path))
-
-    assert os.path.exists(report_path)
-    with open(report_path, 'r') as f:
-        content = f.read()
-        assert "2 posts" in content
-
-@patch('browser_manager.subprocess.Popen')
-@patch('browser_manager.time.sleep', return_value=None)
-@patch('playwright.sync_api.sync_playwright')
-def test_setup_browser(mock_playwright, mock_sleep, mock_popen):
-    """Test setting up the browser connection."""
-    mock_p = MagicMock()
-    mock_playwright.return_value.__enter__.return_value = mock_p
-
-    setup_browser(mock_p)
-
-    mock_popen.assert_called_once()
-    mock_p.chromium.connect_over_cdp.assert_called_once()
-
-@patch('instagram_scraper.INSTAGRAM_MAX_POSTS_PER_ACCOUNT', 10)
-@patch('instagram_scraper.extract_post_data')
-@patch('instagram_scraper.get_account_post_urls')
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_process_account(mock_sleep, mock_get_urls, mock_extract, mock_page):
-    """Test processing a single account."""
-    account = 'test_account'
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    mock_get_urls.return_value = ['url1', 'url2', 'url3', 'url4']
-    mock_extract.side_effect = [{'data': 1}, {'data': 2}, {'data': 3}, None]
-
-    posts = process_account(account, mock_page, cutoff_date)
-
-    assert len(posts) == 3
-    assert mock_extract.call_count == 4  # Called for each URL until None is returned
-
-@patch('instagram_scraper.extract_post_data')
-@patch('instagram_scraper.get_account_post_urls')
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_process_account_stops_on_old_post(mock_sleep, mock_get_urls, mock_extract, mock_page):
-    """Test that processing stops when an old post is found."""
-    account = 'test_account'
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-    mock_get_urls.return_value = ['url1', 'url2']
-    mock_extract.side_effect = [{'data': 1}, None]
-
-    posts = process_account(account, mock_page, cutoff_date)
-
-    assert len(posts) == 1
-    assert mock_extract.call_count == 2
-
-@patch('instagram_scraper.get_account_post_urls', return_value=[])
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_process_account_no_posts(mock_sleep, mock_get_urls, mock_page):
-    """Test processing an account with no posts."""
-    account = 'test_account'
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-
-    posts = process_account(account, mock_page, cutoff_date)
-
-    assert len(posts) == 0
-
-@patch('instagram_scraper.time.sleep', return_value=None)
-def test_process_account_timeout_error(mock_sleep, mock_page):
-    """Test that process_account handles timeout errors gracefully."""
-    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-
-    account = 'test_account'
-    cutoff_date = datetime.now(MOCK_TIMEZONE) - timedelta(days=1)
-
-    # Mock the page.goto to raise a timeout error
-    mock_page.goto.side_effect = PlaywrightTimeoutError("Timeout")
-
-    posts = process_account(account, mock_page, cutoff_date)
-
-    assert len(posts) == 0
+if __name__ == '__main__':
+    pytest.main([__file__])

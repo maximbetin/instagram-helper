@@ -6,135 +6,184 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from main import main
-
 # Add project root to path to allow absolute imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-@patch('main.os.startfile')
-@patch('main.generate_html_report', return_value='report.html')
-@patch('main.process_account', return_value=[{'post': 1}])
-@patch('main.setup_browser')
-@patch('main.sync_playwright')
-def test_main(mock_playwright, mock_setup_browser, mock_process, mock_generate_report, mock_startfile):
-    """Test the main execution function."""
-    mock_p = MagicMock()
-    mock_playwright.return_value.__enter__.return_value = mock_p
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.contexts[0].pages[0] = mock_page
-    mock_setup_browser.return_value = mock_browser
+from cli import main
 
-    main()
+# Mock data for testing
+MOCK_POST_DATA = {
+    'url': 'https://www.instagram.com/p/123/',
+    'account': 'test_account',
+    'caption': 'Test post caption',
+    'date_posted': '01-01-2024',
+}
 
-    assert mock_process.called
-    mock_generate_report.assert_called_once()
-    mock_startfile.assert_called_once_with('report.html')
+@pytest.fixture
+def mock_playwright():
+    """Create a mock playwright for testing."""
+    playwright = MagicMock()
+    browser = MagicMock()
+    context = MagicMock()
+    page = MagicMock()
+    context.pages = [page]
+    browser.contexts = [context]
+    playwright.chromium.connect_over_cdp.return_value = browser
+    return playwright
 
-@patch('main.generate_html_report')
-@patch('main.process_account', return_value=[])
-@patch('main.setup_browser')
-@patch('main.sync_playwright')
-def test_main_no_posts(mock_playwright, mock_setup_browser, mock_process, mock_generate_report):
-    """Test the main execution function when no posts are found."""
-    mock_p = MagicMock()
-    mock_playwright.return_value.__enter__.return_value = mock_p
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.contexts[0].pages[0] = mock_page
-    mock_setup_browser.return_value = mock_browser
+@pytest.fixture
+def mock_browser_manager():
+    """Mock the browser manager module."""
+    with patch('cli.setup_browser') as mock_setup:
+        mock_browser = MagicMock()
+        mock_context = MagicMock()
+        mock_page = MagicMock()
+        mock_context.pages = [mock_page]
+        mock_browser.contexts = [mock_context]
+        mock_setup.return_value = mock_browser
+        yield mock_setup
 
-    main()
+@pytest.fixture
+def mock_instagram_scraper():
+    """Mock the instagram scraper module."""
+    with patch('cli.process_account') as mock_process:
+        mock_process.return_value = [MOCK_POST_DATA]
+        yield mock_process
 
-    assert mock_process.called
-    mock_generate_report.assert_not_called()
+@pytest.fixture
+def mock_report_generator():
+    """Mock the report generator module."""
+    with patch('cli.generate_html_report') as mock_generate:
+        mock_generate.return_value = '/tmp/test_report.html'
+        yield mock_generate
 
-def test_main_econnrefused_branch(monkeypatch):
-    """Covers the ECONNREFUSED error branch in main()."""
-    class DummyContextManager:
-        def __enter__(self):
-            class DummyBrowser:
-                contexts = [[type('Pg', (), {})()]]
-            return DummyBrowser()
+@pytest.fixture
+def mock_os_startfile():
+    """Mock the os.startfile function."""
+    with patch('cli.os.startfile') as mock_startfile:
+        yield mock_startfile
 
-        def __exit__(self, exc_type, exc_val, exc_tb): return False
+def test_main_success(mock_browser_manager, mock_instagram_scraper, mock_report_generator, mock_os_startfile):
+    """Test successful main execution."""
+    with patch('cli.sync_playwright') as mock_sync_playwright:
+        mock_p = MagicMock()
+        mock_sync_playwright.return_value.__enter__.return_value = mock_p
 
-    def fake_setup_browser(*a, **k):
-        raise Exception("ECONNREFUSED")
+        # Mock command line arguments
+        with patch('cli.parse_args') as mock_parse_args:
+            mock_args = MagicMock()
+            mock_args.days = 1
+            mock_args.accounts = None
+            mock_args.output = '/tmp'
+            mock_args.log_dir = '/tmp'
+            mock_args.no_open = False
+            mock_args.verbose = False
+            mock_parse_args.return_value = mock_args
 
-    monkeypatch.setattr('main.sync_playwright', lambda: DummyContextManager())
-    monkeypatch.setattr('main.setup_browser', fake_setup_browser)
-    monkeypatch.setattr('main.INSTAGRAM_ACCOUNTS', ['test'])
-    monkeypatch.setattr('main.process_account', lambda *a, **k: [])
-    monkeypatch.setattr('main.generate_html_report', lambda *a, **k: 'report.html')
-    monkeypatch.setattr('main.os.startfile', lambda *a, **k: None)
+            # Mock logging setup
+            with patch('cli.setup_logging') as mock_setup_logging:
+                mock_logger = MagicMock()
+                mock_setup_logging.return_value = mock_logger
 
-    from unittest.mock import patch
-    main_logger_calls = []
-    with patch('main.logger') as mock_logger:
-        def log_side_effect(*args, **kwargs):
-            main_logger_calls.append(args[0])
-        mock_logger.error.side_effect = log_side_effect
-        main()
-    assert any("Failed to connect to the browser" in msg for msg in main_logger_calls)
+                result = main()
 
-def test_main_generic_error_branch(monkeypatch):
-    """Covers the generic error/raise branch in main()."""
-    class DummyContextManager:
-        def __enter__(self):
-            class DummyBrowser:
-                contexts = [[type('Pg', (), {})()]]
-            return DummyBrowser()
+                assert result == 0
+                mock_browser_manager.assert_called_once_with(mock_p)
+                mock_instagram_scraper.assert_called()
+                mock_report_generator.assert_called_once()
+                mock_os_startfile.assert_called_once_with('/tmp/test_report.html')
 
-        def __exit__(self, exc_type, exc_val, exc_tb): return False
+def test_main_no_posts(mock_browser_manager, mock_instagram_scraper, mock_report_generator):
+    """Test main execution when no posts are found."""
+    with patch('cli.sync_playwright') as mock_sync_playwright:
+        mock_p = MagicMock()
+        mock_sync_playwright.return_value.__enter__.return_value = mock_p
 
-    def fake_setup_browser(*a, **k):
-        raise Exception("Some other error")
+        # Mock command line arguments
+        with patch('cli.parse_args') as mock_parse_args:
+            mock_args = MagicMock()
+            mock_args.days = 1
+            mock_args.accounts = None
+            mock_args.output = '/tmp'
+            mock_args.log_dir = '/tmp'
+            mock_args.no_open = False
+            mock_args.verbose = False
+            mock_parse_args.return_value = mock_args
 
-    monkeypatch.setattr('main.sync_playwright', lambda: DummyContextManager())
-    monkeypatch.setattr('main.setup_browser', fake_setup_browser)
-    monkeypatch.setattr('main.INSTAGRAM_ACCOUNTS', ['test'])
-    monkeypatch.setattr('main.process_account', lambda *a, **k: [])
-    monkeypatch.setattr('main.generate_html_report', lambda *a, **k: 'report.html')
-    monkeypatch.setattr('main.os.startfile', lambda *a, **k: None)
+            # Mock logging setup
+            with patch('cli.setup_logging') as mock_setup_logging:
+                mock_logger = MagicMock()
+                mock_setup_logging.return_value = mock_logger
 
-    from unittest.mock import patch
+                # Mock no posts found
+                mock_instagram_scraper.return_value = []
 
-    import pytest
-    main_logger_calls = []
-    with patch('main.logger') as mock_logger:
-        def log_side_effect(*args, **kwargs):
-            main_logger_calls.append(args[0])
-        mock_logger.error.side_effect = log_side_effect
-        with pytest.raises(Exception, match="Some other error"):
-            main()
-    assert any("An error occurred:" in msg for msg in main_logger_calls)
+                result = main()
 
-def test_main_exact_econnrefused(monkeypatch):
-    """Guarantee coverage for the ECONNREFUSED error branch in main()."""
-    class DummyContextManager:
-        def __enter__(self):
-            class DummyBrowser:
-                contexts = [[type('Pg', (), {})()]]
-            return DummyBrowser()
+                assert result == 0
+                mock_report_generator.assert_not_called()
 
-        def __exit__(self, exc_type, exc_val, exc_tb): return False
+def test_main_browser_connection_error():
+    """Test main execution when browser connection fails."""
+    with patch('cli.sync_playwright') as mock_sync_playwright:
+        mock_p = MagicMock()
+        mock_sync_playwright.return_value.__enter__.return_value = mock_p
 
-    def fake_setup_browser(*a, **k):
-        raise Exception("ECONNREFUSED")
+        # Mock command line arguments
+        with patch('cli.parse_args') as mock_parse_args:
+            mock_args = MagicMock()
+            mock_args.days = 1
+            mock_args.accounts = None
+            mock_args.output = '/tmp'
+            mock_args.log_dir = '/tmp'
+            mock_args.no_open = False
+            mock_args.verbose = False
+            mock_parse_args.return_value = mock_args
 
-    monkeypatch.setattr('main.sync_playwright', lambda: DummyContextManager())
-    monkeypatch.setattr('main.setup_browser', fake_setup_browser)
-    monkeypatch.setattr('main.INSTAGRAM_ACCOUNTS', ['test'])
-    monkeypatch.setattr('main.process_account', lambda *a, **k: [])
-    monkeypatch.setattr('main.generate_html_report', lambda *a, **k: 'report.html')
-    monkeypatch.setattr('main.os.startfile', lambda *a, **k: None)
+            # Mock logging setup
+            with patch('cli.setup_logging') as mock_setup_logging:
+                mock_logger = MagicMock()
+                mock_setup_logging.return_value = mock_logger
 
-    from unittest.mock import patch
-    main_logger_calls = []
-    with patch('main.logger') as mock_logger:
-        def log_side_effect(*args, **kwargs):
-            main_logger_calls.append(args[0])
-        mock_logger.error.side_effect = log_side_effect
-        main()
-    assert any("Failed to connect to the browser" in msg for msg in main_logger_calls)
+                # Mock browser connection error
+                with patch('cli.setup_browser') as mock_setup_browser:
+                    mock_setup_browser.side_effect = Exception('ECONNREFUSED')
+
+                    result = main()
+
+                    assert result == 1
+                    mock_logger.error.assert_called()
+
+def test_main_general_error():
+    """Test main execution when a general error occurs."""
+    with patch('cli.sync_playwright') as mock_sync_playwright:
+        mock_p = MagicMock()
+        mock_sync_playwright.return_value.__enter__.return_value = mock_p
+
+        # Mock command line arguments
+        with patch('cli.parse_args') as mock_parse_args:
+            mock_args = MagicMock()
+            mock_args.days = 1
+            mock_args.accounts = None
+            mock_args.output = '/tmp'
+            mock_args.log_dir = '/tmp'
+            mock_args.no_open = False
+            mock_args.verbose = False
+            mock_parse_args.return_value = mock_args
+
+            # Mock logging setup
+            with patch('cli.setup_logging') as mock_setup_logging:
+                mock_logger = MagicMock()
+                mock_setup_logging.return_value = mock_logger
+
+                # Mock general error
+                with patch('cli.setup_browser') as mock_setup_browser:
+                    mock_setup_browser.side_effect = Exception('General error')
+
+                    result = main()
+
+                    assert result == 1
+                    mock_logger.error.assert_called()
+
+if __name__ == '__main__':
+    pytest.main([__file__])

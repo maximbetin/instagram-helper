@@ -1,6 +1,7 @@
 """Command-line interface for Instagram Helper."""
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta
 
@@ -11,6 +12,7 @@ from config import INSTAGRAM_ACCOUNTS, LOG_DIR, OUTPUT_DIR, TIMEZONE
 from instagram_scraper import process_account
 from report_generator import generate_html_report
 from utils import setup_logging
+
 
 def parse_args():
     """Parse command line arguments."""
@@ -24,54 +26,66 @@ Examples:
   python cli.py --accounts gijon biodevas # Only fetch from specific accounts
   python cli.py --output ./reports        # Save reports to custom directory
   python cli.py --no-open                 # Don't automatically open the report
-        """
+        """,
     )
 
     parser.add_argument(
-        '--days', '-d',
+        "--days",
+        "-d",
         type=int,
         default=1,
-        help='Number of days back to fetch posts from (default: 1)'
+        help="Number of days back to fetch posts from (default: 1)",
     )
 
     parser.add_argument(
-        '--accounts', '-a',
-        nargs='+',
-        help='Specific Instagram accounts to fetch from (default: all configured accounts)'
+        "--accounts",
+        "-a",
+        nargs="+",
+        help="Specific Instagram accounts to fetch from (default: all configured accounts)",
     )
 
     parser.add_argument(
-        '--output', '-o',
+        "--output",
+        "-o",
         default=OUTPUT_DIR,
-        help=f'Output directory for reports (default: {OUTPUT_DIR})'
+        help=f"Output directory for reports (default: {OUTPUT_DIR})",
     )
 
     parser.add_argument(
-        '--log-dir',
+        "--log-dir",
         default=LOG_DIR,
-        help=f'Directory for log files (default: {LOG_DIR})'
+        help=f"Directory for log files (default: {LOG_DIR})",
     )
 
     parser.add_argument(
-        '--no-open',
-        action='store_true',
-        help='Do not automatically open the generated report'
+        "--no-open",
+        action="store_true",
+        help="Do not automatically open the generated report",
     )
 
     parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help='Enable verbose logging'
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
 
     return parser.parse_args()
+
+
+def open_report(report_path: str, logger) -> None:
+    """Open the generated report in the default browser."""
+    try:
+        os.startfile(report_path)
+        logger.info("Opening the HTML report...")
+    except OSError as e:
+        logger.warning(f"Could not automatically open report: {e}")
+        logger.info(f"Please open manually: {report_path}")
+
 
 def main():
     """Main CLI function."""
     args = parse_args()
 
     # Setup logging
-    log_level = 'DEBUG' if args.verbose else 'INFO'
+    log_level = "DEBUG" if args.verbose else "INFO"
     logger = setup_logging(log_dir=args.log_dir)
     logger.setLevel(log_level)
 
@@ -84,22 +98,27 @@ def main():
             page = browser.contexts[0].pages[0]
 
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=args.days)
-            logger.info(f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}.")
-            logger.info(f"Processing {len(accounts_to_process)} accounts: {', '.join(accounts_to_process)}")
+            logger.info(
+                f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}."
+            )
+            logger.info(
+                f"Processing {len(accounts_to_process)} accounts: {', '.join(accounts_to_process)}"
+            )
 
             all_posts = []
             for account in accounts_to_process:
-                all_posts.extend(process_account(account, page, cutoff_date))
+                posts = process_account(account, page, cutoff_date)
+                all_posts.extend(posts)
 
             if all_posts:
                 logger.info(f"Found {len(all_posts)} posts. Generating HTML report...")
-                template_path = 'templates/template.html'
-                report_path = generate_html_report(all_posts, cutoff_date, args.output, template_path)
+                template_path = "templates/template.html"
+                report_path = generate_html_report(
+                    all_posts, cutoff_date, args.output, template_path
+                )
 
                 if not args.no_open:
-                    logger.info("Opening the HTML report...")
-                    import os
-                    os.startfile(report_path)
+                    open_report(report_path, logger)
                 else:
                     logger.info(f"Report saved to: {report_path}")
             else:
@@ -116,6 +135,7 @@ def main():
         else:
             logger.error(f"An error occurred: {e}", exc_info=True)
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

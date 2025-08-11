@@ -14,11 +14,31 @@ if TYPE_CHECKING:
 
 logger = setup_logging(__name__)
 
+
 def setup_browser(playwright: "Playwright") -> Browser:
     """Launch and connect to the browser instance."""
-    logger.info(f"Starting the browser at page {INSTAGRAM_URL}...")
-    subprocess.Popen([BROWSER_PATH, f"--remote-debugging-port={BROWSER_DEBUG_PORT}", INSTAGRAM_URL])
-    logger.debug(f"Waiting {BROWSER_LOAD_DELAY / 1000} seconds for the browser to load...")
-    time.sleep(BROWSER_LOAD_DELAY / 1000)
-    logger.debug(f"Connecting to the browser at port {BROWSER_DEBUG_PORT}...")
-    return playwright.chromium.connect_over_cdp(f"http://localhost:{BROWSER_DEBUG_PORT}")
+    logger.info(f"Starting browser at {INSTAGRAM_URL}...")
+
+    try:
+        subprocess.Popen(
+            [
+                BROWSER_PATH,
+                f"--remote-debugging-port={BROWSER_DEBUG_PORT}",
+                INSTAGRAM_URL,
+            ]
+        )
+
+        logger.debug(f"Waiting {BROWSER_LOAD_DELAY / 1000}s for browser to load...")
+        time.sleep(BROWSER_LOAD_DELAY / 1000)
+
+        logger.debug(f"Connecting to browser at port {BROWSER_DEBUG_PORT}...")
+        return playwright.chromium.connect_over_cdp(
+            f"http://localhost:{BROWSER_DEBUG_PORT}"
+        )
+
+    except subprocess.SubprocessError as e:
+        logger.error(f"Failed to start browser: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to connect to browser: {e}")
+        raise

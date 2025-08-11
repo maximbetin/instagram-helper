@@ -2,18 +2,25 @@
 
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from config import (BROWSER_LOAD_TIMEOUT, INSTAGRAM_ACCOUNT_LOAD_DELAY, INSTAGRAM_MAX_POSTS_PER_ACCOUNT, INSTAGRAM_POST_LOAD_DELAY, INSTAGRAM_POST_LOAD_TIMEOUT,
-                    INSTAGRAM_URL, TIMEZONE)
+from config import (
+    BROWSER_LOAD_TIMEOUT,
+    INSTAGRAM_ACCOUNT_LOAD_DELAY,
+    INSTAGRAM_MAX_POSTS_PER_ACCOUNT,
+    INSTAGRAM_POST_LOAD_DELAY,
+    INSTAGRAM_POST_LOAD_TIMEOUT,
+    INSTAGRAM_URL,
+    TIMEZONE,
+)
 from utils import setup_logging
 
 logger = setup_logging(__name__)
 
-def get_account_post_urls(page: Page) -> List[str]:
+def get_account_post_urls(page: Page) -> list[str]:
     """Fetch all post URLs from a specific Instagram account page, preserving order."""
     post_urls = []
     seen_urls = set()
@@ -33,6 +40,7 @@ def get_account_post_urls(page: Page) -> List[str]:
             if full_url not in seen_urls:
                 post_urls.append(full_url)
                 seen_urls.add(full_url)
+
     return post_urls
 
 def get_post_caption(page: Page) -> str:
@@ -50,8 +58,8 @@ def get_post_date(page: Page) -> Optional[datetime]:
             return utc_datetime.astimezone(TIMEZONE)
     return None
 
-def extract_post_data(post_url: str, cutoff_date: datetime, account: str, page: Page, max_retries: int = 2) -> Optional[Dict]:
-    """Extracts the post data from the post URL with error handling and retries."""
+def extract_post_data(post_url: str, cutoff_date: datetime, account: str, page: Page, max_retries: int = 2) -> Optional[dict]:
+    """Extract post data from the post URL with error handling and retries."""
     for attempt in range(max_retries + 1):
         try:
             page.goto(post_url, wait_until="domcontentloaded", timeout=INSTAGRAM_POST_LOAD_TIMEOUT)
@@ -82,7 +90,7 @@ def extract_post_data(post_url: str, cutoff_date: datetime, account: str, page: 
 
     return None
 
-def process_account(account: str, page: Page, cutoff_date: datetime) -> List[Dict]:
+def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dict]:
     """Process a single Instagram account and return its recent posts."""
     logger.info(f"@{account}: Processing posts...")
 
@@ -97,7 +105,7 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> List[Dic
         logger.error(f"@{account}: Error loading account page: {e}")
         return []
 
-    logger.debug(f"@{account}: Fetching posts URLs...")
+    logger.debug(f"@{account}: Fetching post URLs...")
     post_urls = get_account_post_urls(page)
     if not post_urls:
         logger.warning(f"@{account}: No post URLs found.")
@@ -105,11 +113,9 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> List[Dic
 
     logger.debug(f"@{account}: Found {len(post_urls)} post URLs. Fetching post details...")
     account_posts = []
-    for i, post_url in enumerate(post_urls):
-        if i >= INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
-            logger.debug(f"@{account}: Reached max posts per account ({INSTAGRAM_MAX_POSTS_PER_ACCOUNT}).")
-            break
-        logger.debug(f"@{account}: Fetching post {i + 1}/{len(post_urls)}: {post_url}")
+
+    for i, post_url in enumerate(post_urls[:INSTAGRAM_MAX_POSTS_PER_ACCOUNT]):
+        logger.debug(f"@{account}: Fetching post {i + 1}/{min(len(post_urls), INSTAGRAM_MAX_POSTS_PER_ACCOUNT)}: {post_url}")
         post_data = extract_post_data(post_url, cutoff_date, account, page)
         if post_data:
             account_posts.append(post_data)

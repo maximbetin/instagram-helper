@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <title>Test Report</title>
+  </head>
 
-<head>
-  <title>Test Report</title>
-</head>
-
-<body>
-  <h1>Posts</h1>
-  <ul>
-    {% for post in posts %}
-    <li><a href="{{ post.url }}">{{ post.caption }}</a> on {{ post.date_posted }}</li>
-    {% endfor %}
-  </ul>
-</body>
-
+  <body>
+    <h1>Posts</h1>
+    <ul>
+      {% for post in posts %}
+      <li><a href="{{ post.url }}">{{ post.caption }}</a> on {{ post.date_posted }}</li>
+      {% endfor %}
+    </ul>
+  </body>
 </html>
