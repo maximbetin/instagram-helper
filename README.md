@@ -95,7 +95,7 @@ instagram-helper
 
 - Fetches posts from the last 3 days
 - Processes all configured Instagram accounts
-- Saves HTML reports and logs to `Desktop/IG Helper/`
+- Saves HTML reports and logs to `/mnt/c/Users/Maxim/Desktop/ig_helper/`
 - Automatically opens the generated report
 
 ### CLI Options
@@ -106,8 +106,8 @@ python cli.py [OPTIONS]
 Options:
   --days, -d INT          Number of days back to fetch posts from (default: 3)
   --accounts, -a TEXT...  Specific Instagram accounts to fetch from
-  --output, -o PATH       Output directory for reports (default: Desktop/IG Helper)
-  --log-dir PATH          Directory for log files (default: Desktop/IG Helper)
+  --output, -o PATH       Output directory for reports (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
+--log-dir PATH          Directory for log files (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
   --no-open               Do not automatically open the generated report
   --verbose, -v           Enable verbose logging
   --help                  Show this message and exit
@@ -116,7 +116,7 @@ Options:
 ### Examples
 
 ```bash
-# Use default settings (saves to Desktop/IG Helper folder)
+# Use default settings (saves to /mnt/c/Users/Maxim/Desktop/ig_helper folder)
 python cli.py
 
 # Fetch posts from last 3 days
@@ -289,7 +289,7 @@ Edit `config.py` to modify:
 - **Instagram Accounts**: List of usernames to fetch posts from (currently configured for Asturias
   cultural accounts)
 - **Browser Settings**: Browser path (default: Brave), debug port, timeouts
-- **Output Settings**: Output and log directories (default: Desktop/IG Helper)
+- **Output Settings**: Output and log directories (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
 
 ## Output
 
@@ -317,7 +317,7 @@ Reports and logs are automatically saved with the format:
 - HTML reports: `DD-MM-YYYY.html` (e.g., `19-12-2024.html`)
 - Log files: `DD-MM-YYYY.log` (e.g., `19-12-2024.log`)
 
-Both files are saved in the "IG Helper" folder on your Desktop by default.
+Both files are saved in the `/mnt/c/Users/Maxim/Desktop/ig_helper/` directory by default.
 
 ## Project Structure
 
