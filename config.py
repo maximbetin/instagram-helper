@@ -16,7 +16,6 @@ BROWSER_PATH = os.getenv(
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")
-INSTAGRAM_MAX_POST_AGE = int(os.getenv("INSTAGRAM_MAX_POST_AGE", "2"))  # days
 INSTAGRAM_POST_LOAD_DELAY = int(
     os.getenv("INSTAGRAM_POST_LOAD_DELAY", "3000")
 )  # milliseconds
@@ -29,6 +28,7 @@ INSTAGRAM_POST_LOAD_TIMEOUT = int(
 INSTAGRAM_ACCOUNT_LOAD_DELAY = int(
     os.getenv("INSTAGRAM_ACCOUNT_LOAD_DELAY", "3000")
 )  # milliseconds
+INSTAGRAM_RETRY_DELAY = int(os.getenv("INSTAGRAM_RETRY_DELAY", "2000"))  # milliseconds
 
 # Instagram accounts to track
 INSTAGRAM_ACCOUNTS = [
@@ -91,6 +91,8 @@ INSTAGRAM_ACCOUNTS = [
 ]
 
 # Output settings
-BASE_DIR = os.path.join(os.path.expanduser("~"), "Desktop", "IG Helper")
+BASE_DIR = os.getenv(
+    "BASE_DIR", os.path.join(os.path.expanduser("~"), "Desktop", "IG Helper")
+)
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", BASE_DIR)
 LOG_DIR = os.getenv("LOG_DIR", BASE_DIR)

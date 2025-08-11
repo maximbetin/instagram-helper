@@ -1,8 +1,10 @@
 """Command-line interface for Instagram Helper."""
 
 import argparse
+import logging
 import os
 import sys
+import webbrowser
 from datetime import datetime, timedelta
 
 from playwright.sync_api import sync_playwright
@@ -14,7 +16,7 @@ from report_generator import generate_html_report
 from utils import setup_logging
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Fetch recent Instagram posts and generate HTML reports",
@@ -70,17 +72,18 @@ Examples:
     return parser.parse_args()
 
 
-def open_report(report_path: str, logger) -> None:
+def open_report(report_path: str, logger: logging.Logger) -> None:
     """Open the generated report in the default browser."""
     try:
-        os.startfile(report_path)
+        # Use webbrowser module for cross-platform compatibility
+        webbrowser.open(f"file://{os.path.abspath(report_path)}")
         logger.info("Opening the HTML report...")
-    except OSError as e:
+    except Exception as e:
         logger.warning(f"Could not automatically open report: {e}")
         logger.info(f"Please open manually: {report_path}")
 
 
-def main():
+def main() -> int:
     """Main CLI function."""
     args = parse_args()
 

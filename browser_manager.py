@@ -2,20 +2,16 @@
 
 import subprocess
 import time
-from typing import TYPE_CHECKING
 
-from playwright.sync_api import Browser
+from playwright.sync_api import Browser, Playwright
 
 from config import BROWSER_DEBUG_PORT, BROWSER_LOAD_DELAY, BROWSER_PATH, INSTAGRAM_URL
 from utils import setup_logging
 
-if TYPE_CHECKING:
-    from playwright.sync_api import Playwright
-
 logger = setup_logging(__name__)
 
 
-def setup_browser(playwright: "Playwright") -> Browser:
+def setup_browser(playwright: Playwright) -> Browser:
     """Launch and connect to the browser instance."""
     logger.info(f"Starting browser at {INSTAGRAM_URL}...")
 

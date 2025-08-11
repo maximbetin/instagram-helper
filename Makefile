@@ -13,7 +13,7 @@ help:
 	@echo "  test           Run tests"
 	@echo "  test-cov       Run tests with coverage"
 	@echo "  lint           Run linting (ruff)"
-@echo "  format         Format code (ruff)"
+	@echo "  format         Format code (ruff)"
 	@echo "  clean          Clean build artifacts"
 	@echo ""
 	@echo "Usage:"
