@@ -2,6 +2,7 @@
 
 import subprocess
 import time
+from typing import Optional
 
 from playwright.sync_api import Browser, Playwright
 
@@ -21,6 +22,22 @@ from utils import setup_logging
 logger = setup_logging(__name__)
 
 
+def _detect_wsl_host_ip() -> Optional[str]:
+    """Return Windows host IP from inside WSL2 by reading /etc/resolv.conf.
+
+    Uses the first nameserver entry. Returns None if not found or on error.
+    """
+    try:
+        with open("/etc/resolv.conf", "r", encoding="utf-8") as resolv:
+            for line in resolv:
+                parts = line.strip().split()
+                if len(parts) >= 2 and parts[0] == "nameserver":
+                    return parts[1]
+    except Exception:
+        return None
+    return None
+
+
 def setup_browser(playwright: Playwright) -> Browser:
     """Launch or attach to a Chromium-based browser over CDP.
 
@@ -32,6 +49,15 @@ def setup_browser(playwright: Playwright) -> Browser:
     try:
         # Determine target host for CDP
         target_host = BROWSER_REMOTE_HOST if BROWSER_REMOTE_HOST else "localhost"
+
+        # In attach-only mode without explicit host, attempt WSL2 Windows host auto-detect
+        if BROWSER_ATTACH_ONLY and not BROWSER_REMOTE_HOST:
+            detected_ip = _detect_wsl_host_ip()
+            if detected_ip:
+                target_host = detected_ip
+                logger.info(
+                    f"Attach-only mode: detected Windows host IP {detected_ip} from /etc/resolv.conf"
+                )
         target_base = (
             f"{BROWSER_CONNECT_SCHEME}://{target_host}:{BROWSER_DEBUG_PORT}"
         )

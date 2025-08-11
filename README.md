@@ -140,23 +140,80 @@ python cli.py --verbose
 When running from WSL2, you can attach to an already-running Brave on Windows to reuse your
 logged-in session and cookies.
 
-1. Start Brave on Windows with DevTools port open (from WSL2):
+#### Expose DevTools from Windows Brave
 
-```bash
-/c/Program\ Files/BraveSoftware/Brave-Browser/Application/brave.exe \
-  --remote-debugging-port=9222 \
-  --remote-debugging-address=0.0.0.0 &
+There are two reliable options:
+
+1. Bind DevTools to all interfaces (simplest)
+
+   ```powershell
+   Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
+   & "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" \
+     --remote-debugging-port=9222 \
+     --remote-debugging-address=0.0.0.0
+   ```
+
+   Verify:
+
+   ```powershell
+   netstat -ano | findstr :9222
+   ```
+
+1. Keep loopback-only and add a Windows portproxy (safer)
+
+   - Start Brave on loopback:
+
+     ```powershell
+     Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
+      & "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" \
+        --remote-debugging-port=9222
+     ```
+
+   - Add a portproxy on the Windows vEthernet (WSL) IP (get it via `ipconfig`, usually 172.x.x.x):
+
+     ```powershell
+     netsh interface portproxy reset
+      netsh interface portproxy add v4tov4 ^
+        listenaddress=0.0.0.0 listenport=9222 ^
+        connectaddress=127.0.0.1 connectport=9222
+     netsh interface portproxy show all
+     ```
+
+   - Allow firewall (optional but recommended):
+
+     ```powershell
+      netsh advfirewall firewall add rule ^
+        name="Allow Brave DevTools 9222" dir=in action=allow ^
+        protocol=TCP localport=9222
+     ```
+
+#### Connect from WSL2 (recommended defaults)
+
+1. Start Brave on Windows with DevTools port open (can be started from WSL2 too):
+
+```powershell
+& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" `
+  --remote-debugging-port=9222 `
+  --remote-debugging-address=0.0.0.0
 ```
 
-2. Get the Windows host IP inside WSL2 and export environment variables for this project:
+2. Then in WSL2, run the tool normally. It will connect over CDP to the Windows Brave:
 
 ```bash
+export BROWSER_REMOTE_HOST=172.19.192.1
+python -u cli.py --days 3 -v
+```
+
+#### Get the Windows host IP inside WSL2 and export environment variables for this project
+
+```bash
+# Optional: The app auto-detects WSL and enables attach-only by default.
+# You can still set the host explicitly if needed:
 export WSL_HOST_IP=$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf)
-export BROWSER_REMOTE_HOST="$WSL_HOST_IP"
-export BROWSER_ATTACH_ONLY=true
+export BROWSER_REMOTE_HOST="$WSL_HOST_IP"  # optional override
 ```
 
-3. Run the tool normally. It will connect over CDP to the Windows Brave:
+1. Run the tool normally. It will connect over CDP to the Windows Brave:
 
 ```bash
 python cli.py
@@ -165,8 +222,33 @@ python cli.py
 Notes:
 
 - If you prefer to lock down the DevTools port, restrict it in Windows Firewall to your WSL IP only.
-- Leave `BROWSER_PATH` unset in this mode; the app will not spawn a local browser when
-  `BROWSER_ATTACH_ONLY=true` or when `BROWSER_REMOTE_HOST` is set.
+- When running inside WSL, the app defaults to attach-only mode to reuse your Windows browser
+  session. Leave `BROWSER_PATH` unset in this mode; the app will not spawn a local browser.
+- If `BROWSER_REMOTE_HOST` is not set and `BROWSER_ATTACH_ONLY=true`, the app will attempt to
+  auto-detect the Windows host IP from `/etc/resolv.conf`.
+
+#### Troubleshooting WSL2 attach
+
+1. Confirm Windows is listening:
+
+   ```powershell
+   netstat -ano | findstr :9222
+   ```
+
+1. From WSL2, probe the endpoint:
+
+   ```bash
+   curl "http://$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf):9222/json/version"
+   # or, if using portproxy on the vEthernet IP from Windows ipconfig (e.g., 172.19.192.1):
+   curl "http://172.19.192.1:9222/json/version"
+   ```
+
+1. If curl fails, check Windows Firewall and the portproxy configuration:
+
+   ```powershell
+   netsh interface portproxy show all
+   netsh advfirewall firewall show rule name="Allow Brave DevTools 9222"
+   ```
 
 ## Configuration
 
@@ -180,6 +262,9 @@ export BROWSER_DEBUG_PORT=9222
 export BROWSER_LOAD_DELAY=5000     # milliseconds
 export BROWSER_LOAD_TIMEOUT=15000  # milliseconds
 export BROWSER_PATH="/usr/bin/brave-browser"  # Or any Chromium-based browser
+export BROWSER_ATTACH_ONLY=true    # Attach to an existing browser (skip launching locally)
+export BROWSER_REMOTE_HOST="172.19.192.1"  # Windows vEthernet (WSL) IP or nameserver IP
+export BROWSER_CONNECT_SCHEME="http"       # http or ws (http is typical for Chromium-based)
 
 # Instagram settings
 export INSTAGRAM_POST_LOAD_DELAY=3000         # milliseconds
