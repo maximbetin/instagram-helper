@@ -14,7 +14,6 @@ from config import (
     BROWSER_PATH,
     BROWSER_REMOTE_HOST,
     INSTAGRAM_URL,
-    LOCALHOST_URL,
     SECONDS_IN_MS,
 )
 from utils import setup_logging
@@ -28,13 +27,13 @@ def _detect_wsl_host_ip() -> Optional[str]:
     Uses the first nameserver entry. Returns None if not found or on error.
     """
     try:
-        with open("/etc/resolv.conf", "r", encoding="utf-8") as resolv:
+        with open("/etc/resolv.conf", encoding="utf-8") as resolv:
             for line in resolv:
                 parts = line.strip().split()
                 if len(parts) >= 2 and parts[0] == "nameserver":
                     return parts[1]
     except Exception:
-        return None
+        pass
     return None
 
 
@@ -58,9 +57,7 @@ def setup_browser(playwright: Playwright) -> Browser:
                 logger.info(
                     f"Attach-only mode: detected Windows host IP {detected_ip} from /etc/resolv.conf"
                 )
-        target_base = (
-            f"{BROWSER_CONNECT_SCHEME}://{target_host}:{BROWSER_DEBUG_PORT}"
-        )
+        target_base = f"{BROWSER_CONNECT_SCHEME}://{target_host}:{BROWSER_DEBUG_PORT}"
 
         if not BROWSER_ATTACH_ONLY and target_host == "localhost":
             # Attempt to launch a local browser only when attaching to localhost

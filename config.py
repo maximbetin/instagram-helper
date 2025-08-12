@@ -24,6 +24,7 @@ BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
 BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # milliseconds
 BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
 
+
 def _is_running_in_wsl() -> bool:
     """Detect if the process is running inside WSL/WSL2.
 
@@ -32,7 +33,7 @@ def _is_running_in_wsl() -> bool:
     try:
         for probe in ("/proc/sys/kernel/osrelease", "/proc/version"):
             if os.path.exists(probe):
-                with open(probe, "r", encoding="utf-8", errors="ignore") as f:
+                with open(probe, encoding="utf-8", errors="ignore") as f:
                     content = f.read().lower()
                     if "microsoft" in content or "wsl" in content:
                         return True
@@ -143,8 +144,6 @@ INSTAGRAM_ACCOUNTS = [
 ]
 
 # Output settings
-BASE_DIR = os.getenv(
-    "BASE_DIR", "/mnt/c/Users/Maxim/Desktop/ig_helper"
-)
+BASE_DIR = os.getenv("BASE_DIR", "/mnt/c/Users/Maxim/Desktop/ig_helper")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", BASE_DIR)
 LOG_DIR = os.getenv("LOG_DIR", BASE_DIR)

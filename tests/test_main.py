@@ -240,16 +240,17 @@ def test_generate_html_report(
     mock_file.write.assert_called_once()
 
 
-def test_setup_browser() -> None:
+@patch("browser_manager.BROWSER_ATTACH_ONLY", False)
+@patch("subprocess.Popen")
+@patch("time.sleep")
+def test_setup_browser(mock_sleep: MagicMock, mock_popen: MagicMock) -> None:
     """Test browser setup."""
     mock_playwright = MagicMock()
     mock_browser = MagicMock()
     mock_playwright.chromium.connect_over_cdp.return_value = mock_browser
 
-    with patch("subprocess.Popen") as mock_popen:
-        with patch("time.sleep"):
-            result = setup_browser(mock_playwright)
+    result = setup_browser(mock_playwright)
 
-            assert result is not None
-            mock_popen.assert_called_once()
-            mock_playwright.chromium.connect_over_cdp.assert_called_once()
+    assert result is not None
+    mock_popen.assert_called_once()
+    mock_playwright.chromium.connect_over_cdp.assert_called_once()

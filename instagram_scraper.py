@@ -27,69 +27,83 @@ def debug_page_structure(page: Page, account: str) -> None:
     """Debug function to analyze the current page structure and help find the right selectors."""
     try:
         logger.debug(f"@{account}: === PAGE STRUCTURE DEBUG ===")
-        
-        # Check for common Instagram elements
-        article_count = len(page.query_selector_all("article"))
-        h1_count = len(page.query_selector_all("h1"))
-        time_count = len(page.query_selector_all("time"))
-        ul_count = len(page.query_selector_all("ul"))
-        li_count = len(page.query_selector_all("li"))
-        
-        logger.debug(f"@{account}: Found {article_count} articles, {h1_count} h1 elements, {time_count} time elements")
-        logger.debug(f"@{account}: Found {ul_count} ul elements, {li_count} li elements")
-        
-        # Look for elements that might contain captions
-        caption_candidates = page.query_selector_all("h1, h2, h3, p, span, div")
-        caption_texts = []
-        
-        for i, element in enumerate(caption_candidates[:10]):  # Check first 10 elements
-            try:
-                text = element.inner_text().strip()
-                if text and len(text) > 10 and len(text) < 500:  # Reasonable caption length
-                    tag_name = element.evaluate("el => el.tagName.toLowerCase()")
-                    caption_texts.append(f"{tag_name}: '{text[:100]}...'")
-            except Exception:
-                continue
-        
-        if caption_texts:
-            logger.debug(f"@{account}: Potential caption elements:")
-            for text in caption_texts[:5]:  # Show first 5
-                logger.debug(f"@{account}:   {text}")
-        
-        # Look for time elements
-        time_elements = page.query_selector_all("time")
-        for i, time_elem in enumerate(time_elements[:3]):
-            try:
-                datetime_attr = time_elem.get_attribute("datetime")
-                text_content = time_elem.inner_text().strip()
-                logger.debug(f"@{account}: Time element {i+1}: datetime='{datetime_attr}', text='{text_content}'")
-            except Exception as e:
-                logger.debug(f"@{account}: Could not read time element {i+1}: {e}")
-        
-        # Save page HTML for manual analysis if debug is enabled
-        try:
-            import os
-            from datetime import datetime
-            
-            debug_dir = os.path.join(os.getcwd(), "debug_html")
-            os.makedirs(debug_dir, exist_ok=True)
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{account}_{timestamp}.html"
-            filepath = os.path.join(debug_dir, filename)
-            
-            html_content = page.content()
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(html_content)
-            
-            logger.debug(f"@{account}: Saved debug HTML to: {filepath}")
-        except Exception as e:
-            logger.debug(f"@{account}: Failed to save debug HTML: {e}")
-        
+        _log_element_counts(page, account)
+        _log_potential_captions(page, account)
+        _log_time_elements(page, account)
+        _save_debug_html(page, account)
         logger.debug(f"@{account}: === END DEBUG ===")
-        
     except Exception as e:
         logger.debug(f"@{account}: Debug function failed: {e}")
+
+
+def _log_element_counts(page: Page, account: str) -> None:
+    """Log counts of common Instagram page elements."""
+    article_count = len(page.query_selector_all("article"))
+    h1_count = len(page.query_selector_all("h1"))
+    time_count = len(page.query_selector_all("time"))
+    ul_count = len(page.query_selector_all("ul"))
+    li_count = len(page.query_selector_all("li"))
+
+    logger.debug(
+        f"@{account}: Found {article_count} articles, {h1_count} h1 elements, {time_count} time elements"
+    )
+    logger.debug(f"@{account}: Found {ul_count} ul elements, {li_count} li elements")
+
+
+def _log_potential_captions(page: Page, account: str) -> None:
+    """Log potential caption elements found on the page."""
+    caption_candidates = page.query_selector_all("h1, h2, h3, p, span, div")
+    caption_texts = []
+
+    for element in caption_candidates[:10]:  # Check first 10 elements
+        try:
+            text = element.inner_text().strip()
+            if text and 10 < len(text) < 500:  # Reasonable caption length
+                tag_name = element.evaluate("el => el.tagName.toLowerCase()")
+                caption_texts.append(f"{tag_name}: '{text[:100]}...'")
+        except Exception:
+            continue
+
+    if caption_texts:
+        logger.debug(f"@{account}: Potential caption elements:")
+        for text in caption_texts[:5]:  # Show first 5
+            logger.debug(f"@{account}:   {text}")
+
+
+def _log_time_elements(page: Page, account: str) -> None:
+    """Log time elements found on the page."""
+    time_elements = page.query_selector_all("time")
+    for i, time_elem in enumerate(time_elements[:3]):
+        try:
+            datetime_attr = time_elem.get_attribute("datetime")
+            text_content = time_elem.inner_text().strip()
+            logger.debug(
+                f"@{account}: Time element {i + 1}: datetime='{datetime_attr}', text='{text_content}'"
+            )
+        except Exception as e:
+            logger.debug(f"@{account}: Could not read time element {i + 1}: {e}")
+
+
+def _save_debug_html(page: Page, account: str) -> None:
+    """Save page HTML for manual analysis if debug is enabled."""
+    try:
+        import os
+        from datetime import datetime
+
+        debug_dir = os.path.join(os.getcwd(), "debug_html")
+        os.makedirs(debug_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{account}_{timestamp}.html"
+        filepath = os.path.join(debug_dir, filename)
+
+        html_content = page.content()
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        logger.debug(f"@{account}: Saved debug HTML to: {filepath}")
+    except Exception as e:
+        logger.debug(f"@{account}: Failed to save debug HTML: {e}")
 
 
 def _handle_scraping_error(
@@ -121,12 +135,12 @@ def get_account_post_urls(page: Page) -> list[str]:
         "a[href*='/reel/']",  # Reel links
         "a",  # All links as fallback
     ]
-    
+
     for selector in link_selectors:
         try:
             links = page.query_selector_all(selector)
             logger.debug(f"Found {len(links)} links with selector: {selector}")
-            
+
             for link in links:
                 post_url = link.get_attribute("href")
                 if post_url and any(path in post_url for path in ["/p/", "/reel/"]):
@@ -141,11 +155,11 @@ def get_account_post_urls(page: Page) -> list[str]:
                         post_urls.append(full_url)
                         seen_urls.add(full_url)
                         logger.debug(f"Found post URL: {full_url}")
-            
+
             # If we found posts with this selector, no need to try others
             if post_urls:
                 break
-                
+
         except Exception as e:
             logger.debug(f"Selector {selector} failed: {e}")
             continue
@@ -158,43 +172,15 @@ def get_post_caption(page: Page) -> str:
     """Extract post's caption from Instagram post."""
     # Try multiple selectors for caption - Instagram changes their HTML structure frequently
     caption_selectors = [
-        # Based on the xPath you provided: /html/body/div[7]/div[1]/div/div[3]/div/div/div/div/div[2]/div/article/div/div[2]/div/div/div[2]/div[1]/ul/div[1]/li/div/div/div[2]/div[1]/h1
-        "article div div div div div ul div li div div div div h1",  # More specific path
-        "article div div div div div ul div li div div div div h1",  # Simplified version
-        "article ul div li div div div div h1",  # Even more simplified
-        "article ul li div div div div h1",  # Further simplified
-        "article div div div div h1",  # Generic article path
-        "div[role='button'] h1",  # More specific h1 within button
-        "article h1",  # h1 within article
         "div[data-testid='post-caption'] h1",  # Instagram's test ID
         "div[data-testid='post-caption'] span",  # Alternative caption format
-        "article div[role='button'] h1",  # h1 within button in article
         "div[data-testid='post-caption'] div",  # Another caption format
+        "article h1",  # h1 within article
+        "div[role='button'] h1",  # More specific h1 within button
         "h1",  # Generic h1 (fallback)
     ]
-    
-    # Also try to find elements by looking for text that looks like a caption
-    try:
-        # Look for elements with substantial text content that might be captions
-        all_elements = page.query_selector_all("*")
-        for element in all_elements:
-            try:
-                text = element.inner_text().strip()
-                # Look for text that's likely a caption (substantial length, not just navigation)
-                if (text and 
-                    10 < len(text) < 1000 and 
-                    not any(skip in text.lower() for skip in ['follow', 'like', 'comment', 'share', 'save', 'more'])):
-                    
-                    tag_name = element.evaluate("el => el.tagName.toLowerCase()")
-                    # If it's an h1, h2, h3, p, or span, it's more likely to be a caption
-                    if tag_name in ['h1', 'h2', 'h3', 'p', 'span', 'div']:
-                        logger.debug(f"Found potential caption in {tag_name}: '{text[:100]}...'")
-                        return text
-            except Exception:
-                continue
-    except Exception as e:
-        logger.debug(f"Alternative caption search failed: {e}")
-    
+
+    # Try selectors first
     for selector in caption_selectors:
         try:
             caption_element = page.query_selector(selector)
@@ -205,43 +191,79 @@ def get_post_caption(page: Page) -> str:
         except Exception as e:
             logger.debug(f"Selector {selector} failed: {e}")
             continue
-    
+
+    # Fallback: look for elements with substantial text content
+    caption = _find_caption_by_text_content(page)
+    if caption:
+        return caption
+
     logger.warning("Could not find post caption with any selector")
+    return ""
+
+
+def _find_caption_by_text_content(page: Page) -> str:
+    """Find caption by looking for elements with substantial text content."""
+    try:
+        # Look for elements with substantial text content that might be captions
+        all_elements = page.query_selector_all("*")
+        for element in all_elements:
+            try:
+                text = element.inner_text().strip()
+                # Look for text that's likely a caption (substantial length, not just navigation)
+                if (
+                    text
+                    and 10 < len(text) < 1000
+                    and not any(
+                        skip in text.lower()
+                        for skip in [
+                            "follow",
+                            "like",
+                            "comment",
+                            "share",
+                            "save",
+                            "more",
+                        ]
+                    )
+                ):
+                    tag_name = element.evaluate("el => el.tagName.toLowerCase()")
+                    # If it's an h1, h2, h3, p, or span, it's more likely to be a caption
+                    if tag_name in ["h1", "h2", "h3", "p", "span", "div"]:
+                        logger.debug(
+                            f"Found potential caption in {tag_name}: '{text[:100]}...'"
+                        )
+                        return text
+            except Exception:
+                continue
+    except Exception as e:
+        logger.debug(f"Alternative caption search failed: {e}")
+
     return ""
 
 
 def get_post_date(page: Page) -> Optional[datetime]:
     """Extract post's date from Instagram post page."""
-    # Try multiple selectors for date - Instagram changes their HTML structure frequently
     date_selectors = [
         "time[datetime]",  # Standard time element with datetime attribute
         "time",  # Any time element
-        "a[href*='/p/'] time[datetime]",  # Time within post link
-        "article time[datetime]",  # Time within article
         "div[data-testid='post-timestamp'] time[datetime]",  # Instagram's test ID
         "div[data-testid='post-timestamp']",  # Alternative timestamp format
     ]
-    
+
     for selector in date_selectors:
         try:
             date_element = page.query_selector(selector)
             if date_element:
-                # Try to get datetime attribute first
                 datetime_attr = date_element.get_attribute("datetime")
                 if datetime_attr:
-                    utc_datetime = datetime.fromisoformat(datetime_attr.replace("Z", "+00:00"))
+                    utc_datetime = datetime.fromisoformat(
+                        datetime_attr.replace("Z", "+00:00")
+                    )
                     logger.debug(f"Found date using selector: {selector}")
                     return utc_datetime.astimezone(TIMEZONE)
-                
-                # Fallback: try to get text content and parse it
-                date_text = date_element.inner_text().strip()
-                if date_text:
-                    logger.debug(f"Found date text using selector {selector}: {date_text}")
-                    # You might need to add date parsing logic here for text-based dates
         except Exception as e:
             logger.debug(f"Date selector {selector} failed: {e}")
             continue
-    
+
     logger.warning("Could not find post date with any selector")
     return None
 
@@ -282,9 +304,6 @@ def extract_post_data(
             else:
                 _handle_scraping_error(account, f"loading post {post_url}", e)
                 return None
-        except (ValueError, OSError) as e:
-            _handle_scraping_error(account, f"loading post {post_url}", e)
-            return None
         except Exception as e:
             _handle_scraping_error(account, f"loading post {post_url}", e)
             return None
@@ -304,12 +323,6 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
             timeout=BROWSER_LOAD_TIMEOUT,
         )
         time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / SECONDS_IN_MS)
-    except PlaywrightTimeoutError as e:
-        _handle_scraping_error(account, "loading account page", e)
-        return []
-    except (ValueError, OSError) as e:
-        _handle_scraping_error(account, "loading account page", e)
-        return []
     except Exception as e:
         _handle_scraping_error(account, "loading account page", e)
         return []
