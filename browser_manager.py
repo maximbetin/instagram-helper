@@ -72,16 +72,18 @@ def _launch_local_browser(
             f"Waiting {app_settings.BROWSER_LOAD_DELAY / 1000:.1f}s for browser..."
         )
         time.sleep(app_settings.BROWSER_LOAD_DELAY / 1000)
-        
+
         # Try to connect to the newly launched browser
         connect_url = (
             f"{app_settings.BROWSER_CONNECT_SCHEME}://"
             f"{app_settings.BROWSER_REMOTE_HOST}:{app_settings.BROWSER_DEBUG_PORT}"
         )
-        
+
         try:
             browser = playwright.chromium.connect_over_cdp(connect_url)
-            logger.info(f"Successfully connected to newly launched browser at {connect_url}")
+            logger.info(
+                f"Successfully connected to newly launched browser at {connect_url}"
+            )
             return browser
         except Exception as e:
             if "ECONNREFUSED" in str(e):
@@ -92,7 +94,7 @@ def _launch_local_browser(
             else:
                 logger.error(f"Failed to connect to newly launched browser: {e}")
             return None
-            
+
     except Exception as e:
         logger.error(f"Failed to launch local browser: {e}")
         return None
@@ -140,8 +142,7 @@ def setup_browser(playwright: Playwright) -> Browser:
 
     # 2. Fallback to Playwright-managed Chromium
     logger.warning(
-        "Could not launch a local browser. "
-        "Falling back to Playwright-managed Chromium."
+        "Could not launch a local browser. Falling back to Playwright-managed Chromium."
     )
     try:
         browser = _launch_playwright_chromium(playwright, settings)

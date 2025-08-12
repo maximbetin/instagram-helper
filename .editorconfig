@@ -10,13 +10,13 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-# Python files
+# Python files - aligned with ruff configuration (line-length = 88)
 [*.py]
 indent_style = space
 indent_size = 4
 max_line_length = 88
 
-# Python test files
+# Python test files - same as Python files
 [tests/*.py]
 indent_style = space
 indent_size = 4

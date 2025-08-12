@@ -126,13 +126,13 @@ def parse_args() -> argparse.Namespace:
         default=settings.LOG_DIR,
         help=f"Directory for log files (default: {settings.LOG_DIR})",
     )
-    
+
     parser.add_argument(
         "--headless",
         action="store_true",
         help="Run the browser in headless mode (no GUI).",
     )
-    
+
     return parser.parse_args()
 
 
