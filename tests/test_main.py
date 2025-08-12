@@ -1,6 +1,6 @@
 """Tests for main functionality."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +20,7 @@ MOCK_POST_DATA = {
     "url": "https://www.instagram.com/p/123/",
     "account": "test_account",
     "caption": "Test post caption",
-    "date_posted": datetime.now(timezone.utc),
+    "date_posted": datetime.now(UTC),
 }
 
 MOCK_ACCOUNT_POSTS = [MOCK_POST_DATA]
@@ -117,7 +117,7 @@ def test_get_post_date_no_element(mock_page: MagicMock) -> None:
 @patch("time.sleep")
 def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) -> None:
     """Test successful post data extraction."""
-    cutoff_date = datetime(2023, 12, 31, tzinfo=timezone.utc)
+    cutoff_date = datetime(2023, 12, 31, tzinfo=UTC)
 
     # Mock page.goto to not raise exceptions
     mock_page.goto.return_value = None
@@ -150,7 +150,7 @@ def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) 
 
 def test_extract_post_data_old_post(mock_page: MagicMock) -> None:
     """Test post data extraction for old posts."""
-    cutoff_date = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    cutoff_date = datetime(2024, 1, 2, tzinfo=UTC)
 
     # Mock caption and date elements
     mock_caption = MagicMock()
@@ -177,7 +177,7 @@ def test_extract_post_data_old_post(mock_page: MagicMock) -> None:
 
 def test_process_account_success(mock_page: MagicMock) -> None:
     """Test successful account processing."""
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
+    cutoff_date = datetime.now(UTC) - timedelta(days=1)
 
     # Mock successful page load and post URLs
     mock_page.goto.return_value = None
@@ -191,7 +191,7 @@ def test_process_account_success(mock_page: MagicMock) -> None:
 
 def test_process_account_failure(mock_page: MagicMock) -> None:
     """Test account processing failure."""
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
+    cutoff_date = datetime.now(UTC) - timedelta(days=1)
 
     # Mock page load failure
     mock_page.goto.side_effect = Exception("Connection error")
@@ -229,7 +229,7 @@ def test_generate_html_report(
     mock_env_class.return_value = mock_env
 
     posts = [MOCK_POST_DATA]
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=1)
+    cutoff_date = datetime.now(UTC) - timedelta(days=1)
 
     result = generate_html_report(posts, cutoff_date, "/tmp", "templates/template.html")
 

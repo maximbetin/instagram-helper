@@ -22,7 +22,7 @@ stylized HTML report with global date sorting and corresponding links.
 
 ## Requirements
 
-- **Python**: 3.10 or higher
+- **Python**: 3.12 or higher
 - **Operating System**: Windows, macOS, or Linux (including WSL2)
 - **Browser**: Brave, Chrome, or Chromium (for Playwright automation)
 
@@ -313,7 +313,7 @@ The project uses GitHub Actions for automated testing and quality assurance.
 
 ### CI Job
 
-- **Matrix Testing**: Runs against Python 3.10, 3.11, and 3.12
+- **Python Version**: Tests against Python 3.12
 - **Quality Checks**: Linting (ruff), type checking (mypy), tests (pytest)
 - **Coverage**: Reports uploaded to Codecov
 
@@ -392,7 +392,7 @@ instagram-helper/
 
 3. **Package Installation Issues**:
    - Ensure virtual environment is activated
-   - Check Python version compatibility (3.10+)
+   - Check Python version compatibility (3.12+)
    - Verify all dependencies are available
 
 ### Debug Mode
