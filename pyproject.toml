@@ -41,6 +41,7 @@ dependencies = [
 # Development dependencies - for development, testing, and code quality
 dev = [
     "pytest>=7.4.0",           # Testing framework
+    "pytest-cov>=4.1.0",       # Coverage reporting for pytest
     "freezegun>=1.4.0",        # Time-freezing utility used in tests
     "ruff>=0.1.0",             # Code formatting and linting
     "mypy>=1.5.0",             # Static type checking
@@ -49,6 +50,7 @@ dev = [
 # Testing dependencies - for running tests only
 test = [
     "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",       # Coverage reporting for pytest
     "freezegun>=1.4.0",
 ]
 
@@ -89,6 +91,31 @@ addopts = "-v --tb=short --strict-markers"  # Default pytest options
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+]
+
+# Coverage configuration for pytest-cov
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "venv/*",
+    "build/*",
+    "__pycache__/*",
+    ".pytest_cache/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
 
 # Ruff configuration for code formatting and linting
