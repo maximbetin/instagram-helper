@@ -40,9 +40,7 @@ DATE_SELECTORS = [
 
 # Constants for post link detection
 POST_PATH_PATTERNS = ["/p/", "/reel/"]
-SKIP_TEXT_PATTERNS = [
-    "follow", "like", "comment", "share", "save", "more"
-]
+SKIP_TEXT_PATTERNS = ["follow", "like", "comment", "share", "save", "more"]
 
 
 def _handle_scraping_error(
@@ -141,9 +139,7 @@ def _find_caption_by_text_content(page: Page) -> str:
                 if (
                     text
                     and 10 < len(text) < 1000
-                    and not any(
-                        skip in text.lower() for skip in SKIP_TEXT_PATTERNS
-                    )
+                    and not any(skip in text.lower() for skip in SKIP_TEXT_PATTERNS)
                 ):
                     tag_name = element.evaluate("el => el.tagName.toLowerCase()")
                     # If it's an h1, h2, h3, p, or span, it's more likely to be a caption

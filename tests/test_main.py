@@ -236,18 +236,36 @@ def test_generate_html_report(
     mock_file.write.assert_called_once()
 
 
-def test_setup_browser(mock_playwright: MagicMock) -> None:
+@patch("os.getenv")
+@patch("os.path.exists")
+def test_setup_browser(mock_exists: MagicMock, mock_getenv: MagicMock, mock_playwright: MagicMock) -> None:
     """Test browser setup."""
     mock_browser = MagicMock()
     mock_playwright.chromium.launch.return_value = mock_browser
+    
+    # Mock environment variables - no BROWSER_PATH set
+    mock_getenv.side_effect = lambda key, default=None: {
+        "BROWSER_DEBUG_PORT": "9222",
+        "BROWSER_PATH": None
+    }.get(key, default)
+    
+    # Mock file existence check - Brave path doesn't exist
+    mock_exists.return_value = False
+    
+    # Mock the connection attempt to fail, so it falls back to launching Chromium
+    mock_playwright.chromium.connect_over_cdp.side_effect = Exception("Connection failed")
 
     result = setup_browser(mock_playwright)
 
     assert result is not None
+    # Should have tried to connect first
+    mock_playwright.chromium.connect_over_cdp.assert_called_once_with("http://localhost:9222")
+    # Then should have launched Chromium as fallback
     mock_playwright.chromium.launch.assert_called_once_with(
         headless=False,
         args=[
             "--no-sandbox",
             "--disable-dev-shm-usage",
-        ]
+            "--remote-debugging-port=9222",
+        ],
     )

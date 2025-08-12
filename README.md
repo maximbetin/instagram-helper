@@ -116,12 +116,27 @@ python cli.py --verbose
 
 ## WSL2 Integration
 
-When running from WSL2, you can attach to an already-running Brave on Windows to reuse your
-logged-in session and cookies.
+When running from WSL2, you can connect to an already-running Brave browser on Windows to reuse your
+logged-in session and cookies. This is the recommended approach.
 
-### Expose DevTools from Windows Brave
+### Start Brave with Remote Debugging
 
-**Option 1: Bind DevTools to all interfaces (simplest)**:
+**Option 1: Use the provided batch file (easiest)**:
+
+1. Double-click `start_brave_debug.bat` in Windows
+2. Keep the Brave window open while running the script
+
+**Option 2: Manual command**:
+
+```powershell
+# Close all Brave instances first
+Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
+
+# Start Brave with remote debugging enabled
+& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222
+```
+
+**Option 3: Bind to all interfaces (if you need external access)**:
 
 ```powershell
 Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
@@ -130,44 +145,17 @@ Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
   --remote-debugging-address=0.0.0.0
 ```
 
-**Option 2: Keep loopback-only and add Windows portproxy (safer)**:
-
-1. Start Brave on loopback:
-
-   ```powershell
-   Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
-   & "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" \
-     --remote-debugging-port=9222
-   ```
-
-2. Add portproxy on the Windows vEthernet (WSL) IP:
-
-   ```powershell
-   netsh interface portproxy reset
-   netsh interface portproxy add v4tov4 ^
-     listenaddress=0.0.0.0 listenport=9222 ^
-     connectaddress=127.0.0.1 connectport=9222
-   ```
-
-3. Allow firewall (optional but recommended):
-
-   ```powershell
-   netsh advfirewall firewall add rule ^
-     name="Allow Brave DevTools 9222" dir=in action=allow ^
-     protocol=TCP localport=9222
-   ```
-
 ### Connect from WSL2
 
-1. Start Brave on Windows with DevTools port open
-2. Run the tool from WSL2 - it will auto-detect and connect:
+1. Start Brave on Windows with remote debugging enabled (see above)
+2. Run the tool from WSL2 - it will automatically connect:
 
    ```bash
    python cli.py
    ```
 
-The app auto-detects WSL and enables attach-only mode by default. It will attempt to auto-detect the
-Windows host IP from `/etc/resolv.conf`.
+The app will first try to connect to the existing Brave instance, then fall back to launching
+Chromium if needed.
 
 ### Troubleshooting WSL2
 
@@ -177,13 +165,14 @@ Windows host IP from `/etc/resolv.conf`.
    netstat -ano | findstr :9222
    ```
 
-2. From WSL2, probe the endpoint:
+2. From WSL2, test the connection:
 
    ```bash
-   curl "http://$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf):9222/json/version"
+   curl "http://localhost:9222/json/version"
    ```
 
-3. Check Windows Firewall and portproxy configuration if needed.
+3. Make sure Brave is running with the `--remote-debugging-port=9222` flag
+4. Check Windows Firewall if using external binding
 
 ## Configuration
 
@@ -194,10 +183,8 @@ Windows host IP from `/etc/resolv.conf`.
 export BROWSER_DEBUG_PORT=9222
 export BROWSER_LOAD_DELAY=5000
 export BROWSER_LOAD_TIMEOUT=15000
-export BROWSER_PATH="/usr/bin/brave-browser"
-export BROWSER_ATTACH_ONLY=true
-export BROWSER_REMOTE_HOST="172.19.192.1"
-export BROWSER_CONNECT_SCHEME="http"
+# BROWSER_PATH is only needed if not using remote debugging
+# export BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
 
 # Instagram settings
 export INSTAGRAM_POST_LOAD_DELAY=3000

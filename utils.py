@@ -44,6 +44,7 @@ def setup_logging(
             os.makedirs(log_dir, exist_ok=True)
 
             from datetime import datetime
+
             log_filename = f"{datetime.now().strftime('%d-%m-%Y')}.log"
             log_filepath = os.path.join(log_dir, log_filename)
 
