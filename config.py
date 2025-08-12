@@ -94,7 +94,6 @@ class Settings:
     INSTAGRAM_URL: str = "https://www.instagram.com/"
     INSTAGRAM_POST_LOAD_TIMEOUT: int = 10000
     INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 5
-    FILE_PROTOCOL: str = "file:///"
 
     def __post_init__(self) -> None:
         """Performs validation after the object has been initialized.
@@ -141,6 +140,58 @@ class Settings:
             self, "OUTPUT_DIR", Path(os.getenv("OUTPUT_DIR", self.BASE_DIR))
         )
         object.__setattr__(self, "LOG_DIR", Path(os.getenv("LOG_DIR", self.BASE_DIR)))
+        object.__setattr__(
+            self, "TEMPLATE_PATH", os.getenv("TEMPLATE_PATH", self.TEMPLATE_PATH)
+        )
+
+        # Apply additional browser-related overrides
+        object.__setattr__(
+            self,
+            "BROWSER_START_URL",
+            os.getenv("BROWSER_START_URL", self.BROWSER_START_URL),
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_LOAD_DELAY",
+            int(os.getenv("BROWSER_LOAD_DELAY", str(self.BROWSER_LOAD_DELAY))),
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_CONNECT_SCHEME",
+            os.getenv("BROWSER_CONNECT_SCHEME", self.BROWSER_CONNECT_SCHEME),
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_REMOTE_HOST",
+            os.getenv("BROWSER_REMOTE_HOST", self.BROWSER_REMOTE_HOST),
+        )
+
+        # Optional: allow overriding Instagram base URL
+        object.__setattr__(
+            self, "INSTAGRAM_URL", os.getenv("INSTAGRAM_URL", self.INSTAGRAM_URL)
+        )
+
+        # Instagram-related overrides
+        object.__setattr__(
+            self,
+            "INSTAGRAM_MAX_POSTS_PER_ACCOUNT",
+            int(
+                os.getenv(
+                    "INSTAGRAM_MAX_POSTS_PER_ACCOUNT",
+                    str(self.INSTAGRAM_MAX_POSTS_PER_ACCOUNT),
+                )
+            ),
+        )
+        object.__setattr__(
+            self,
+            "INSTAGRAM_POST_LOAD_TIMEOUT",
+            int(
+                os.getenv(
+                    "INSTAGRAM_POST_LOAD_TIMEOUT",
+                    str(self.INSTAGRAM_POST_LOAD_TIMEOUT),
+                )
+            ),
+        )
 
         # Validate that required paths are set
         if self.BROWSER_PATH is None:

@@ -41,18 +41,15 @@ dependencies = [
 # Development dependencies - for development, testing, and code quality
 dev = [
     "pytest>=7.4.0",           # Testing framework
-    "pytest-cov>=4.1.0",       # Coverage reporting
-    "pytest-mock>=3.11.0",     # Mocking utilities
+    "freezegun>=1.4.0",        # Time-freezing utility used in tests
     "ruff>=0.1.0",             # Code formatting and linting
     "mypy>=1.5.0",             # Static type checking
-    "coverage[toml]>=7.0.0",   # Coverage measurement and reporting
 ]
 
 # Testing dependencies - for running tests only
 test = [
     "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "pytest-mock>=3.11.0",
+    "freezegun>=1.4.0",
 ]
 
 # CLI entry points - makes the tool available as a command
@@ -143,6 +140,7 @@ exclude = [
     "venv",                              # Exclude virtual environments
     "__pycache__",                       # Exclude Python cache
     ".pytest_cache",                     # Exclude pytest cache
+    "tests",                             # Exclude test files from type checking
 ]
 
 # MyPy module overrides for external libraries
@@ -153,32 +151,3 @@ module = [
     "fake_useragent.*", # Fake User-Agent generator
 ]
 ignore_missing_imports = true            # Ignore missing imports for these modules
-
-# Coverage configuration for test coverage reporting
-[tool.coverage.run]
-source = ["."]                           # Source code to measure
-omit = [
-    "tests/*",                           # Exclude test files
-    "venv/*",                            # Exclude virtual environments
-    ".venv/*",                           # Exclude local virtual environment
-    "*/venv/*",                          # Exclude nested virtual environments
-    "*/__pycache__/*",                   # Exclude Python cache
-    "*/migrations/*",                    # Exclude migration files
-    "setup.py",                          # Exclude setup files
-    "manage.py",                         # Exclude management files
-]
-
-# Coverage reporting configuration
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",                  # Exclude pragma comments
-    "def __repr__",                      # Exclude repr methods
-    "if self.debug:",                    # Exclude debug code
-    "if settings.DEBUG",                 # Exclude settings debug code
-    "raise AssertionError",              # Exclude assertion errors
-    "raise NotImplementedError",         # Exclude not implemented errors
-    "if 0:",                             # Exclude disabled code
-    "if __name__ == .__main__.:",        # Exclude main blocks
-    "class .*\\bProtocol\\):",           # Exclude protocol classes
-    "@(abc\\.)?abstractmethod",          # Exclude abstract methods
-]

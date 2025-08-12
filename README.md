@@ -15,33 +15,44 @@ stylized HTML report with global date sorting and corresponding links.
 - **Quality Assured**: Enforced code quality through `ruff`, `mypy`, and a comprehensive `pytest`
   test suite.
 
+## Prerequisites
+
+- **Python 3.12+** (strict requirement - the tool will not work with older versions)
+- **Chromium-based browser** (like Chrome, Brave, or Edge) with remote debugging enabled
+- **WSL2 environment** (Windows Subsystem for Linux 2) - this tool is specifically optimized for
+  WSL2
+
+### Browser Setup Requirements
+
+Your browser must support remote debugging. The tool will automatically:
+
+- Launch your browser with `--remote-debugging-port=9222`
+- Connect to existing browser instances if available
+- Manage browser processes to prevent conflicts
+- Handle WSL2-specific path translations
+
 ## Getting Started
 
 To get started with the Instagram Helper, follow these steps:
 
-1. **Prerequisites**:
-
-   - Ensure you have **Python 3.12+** installed.
-   - You need a **Chromium-based browser** (like Chrome, Brave, or Edge) with remote debugging
-     enabled.
-
-2. **Setup**:
+1. **Setup**:
 
    - Clone the repository and run `make setup-dev` to prepare the environment.
 
-3. **Configuration**:
+2. **Configuration**:
 
    - Create a `.env` file in the project root to configure your browser settings. See the
      [Environment Variables](#environment-variables) section for details.
 
-4. **Run**:
+3. **Run**:
    - Execute `python cli.py --help` to see the available commands and options.
 
 ## Requirements
 
-- Python 3.12+
-- A virtual environment (recommended).
-- Access to a Chromium-based browser with remote debugging enabled.
+- Python 3.12+ (strict requirement)
+- A virtual environment (recommended)
+- Access to a Chromium-based browser with remote debugging enabled
+- WSL2 environment (Windows Subsystem for Linux 2)
 
 ## Installation
 
@@ -55,7 +66,7 @@ To get started with the Instagram Helper, follow these steps:
 2. **Set Up the Development Environment**
 
    We recommend using the provided `Makefile` to simplify setup. This command creates a virtual
-   environment, and installs all required dependencies.
+   environment and installs all required dependencies.
 
    ```bash
    make setup-dev
@@ -79,10 +90,10 @@ python cli.py
 
 By default, this will:
 
-- Fetch posts from the last **3 days**.
-- Scrape all accounts listed in `config.py`.
-- Save the HTML report to the project's root directory.
-- Generate a report without opening it in a browser.
+- Fetch posts from the last **3 days**
+- Scrape all accounts listed in `config.py`
+- Save the HTML report to the project's root directory
+- Generate a report without opening it in a browser
 
 ### Command-Line Options
 
@@ -120,7 +131,7 @@ options:
 - **Scrape specific accounts**:
 
   ```bash
-  python cli.py --accounts gijon biodevas
+  python cli.py --accounts aytoviedo biodevas
   ```
 
 - **Save the report to a custom directory**:
@@ -136,12 +147,30 @@ options:
 The application can be configured via a `.env` file in the project root. This is the recommended way
 to manage settings, especially for browser paths and user data.
 
+**Required Variables:**
+
 - `BROWSER_PATH`: The absolute path to your browser's executable.
 - `BROWSER_USER_DATA_DIR`: Path to your browser's user data directory (to reuse sessions).
-- `BROWSER_PROFILE_DIR`: The profile directory to use (e.g., "Default" or "Profile 1").
-- `BROWSER_DEBUG_PORT`: The remote debugging port.
+
+**Optional Variables:**
+
+- `OUTPUT_DIR`: Directory where reports are written (defaults to project root).
+- `LOG_DIR`: Directory where logs are stored (defaults to project root).
+- `TEMPLATE_PATH`: Path to the Jinja2 HTML template (defaults to "templates/template.html").
+- `TIMEZONE_OFFSET`: Numeric hour offset used to localize times in reports (defaults to 2).
+- `BROWSER_PROFILE_DIR`: The profile directory to use (defaults to "Default").
+- `BROWSER_DEBUG_PORT`: The remote debugging port (defaults to 9222).
 - `BROWSER_ATTACH_ONLY`: Set to `"true"` to only attach to an existing browser instance and not
-  launch a new one.
+  launch a new one (defaults to "false").
+- `BROWSER_START_URL`: URL opened when launching a local browser (defaults to Instagram).
+- `BROWSER_LOAD_DELAY`: Milliseconds to wait after launching the local browser before attaching
+  (defaults to 5000).
+- `BROWSER_CONNECT_SCHEME`: Connection scheme for CDP, usually `http` (defaults to "http").
+- `BROWSER_REMOTE_HOST`: Hostname for the browser remote debugger, usually `localhost` (defaults to
+  "localhost").
+- `INSTAGRAM_URL`: Base URL for Instagram (defaults to "<https://www.instagram.com/>").
+- `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`: Maximum posts to process per account (defaults to 3).
+- `INSTAGRAM_POST_LOAD_TIMEOUT`: Timeout in ms for loading a post page (defaults to 20000).
 
 An example `.env` file for WSL2 users targeting a Windows browser:
 
@@ -150,22 +179,92 @@ BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave
 BROWSER_USER_DATA_DIR="C:\Users\YourUsername\AppData\Local\BraveSoftware\Brave-Browser\User Data"
 BROWSER_PROFILE_DIR="Default"
 BROWSER_DEBUG_PORT=9222
+BROWSER_ATTACH_ONLY="false"
+BROWSER_START_URL="https://www.instagram.com/"
+BROWSER_LOAD_DELAY=5000
+BROWSER_CONNECT_SCHEME="http"
+BROWSER_REMOTE_HOST="localhost"
+OUTPUT_DIR="/path/to/reports"
+LOG_DIR="/path/to/logs"
+TEMPLATE_PATH="templates/template.html"
+TIMEZONE_OFFSET=2
+INSTAGRAM_URL="https://www.instagram.com/"
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT=3
+INSTAGRAM_POST_LOAD_TIMEOUT=20000
 ```
+
+### Instagram Account Configuration
+
+The tool comes pre-configured with 25+ Instagram accounts including:
+
+- `agendagijon`, `biodevas`, `centroniemeyer`, `aytoviedo`, `aytocastrillon`
+- `bibliotecasdegijonxixon`, `conectaoviedo`, `conocerasturias`, `cultura.gijon`
+
+**Customization**: You can modify `config.py` to:
+
+- Add or remove Instagram accounts from the `INSTAGRAM_ACCOUNTS` list
+- Adjust `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` (default: 3 posts per account)
+- Change `INSTAGRAM_POST_LOAD_TIMEOUT` (default: 20 seconds per post)
 
 ### Script Configuration
 
 You can also modify `config.py` directly to change:
 
 - `INSTAGRAM_ACCOUNTS`: The default list of accounts to scrape.
-- `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`: The maximum number of posts to check per account.
+- `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`: The maximum number of posts to check per account (default: 3).
 - `TIMEZONE_OFFSET`: The timezone for date localization.
+
+## Troubleshooting
+
+### Browser Connection Issues
+
+- **Remote debugging not enabled**: Ensure your browser supports remote debugging
+- **Invalid browser path**: Check that `BROWSER_PATH` points to a valid executable
+- **User data directory inaccessible**: Verify `BROWSER_USER_DATA_DIR` exists and is writable
+- **Port conflicts**: Ensure port 9222 is not blocked or in use by another process
+
+### WSL2 Path Issues
+
+- **Browser paths**: Use Windows-style paths for browser directories: `C:\Users\...`
+- **Output paths**: Use Linux-style paths for output: `/mnt/c/Users/...`
+- **Path translation**: The tool handles WSL2 path conversions automatically
+
+### Instagram Scraping Issues
+
+- **HTML structure changes**: Instagram frequently updates their page structure, which may break the
+  tool
+- **Rate limiting**: Reduce `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` if experiencing blocked requests
+- **Authentication issues**: The tool relies on browser session cookies; clear browser data if
+  needed
+- **Selector failures**: If posts aren't being detected, Instagram may have changed their HTML
+
+### Common Error Messages
+
+- **"BROWSER_PATH environment variable is not set"**: Add `BROWSER_PATH` to your `.env` file
+- **"Could not connect to existing browser"**: Check that remote debugging is enabled
+- **"No post links found"**: Instagram may have changed their page structure
+- **"Timeout loading post"**: Increase `INSTAGRAM_POST_LOAD_TIMEOUT` in your `.env` file
+
+## Important Notes
+
+**CRITICAL**: Do not modify the caption selectors in `instagram_scraper.py`. These selectors are
+fragile and changes will break the tool's functionality.
+
+**Instagram Dependencies**: The tool's success depends on Instagram's HTML structure remaining
+consistent. The tool may need updates if Instagram makes significant changes to their pages.
+
+**Rate Limiting**: Instagram may block requests if too many are made too quickly. The default
+settings are conservative to avoid this.
+
+**WSL2 Optimization**: This tool is specifically designed for Windows Subsystem for Linux 2
+environments and may not work optimally in other setups.
 
 ## Development
 
 ### Quality Checks
 
-This project uses `ruff` for linting/formatting, `mypy` for static type checking, and `pytest` for
-testing.
+This project uses only `ruff` (linting/formatting), `mypy` (static type checking), and `pytest`
+(tests).
 
 - **Run all checks**:
 
@@ -185,19 +284,36 @@ testing.
   make test
   ```
 
-All configurations are located in `pyproject.toml` and the `Makefile`.
+Configurations live in `pyproject.toml` and are executed via the `Makefile`.
 
 ### Makefile Commands
 
 The `Makefile` provides commands to streamline development:
 
-- `make setup-dev`: Sets up the development environment.
-- `make test`: Runs the test suite.
-- `make format`: Formats code with `ruff`.
-- `make lint`: Lints code with `ruff`.
-- `make type-check`: Runs `mypy`.
-- `make check-all`: Runs formatting, linting, type checking, and tests.
-- `make clean`: Removes build artifacts.
+- `make setup-dev`: Sets up the development environment
+- `make test`: Runs the test suite
+- `make format`: Formats code with `ruff`
+- `make lint`: Lints code with `ruff`
+- `make type-check`: Runs `mypy`
+- `make check-all`: Runs formatting, linting, type checking, and tests
+- `make clean`: Removes build artifacts
+
+### Common Development Workflows
+
+```bash
+# Setup and activate environment
+make setup-dev
+source venv/bin/activate
+
+# Run quality checks before committing
+make check-all
+
+# Test with custom parameters
+python cli.py --days 7 --accounts aytoviedo biodevas
+
+# Run specific test files
+./venv/bin/pytest tests/test_instagram_scraper.py -v
+```
 
 ## License
 

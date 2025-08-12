@@ -252,13 +252,10 @@
     </style>
     <script>
       function copyHandler(button, textToCopy) {
-        console.log("copyHandler called with:", textToCopy);
-
         const originalText = button.textContent;
         const originalBg = window.getComputedStyle(button).backgroundColor;
 
         const clipboardSuccess = () => {
-          console.log("Clipboard copy successful");
           button.textContent = "✅ Copied!";
           button.style.background = "#007bff";
           setTimeout(() => {
@@ -268,24 +265,20 @@
         };
 
         const clipboardFailure = (err) => {
-          console.error("Failed to copy: ", err);
           // Try fallback method
           fallbackCopy(textToCopy, clipboardSuccess);
         };
 
         // Try modern clipboard API first
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          console.log("Using navigator.clipboard API");
           navigator.clipboard.writeText(textToCopy).then(clipboardSuccess).catch(clipboardFailure);
         } else {
-          console.log("Using fallback copy method");
           // Use fallback immediately if clipboard API is not available
           fallbackCopy(textToCopy, clipboardSuccess);
         }
       }
 
       function fallbackCopy(textToCopy, successCallback) {
-        console.log("fallbackCopy called");
         try {
           // Create a temporary textarea element
           const textArea = document.createElement("textarea");
@@ -301,30 +294,24 @@
 
           // Add to DOM
           document.body.appendChild(textArea);
-          console.log("Textarea added to DOM");
 
           // Focus and select
           textArea.focus();
           textArea.select();
-          console.log("Textarea focused and selected");
 
           // Try to copy
           const successful = document.execCommand("copy");
-          console.log("execCommand result:", successful);
 
           // Clean up
           document.body.removeChild(textArea);
 
           if (successful) {
-            console.log("Fallback copy successful");
             successCallback();
           } else {
-            console.log("execCommand failed, showing manual interface");
             // If execCommand fails, show manual copy interface
             showManualCopyInterface(textToCopy, successCallback);
           }
         } catch (err) {
-          console.error("Fallback copy failed:", err);
           // Show manual copy interface as last resort
           showManualCopyInterface(textToCopy, successCallback);
         }
@@ -417,7 +404,6 @@
           button.addEventListener("click", function (e) {
             e.preventDefault();
             const url = this.getAttribute("data-url");
-            console.log("Copy link button clicked, URL:", url);
             copyHandler(this, url);
           });
 
@@ -437,7 +423,6 @@
         copyFullButtons.forEach((button) => {
           button.addEventListener("click", function (e) {
             e.preventDefault();
-            console.log("Copy full post button clicked");
             copyFullPost(this);
           });
 

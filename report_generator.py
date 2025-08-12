@@ -39,6 +39,23 @@ class ReportData:
 
     @property
     def template_data(self) -> dict[str, str | int | list[InstagramPost]]:
+        # Compute max_post_age in whole days for the template
+        generation_time_normalized = self.generation_time
+        try:
+            if (
+                self.generation_time.tzinfo is None
+                and self.cutoff_date.tzinfo is not None
+            ):
+                generation_time_normalized = self.generation_time.replace(
+                    tzinfo=self.cutoff_date.tzinfo
+                )
+            max_post_age = max(
+                0,
+                (generation_time_normalized.date() - self.cutoff_date.date()).days,
+            )
+        except Exception:
+            max_post_age = 0
+
         return {
             "posts": self.sorted_posts,
             "total_posts": self.total_posts,
@@ -47,7 +64,9 @@ class ReportData:
                 f"{self.cutoff_date.strftime('%d-%m-%Y')} - "
                 f"{self.generation_time.strftime('%d-%m-%Y')}"
             ),
-            "accounts_count": self.accounts_count,
+            # Match keys expected by the default HTML template
+            "total_accounts": self.accounts_count,
+            "max_post_age": max_post_age,
         }
 
 
