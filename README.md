@@ -24,7 +24,7 @@ stylized HTML report with global date sorting and corresponding links.
 
 - **Python**: 3.12 or higher
 - **Operating System**: Windows, macOS, or Linux (including WSL2)
-- **Browser**: Brave, Chrome, or Chromium (for Playwright automation)
+- **Browser**: Playwright automatically installs and manages Chromium browser
 
 ## Installation
 

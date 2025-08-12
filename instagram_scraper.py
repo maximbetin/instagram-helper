@@ -7,7 +7,6 @@ from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from config import (
-    BROWSER_LOAD_TIMEOUT,
     INSTAGRAM_ACCOUNT_LOAD_DELAY,
     INSTAGRAM_MAX_POSTS_PER_ACCOUNT,
     INSTAGRAM_POST_LOAD_DELAY,
@@ -254,7 +253,7 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
         page.goto(
             account_url,
             wait_until="domcontentloaded",
-            timeout=BROWSER_LOAD_TIMEOUT,
+            timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
         )
         time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / SECONDS_IN_MS)
     except Exception as e:

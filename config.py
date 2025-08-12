@@ -12,47 +12,10 @@ TIMEZONE = timezone(
     timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", str(DEFAULT_TIMEZONE_OFFSET))))
 )
 
-# Browser settings
+# Browser settings - Playwright handles all browser management automatically
+# These settings are kept for backward compatibility but are no longer actively used
 BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
-BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # milliseconds
-BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # milliseconds
-
-
-def _is_running_in_wsl() -> bool:
-    """Detect if the process is running inside WSL/WSL2."""
-    try:
-        for probe in ("/proc/sys/kernel/osrelease", "/proc/version"):
-            if os.path.exists(probe):
-                with open(probe, encoding="utf-8", errors="ignore") as f:
-                    content = f.read().lower()
-                    if "microsoft" in content or "wsl" in content:
-                        return True
-    except Exception:
-        pass
-    return False
-
-
-# Remote/WSL2 bridging settings
-BROWSER_REMOTE_HOST = os.getenv("BROWSER_REMOTE_HOST")
-BROWSER_ATTACH_ONLY = (
-    os.getenv("BROWSER_ATTACH_ONLY", "").lower() in {"1", "true", "yes", "on"}
-    if os.getenv("BROWSER_ATTACH_ONLY") is not None
-    else _is_running_in_wsl()
-)
-
-# Scheme for CDP connection (http or ws). http://<host>:<port> works for Chromium-based browsers
-BROWSER_CONNECT_SCHEME = os.getenv("BROWSER_CONNECT_SCHEME", "http")
-
-# Prefer an explicit override, otherwise try common browser locations; fall back to a generic 'chromium' in PATH
-_default_browser_candidates = [
-    os.getenv("BROWSER_PATH"),
-    "/usr/bin/brave-browser",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-]
-BROWSER_PATH = next((p for p in _default_browser_candidates if p), "chromium")
+BROWSER_PATH = os.getenv("BROWSER_PATH", "chromium")
 
 # Instagram settings
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")

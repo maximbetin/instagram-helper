@@ -37,13 +37,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Step 3: Install system dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
-
-      # Step 4: Install Playwright browsers for testing
+      # Step 3: Install Playwright browsers for testing
       - name: Install Playwright browsers
         run: |
           python -m pip install --upgrade pip

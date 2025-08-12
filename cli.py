@@ -23,7 +23,6 @@ from utils import setup_logging
 # Constants
 TEMPLATE_PATH = "templates/template.html"
 FILE_PROTOCOL = "file://"
-BROWSER_CONNECTION_ERROR = "ECONNREFUSED"
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,11 +32,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python cli.py                           # Use default settings
-  python cli.py --days 3                  # Fetch posts from last 3 days
-  python cli.py --accounts gijon biodevas # Only fetch from specific accounts
-  python cli.py --output ./reports        # Save reports to custom directory
-  python cli.py --no-open                 # Don't automatically open the report
+    python cli.py                           # Use default settings
+    python cli.py --days 3                  # Fetch posts from last 3 days
+    python cli.py --accounts gijon biodevas # Only fetch from specific accounts
+    python cli.py --output ./reports        # Save reports to custom directory
+    python cli.py --no-open                 # Don't automatically open the report
         """,
     )
 
@@ -142,12 +141,7 @@ def main() -> int:
         return 0
 
     except Exception as e:
-        if BROWSER_CONNECTION_ERROR in str(e):
-            logger.error(
-                "Failed to connect to the browser. Please close all browser windows and try again."
-            )
-        else:
-            logger.error(f"An error occurred: {e}", exc_info=True)
+        logger.error(f"An error occurred: {e}", exc_info=True)
         return 1
 
 

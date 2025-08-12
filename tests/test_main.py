@@ -51,7 +51,6 @@ def mock_browser() -> MagicMock:
 def mock_playwright() -> MagicMock:
     """Create a mock playwright for testing."""
     playwright = MagicMock()
-    playwright.chromium.connect_over_cdp.return_value = mock_browser()
     return playwright
 
 
@@ -237,17 +236,18 @@ def test_generate_html_report(
     mock_file.write.assert_called_once()
 
 
-@patch("browser_manager.BROWSER_ATTACH_ONLY", False)
-@patch("subprocess.Popen")
-@patch("time.sleep")
-def test_setup_browser(mock_sleep: MagicMock, mock_popen: MagicMock) -> None:
+def test_setup_browser(mock_playwright: MagicMock) -> None:
     """Test browser setup."""
-    mock_playwright = MagicMock()
     mock_browser = MagicMock()
-    mock_playwright.chromium.connect_over_cdp.return_value = mock_browser
+    mock_playwright.chromium.launch.return_value = mock_browser
 
     result = setup_browser(mock_playwright)
 
     assert result is not None
-    mock_popen.assert_called_once()
-    mock_playwright.chromium.connect_over_cdp.assert_called_once()
+    mock_playwright.chromium.launch.assert_called_once_with(
+        headless=False,
+        args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+        ]
+    )
