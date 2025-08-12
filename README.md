@@ -24,28 +24,42 @@ stylized HTML report with global date sorting and corresponding links.
 
 - **Python**: 3.12 or higher
 - **Operating System**: Windows, macOS, or Linux (including WSL2)
-- **Browser**: Playwright automatically installs and manages Chromium browser
+- **Browser**: Uses your existing Brave browser (WSL2) or Playwright Chromium (fallback)
 
 ## Installation
 
-1. Clone the repository
+1. **Clone the repository**:
 
    ```bash
    git clone https://github.com/maximbetin/instagram-helper.git
    cd instagram-helper
    ```
 
-2. Install Playwright browsers
+2. **Set up virtual environment** (recommended):
 
    ```bash
-   playwright install
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. Install the package with development dependencies
+3. **Install the package**:
 
    ```bash
+   # For normal use
+   pip install -e .
+
+   # For development
    pip install -e ".[dev]"
    ```
+
+4. **Install Playwright browsers** (fallback only):
+
+   ```bash
+   playwright install chromium
+   ```
+
+**Note**: On WSL2, the tool uses your existing Windows Brave browser automatically. Playwright
+browsers are only needed as a fallback.
 
 ## Usage
 
@@ -116,67 +130,75 @@ python cli.py --verbose
 
 ## WSL2 Integration
 
-When running from WSL2, you can connect to an already-running Brave browser on Windows to reuse your
-logged-in session and cookies. This is the recommended approach.
+The Instagram Helper automatically handles browser setup when running from WSL2. It will launch your
+Windows Brave browser directly from WSL2, preserving your existing profile, cookies, and login
+sessions.
 
-### Start Brave with Remote Debugging
+### Quick Start (WSL2)
 
-**Option 1: Use the provided batch file (easiest)**:
+1. **Set up your environment** (one-time setup):
 
-1. Double-click `start_brave_debug.bat` in Windows
-2. Keep the Brave window open while running the script
+   ```bash
+   # Activate virtual environment
+   source venv/bin/activate
 
-**Option 2: Manual command**:
+   # Install dependencies
+   pip install -e .
+   ```
 
-```powershell
-# Close all Brave instances first
-Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
-
-# Start Brave with remote debugging enabled
-& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222
-```
-
-**Option 3: Bind to all interfaces (recommended for WSL2 connectivity)**:
-
-```powershell
-Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
-& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" \
-  --remote-debugging-port=9222 \
-  --remote-debugging-address=0.0.0.0
-```
-
-### Connect from WSL2
-
-1. Start Brave on Windows with remote debugging enabled (see above)
-2. Run the tool from WSL2 - it will automatically connect:
+2. **Run the Instagram Helper** - it handles everything automatically:
 
    ```bash
    python cli.py
    ```
 
-The app will first try to connect to the existing Brave instance, then fall back to launching
-Chromium if needed.
+The tool will:
+
+- Automatically launch Brave browser with remote debugging enabled
+- Use your existing Windows Brave profile (keeps you logged in)
+- Connect to the browser via `localhost:9222`
+- Clean up any existing browser processes first
+
+### How It Works
+
+The Instagram Helper uses a direct WSL2-to-Windows approach:
+
+1. **Browser Path**: Uses `/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe`
+2. **Profile Access**: Connects to your Windows Brave profile at
+   `C:\Users\Maxim\AppData\Local\BraveSoftware\Brave-Browser\User Data`
+3. **Network**: Connects via `localhost:9222` (no cross-network issues)
+4. **Process Management**: Automatically stops existing Brave processes before launching
 
 ### Troubleshooting WSL2
 
-1. Confirm Windows is listening:
+If you encounter issues:
 
-   ```powershell
-   netstat -ano | findstr :9222
-   ```
-
-2. From WSL2, test the connection (try Windows host IP first on WSL2):
+1. **Test browser connectivity**:
 
    ```bash
-   # Discover Windows host IP (WSL2)
-   grep nameserver /etc/resolv.conf
-   # Example: if it prints 172.27.208.1
-   curl "http://172.27.208.1:9222/json/version" || curl "http://localhost:9222/json/version"
+   curl http://localhost:9222/json/version
    ```
 
-3. Make sure Brave is running with the `--remote-debugging-port=9222` flag and, on WSL2, ideally
-   also `--remote-debugging-address=0.0.0.0`
-4. Check Windows Firewall if using external binding
+   Should return browser version info.
+
+2. **Enable verbose logging**:
+
+   ```bash
+   python cli.py --verbose
+   ```
+
+3. **Check browser path** - update in `.env` if Brave is installed elsewhere:
+
+   ```bash
+   BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+   ```
+
+4. **Manual browser test**:
+
+   ```bash
+   "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe" \
+   --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0
+   ```
 
 ## Configuration
 
@@ -199,12 +221,27 @@ export _OFFSET=2
 
 ### Configuration File
 
+Create or edit `.env` file to customize:
+
+```bash
+# Browser settings (WSL2)
+BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+BROWSER_USER_DATA_DIR="C:\Users\YourUsername\AppData\Local\BraveSoftware\Brave-Browser\User Data"
+BROWSER_DEBUG_PORT=9222
+
+# Output settings
+OUTPUT_DIR="/mnt/c/Users/YourUsername/Desktop/ig_helper"
+LOG_DIR="/mnt/c/Users/YourUsername/Desktop/ig_helper"
+
+# Instagram settings
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT=3
+INSTAGRAM_POST_LOAD_DELAY=3000
+```
+
 Edit `config.py` to modify:
 
-- **Post Fetching Settings**: Days back to fetch (default: 3), max posts per account (default: 3)
 - **Instagram Accounts**: List of usernames to fetch posts from
-- **Browser Settings**: Browser path, debug port, timeouts
-- **Output Settings**: Output and log directories
+- **Default Settings**: Timeouts, retry delays, etc.
 
 ## Output
 
