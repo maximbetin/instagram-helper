@@ -8,15 +8,13 @@ stylized HTML report with global date sorting and corresponding links.
 ## Features
 
 - **Automatic fetching**: Fetches posts from specified Instagram accounts
-- **Advanced caption extraction**: Uses XPath-based selectors for accurate extraction of full post
-  content, descriptions, and context
+- **XPath-based caption extraction**: Uses precise XPath selectors for accurate extraction of full
+  post content and descriptions
 - **Date filtering**: Only fetches posts from the last few days (configurable)
 - **HTML report generation**: Creates a stylized, responsive HTML report with all fetched posts
 - **Global date sorting**: All posts are sorted by date across all accounts (newest first)
 - **Interactive report**: HTML report includes copy-to-clipboard functionality for post links and
-  complete captions
-- **Robust content detection**: Multiple fallback methods ensure caption extraction works even when
-  Instagram changes their layout
+  captions
 - **Progress tracking**: Real-time console output showing processing progress
 - **CLI interface**: Command-line options for flexible usage
 - **Environment configuration**: Support for environment variables
@@ -59,7 +57,6 @@ stylized HTML report with global date sorting and corresponding links.
    ```
 
 4. **Install Playwright browsers** (fallback only):
-
    ```bash
    playwright install chromium
    ```
@@ -156,7 +153,6 @@ sessions. The browser opens directly to Instagram for immediate use.
    ```
 
 2. **Run the Instagram Helper** - it handles everything automatically:
-
    ```bash
    python cli.py
    ```
@@ -167,7 +163,7 @@ The tool will:
 - Open Instagram directly for immediate access
 - Use your existing Windows Brave profile (keeps you logged in)
 - Connect to the browser via `localhost:9222`
-- Extract complete post captions using advanced XPath selectors
+- Extract complete post captions using XPath selectors
 - Clean up browser processes gracefully when finished
 
 ### How It Works
@@ -205,10 +201,8 @@ If you encounter issues:
    ```
 
 4. **Manual browser test**:
-
    ```bash
-   "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe" \
-   --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0
+   "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe" --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0
    ```
 
 ## Configuration
@@ -227,7 +221,7 @@ export INSTAGRAM_URL="https://www.instagram.com/"
 # Output settings
 export OUTPUT_DIR="/path/to/output"
 export LOG_DIR="/path/to/logs"
-export _OFFSET=2
+export TIMEZONE_OFFSET=2
 ```
 
 ### Configuration File
@@ -280,6 +274,35 @@ The tool generates an interactive HTML report and detailed logs:
 - HTML reports: `DD-MM-YYYY.html` (e.g., `19-12-2024.html`)
 - Log files: `DD-MM-YYYY.log` (e.g., `19-12-2024.log`)
 - Default location: `/mnt/c/Users/Maxim/Desktop/ig_helper/`
+
+## Technical Details
+
+### Caption Extraction
+
+The Instagram Helper uses XPath selectors for precise caption extraction:
+
+```python
+CAPTION_XPATHS = [
+    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span",
+    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/h1",
+]
+```
+
+This approach ensures reliable extraction of complete post content including:
+
+- Full event descriptions and details
+- People and organizations mentioned
+- Dates and location information
+- Relevant hashtags and social media tags
+
+### Debug Capabilities
+
+When run with `--verbose`, the tool provides detailed debugging information:
+
+- Page structure analysis
+- Element count reporting
+- Potential caption candidate identification
+- XPath selector success/failure logging
 
 ## Development
 
@@ -398,6 +421,7 @@ instagram-helper/
 
 - `playwright` - Browser automation and web scraping
 - `jinja2` - HTML template rendering
+- `python-dotenv` - Environment variable management
 
 ### Development Dependencies
 
@@ -420,7 +444,7 @@ instagram-helper/
 
 2. **Caption Extraction Issues**:
 
-   - Tool uses advanced XPath selectors for Instagram's current layout
+   - Tool uses XPath selectors for Instagram's current layout
    - If captions appear empty, Instagram may have changed their DOM structure
    - Run with `--verbose` flag to see detailed extraction debugging
    - Check log files for page structure analysis
@@ -451,34 +475,6 @@ Check log files for detailed error information:
 - Location: Configured via `LOG_DIR` environment variable
 - Format: Daily log files with timestamps
 - Content: Detailed operation logs and error traces
-
-## Technical Details
-
-### Caption Extraction
-
-The Instagram Helper uses a robust, multi-layered approach for extracting post captions:
-
-1. **XPath Selectors** (Primary): Targets Instagram's specific DOM structure for accurate content
-   extraction
-2. **CSS Selectors** (Fallback): Uses Instagram's data-testid attributes when available
-3. **Text Analysis** (Last Resort): Intelligent text content analysis to find captions when
-   selectors fail
-
-This approach ensures reliable extraction of complete post content including:
-
-- Full event descriptions and details
-- People and organizations mentioned
-- Dates and location information
-- Relevant hashtags and social media tags
-
-### Debug Capabilities
-
-When run with `--verbose`, the tool provides detailed debugging information:
-
-- Page structure analysis
-- Element count reporting
-- Potential caption candidate identification
-- Selector success/failure logging
 
 ## Contributing
 

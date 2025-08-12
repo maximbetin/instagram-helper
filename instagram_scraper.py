@@ -88,15 +88,7 @@ CAPTION_XPATHS = [
     "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/h1",
 ]
 
-# Fallback CSS selectors for caption extraction
-CAPTION_SELECTORS = [
-    "div[data-testid='post-caption'] h1",
-    "div[data-testid='post-caption'] span",
-    "div[data-testid='post-caption'] div",
-    "article h1",
-    "div[role='button'] h1",
-    "h1",
-]
+
 
 # Constants for date extraction
 DATE_SELECTORS = [
@@ -108,7 +100,6 @@ DATE_SELECTORS = [
 
 # Constants for post link detection
 POST_PATH_PATTERNS = ["/p/", "/reel/"]
-SKIP_TEXT_PATTERNS = ["follow", "like", "comment", "share", "save", "more"]
 
 
 def _handle_scraping_error(
@@ -183,45 +174,7 @@ def get_account_post_urls(page: Page) -> list[str]:
     return post_urls
 
 
-def _try_caption_selector(page: Page, selector: str) -> str | None:
-    """Try to extract caption using a specific selector."""
-    try:
-        caption_element = page.query_selector(selector)
-        if caption_element and caption_element.inner_text().strip():
-            caption = caption_element.inner_text().strip()
-            logger.debug(f"Found caption using selector: {selector}")
-            return caption
-    except Exception as e:
-        logger.debug(f"Selector {selector} failed: {e}")
-    return None
 
-
-def _find_caption_by_text_content(page: Page) -> str:
-    """Find caption by looking for elements with substantial text content."""
-    try:
-        all_elements = page.query_selector_all("*")
-        for element in all_elements:
-            try:
-                text = element.inner_text().strip()
-                # Look for text that's likely a caption (substantial length, not just navigation)
-                if (
-                    text
-                    and 10 < len(text) < 1000
-                    and not any(skip in text.lower() for skip in SKIP_TEXT_PATTERNS)
-                ):
-                    tag_name = element.evaluate("el => el.tagName.toLowerCase()")
-                    # If it's an h1, h2, h3, p, or span, it's more likely to be a caption
-                    if tag_name in ["h1", "h2", "h3", "p", "span", "div"]:
-                        logger.debug(
-                            f"Found potential caption in {tag_name}: '{text[:100]}...'"
-                        )
-                        return text
-            except Exception:
-                continue
-    except Exception as e:
-        logger.debug(f"Alternative caption search failed: {e}")
-
-    return ""
 
 
 def _try_caption_xpath(page: Page, xpath: str) -> str | None:
@@ -239,28 +192,15 @@ def _try_caption_xpath(page: Page, xpath: str) -> str | None:
 
 
 def get_post_caption(page: Page) -> str:
-    """Extract post's caption from Instagram post."""
-    # Try XPath selectors first (most reliable for Instagram)
+    """Extract post's caption from Instagram post using XPath selectors."""
+    # Use XPath selectors only for reliable Instagram caption extraction
     for xpath in CAPTION_XPATHS:
         caption = _try_caption_xpath(page, xpath)
         if caption:
-            logger.debug(f"Caption extracted via XPath: '{caption[:100]}...'")
-            return caption
-    
-    # Try CSS selectors as fallback
-    for selector in CAPTION_SELECTORS:
-        caption = _try_caption_selector(page, selector)
-        if caption:
-            logger.debug(f"Caption extracted via CSS: '{caption[:100]}...'")
+            logger.debug(f"Caption extracted: '{caption[:100]}...'")
             return caption
 
-    # Final fallback: look for elements with substantial text content
-    caption = _find_caption_by_text_content(page)
-    if caption:
-        logger.debug(f"Caption extracted via text search: '{caption[:100]}...'")
-        return caption
-
-    logger.warning("Could not find post caption with any method")
+    logger.warning("Could not find post caption with XPath selectors")
     return ""
 
 
