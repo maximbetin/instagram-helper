@@ -180,27 +180,45 @@ def get_account_post_urls(page: Page) -> list[str]:
 def _try_caption_xpath(page: Page, xpath: str) -> str | None:
     """Try to extract caption using a specific XPath."""
     try:
+        logger.debug(f"Trying XPath: {xpath}")
         caption_element = page.locator(f"xpath={xpath}").first
         if caption_element and caption_element.is_visible():
             caption = caption_element.inner_text().strip()
             if caption:
-                logger.debug(f"Found caption using XPath: {xpath[:50]}...")
+                logger.debug(f"✓ Found caption using XPath: {xpath[:50]}...")
+                logger.debug(f"  Caption preview: '{caption[:100]}...'")
                 return caption
+            else:
+                logger.debug(f"✗ XPath found element but caption is empty: {xpath[:50]}...")
+        else:
+            logger.debug(f"✗ XPath element not found or not visible: {xpath[:50]}...")
     except Exception as e:
-        logger.debug(f"XPath {xpath[:50]}... failed: {e}")
+        logger.debug(f"✗ XPath {xpath[:50]}... failed with error: {e}")
     return None
+
+
+def _log_available_xpaths() -> None:
+    """Log all available XPath selectors for debugging purposes."""
+    logger.debug("Available XPath selectors for caption extraction:")
+    for i, xpath in enumerate(CAPTION_XPATHS, 1):
+        logger.debug(f"  {i}. {xpath}")
+    logger.debug("")
 
 
 def get_post_caption(page: Page) -> str:
     """Extract post's caption from Instagram post using XPath selectors."""
+    _log_available_xpaths()
+    logger.debug(f"Attempting to extract caption using {len(CAPTION_XPATHS)} XPath selectors...")
+    
     # Use XPath selectors only for reliable Instagram caption extraction
-    for xpath in CAPTION_XPATHS:
+    for i, xpath in enumerate(CAPTION_XPATHS, 1):
+        logger.debug(f"XPath attempt {i}/{len(CAPTION_XPATHS)}:")
         caption = _try_caption_xpath(page, xpath)
         if caption:
-            logger.debug(f"Caption extracted: '{caption[:100]}...'")
+            logger.debug(f"Caption successfully extracted on attempt {i}")
             return caption
 
-    logger.warning("Could not find post caption with XPath selectors")
+    logger.warning(f"Could not find post caption with any of the {len(CAPTION_XPATHS)} XPath selectors")
     return ""
 
 

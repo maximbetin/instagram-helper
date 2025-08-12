@@ -75,9 +75,10 @@ Examples:
         help="Do not automatically open the generated report",
     )
 
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
-    )
+    # Verbose mode is now enabled by default, so we don't need this flag anymore
+    # parser.add_argument(
+    #     "--verbose", "-v", action="store_true", help="Enable verbose logging"
+    # )
 
     return parser.parse_args()
 
@@ -99,7 +100,7 @@ def main() -> int:
 
     # Setup logging
     logger = setup_logging(
-        log_dir=args.log_dir, log_level=logging.DEBUG if args.verbose else logging.INFO
+        log_dir=args.log_dir, log_level=logging.DEBUG  # Always use DEBUG level for verbose output
     )
 
     # Determine accounts to process

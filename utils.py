@@ -4,7 +4,7 @@ import logging
 import os
 
 # Logging configuration
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG  # Changed from logging.INFO to enable verbose mode by default
 LOG_FORMAT = "[%(levelname)s] %(message)s"
 LOG_DATE_FORMAT = "%H:%M:%S"
 

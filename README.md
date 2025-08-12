@@ -106,7 +106,7 @@ Options:
   --output, -o PATH       Output directory for reports (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
   --log-dir PATH          Directory for log files (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
   --no-open               Do not automatically open the generated report
-  --verbose, -v           Enable verbose logging
+      # Verbose mode is now enabled by default for detailed XPath logging
   --help                  Show this message and exit
 ```
 
@@ -128,11 +128,11 @@ python cli.py --output ./reports
 # Don't automatically open the report
 python cli.py --no-open
 
-# Enable verbose logging (shows caption extraction details)
-python cli.py --verbose
+# Verbose mode is now enabled by default for detailed XPath logging
+python cli.py
 
 # Debug caption extraction for specific accounts
-python cli.py --accounts gijon --days 1 --verbose
+python cli.py --accounts gijon --days 1
 ```
 
 ## WSL2 Integration
@@ -190,11 +190,7 @@ If you encounter issues:
 
    Should return browser version info.
 
-2. **Enable verbose logging**:
-
-   ```bash
-   python cli.py --verbose
-   ```
+2. **Verbose logging is enabled by default** - shows detailed XPath extraction information
 
 3. **Check browser path** - update in `.env` if Brave is installed elsewhere:
 
@@ -299,14 +295,44 @@ This approach ensures reliable extraction of complete post content including:
 - Dates and location information
 - Relevant hashtags and social media tags
 
+### XPath Logging and Debugging
+
+The tool now provides comprehensive XPath logging by default to help with debugging and development:
+
+**Available XPath Selectors**: All configured XPath selectors are logged at the start of caption
+extraction **Attempt Tracking**: Each XPath attempt is logged with clear success/failure indicators:
+
+- ✓ Success: Shows the XPath used and caption preview
+- ✗ Element not found: XPath selector didn't match any elements
+- ✗ Empty caption: Element found but contained no text
+- ✗ Error: XPath evaluation failed with specific error details
+
+**Example Log Output**:
+
+```bash
+[DEBUG] Available XPath selectors for caption extraction:
+[DEBUG]   1. /html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span
+[DEBUG]   2. /html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/h1
+[DEBUG] Attempting to extract caption using 2 XPath selectors...
+[DEBUG] XPath attempt 1/2:
+[DEBUG] Trying XPath: /html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span
+[DEBUG] ✓ Found caption using XPath: /html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span...
+[DEBUG]   Caption preview: 'Evento cultural en Gijón este fin de semana...'
+[DEBUG] Caption successfully extracted on attempt 1
+```
+
+This detailed logging helps developers understand exactly which XPath selectors are working and
+which need updating when Instagram changes their page structure.
+
 ### Debug Capabilities
 
-When run with `--verbose`, the tool provides detailed debugging information:
+The tool now provides detailed debugging information by default:
 
 - Page structure analysis
 - Element count reporting
 - Potential caption candidate identification
-- XPath selector success/failure logging
+- XPath selector success/failure logging with detailed XPath information
+- Caption extraction attempts and results
 
 ## Development
 
@@ -450,7 +476,7 @@ instagram-helper/
 
    - Tool uses XPath selectors for Instagram's current layout
    - If captions appear empty, Instagram may have changed their DOM structure
-   - Run with `--verbose` flag to see detailed extraction debugging
+   - Verbose logging is now enabled by default for detailed extraction debugging
    - Check log files for page structure analysis
 
 3. **Instagram Rate Limiting**:
@@ -466,11 +492,7 @@ instagram-helper/
 
 ### Debug Mode
 
-Enable verbose logging:
-
-```bash
-python cli.py --verbose
-```
+Verbose logging is now enabled by default for detailed XPath and caption extraction information.
 
 ### Log Files
 
