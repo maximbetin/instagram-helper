@@ -2,7 +2,6 @@
 
 import subprocess
 import time
-from typing import Optional
 
 from playwright.sync_api import Browser, Playwright
 
@@ -21,7 +20,7 @@ from utils import setup_logging
 logger = setup_logging(__name__)
 
 
-def _detect_wsl_host_ip() -> Optional[str]:
+def _detect_wsl_host_ip() -> str | None:
     """Return Windows host IP from inside WSL2 by reading /etc/resolv.conf.
 
     Uses the first nameserver entry. Returns None if not found or on error.

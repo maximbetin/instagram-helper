@@ -2,7 +2,6 @@
 
 import time
 from datetime import datetime
-from typing import Optional
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -48,7 +47,7 @@ SKIP_TEXT_PATTERNS = [
 
 
 def _handle_scraping_error(
-    account: str, operation: str, error: Exception, retry_attempt: Optional[int] = None
+    account: str, operation: str, error: Exception, retry_attempt: int | None = None
 ) -> None:
     """Handle common scraping errors with consistent logging."""
     if isinstance(error, PlaywrightTimeoutError):
@@ -59,7 +58,7 @@ def _handle_scraping_error(
             )
         else:
             logger.error(f"@{account}: Timeout during {operation}: {error}")
-    elif isinstance(error, (ValueError, OSError)):
+    elif isinstance(error, ValueError | OSError):
         logger.error(f"@{account}: System error during {operation}: {error}")
     else:
         logger.error(f"@{account}: Unexpected error during {operation}: {error}")
@@ -119,7 +118,7 @@ def get_account_post_urls(page: Page) -> list[str]:
     return post_urls
 
 
-def _try_caption_selector(page: Page, selector: str) -> Optional[str]:
+def _try_caption_selector(page: Page, selector: str) -> str | None:
     """Try to extract caption using a specific selector."""
     try:
         caption_element = page.query_selector(selector)
@@ -179,7 +178,7 @@ def get_post_caption(page: Page) -> str:
     return ""
 
 
-def _try_date_selector(page: Page, selector: str) -> Optional[datetime]:
+def _try_date_selector(page: Page, selector: str) -> datetime | None:
     """Try to extract date using a specific selector."""
     try:
         date_element = page.query_selector(selector)
@@ -196,7 +195,7 @@ def _try_date_selector(page: Page, selector: str) -> Optional[datetime]:
     return None
 
 
-def get_post_date(page: Page) -> Optional[datetime]:
+def get_post_date(page: Page) -> datetime | None:
     """Extract post's date from Instagram post page."""
     for selector in DATE_SELECTORS:
         post_date = _try_date_selector(page, selector)
@@ -209,7 +208,7 @@ def get_post_date(page: Page) -> Optional[datetime]:
 
 def extract_post_data(
     post_url: str, cutoff_date: datetime, account: str, page: Page, max_retries: int = 2
-) -> Optional[dict]:
+) -> dict | None:
     """Extract post data from the post URL with error handling and retries."""
     for attempt in range(max_retries + 1):
         try:

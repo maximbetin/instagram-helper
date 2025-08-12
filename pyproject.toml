@@ -138,6 +138,12 @@ warn_unused_ignores = true               # Warn about unused type ignore comment
 warn_no_return = true                    # Warn about functions that don't return
 warn_unreachable = true                  # Warn about unreachable code
 strict_equality = true                   # Strict equality checking
+exclude = [
+    "build",                             # Exclude build directory
+    "venv",                              # Exclude virtual environments
+    "__pycache__",                       # Exclude Python cache
+    ".pytest_cache",                     # Exclude pytest cache
+]
 
 # MyPy module overrides for external libraries
 [[tool.mypy.overrides]]

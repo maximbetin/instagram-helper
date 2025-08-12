@@ -2,7 +2,6 @@
 
 import logging
 import os
-from typing import Optional
 
 # Logging configuration
 LOG_LEVEL = logging.INFO
@@ -11,9 +10,9 @@ LOG_DATE_FORMAT = "%H:%M:%S"
 
 
 def setup_logging(
-    name: Optional[str] = None,
-    log_dir: Optional[str] = None,
-    log_level: Optional[int] = None,
+    name: str | None = None,
+    log_dir: str | None = None,
+    log_level: int | None = None,
 ) -> logging.Logger:
     """
     Configure and return a logger instance with consistent formatting.
