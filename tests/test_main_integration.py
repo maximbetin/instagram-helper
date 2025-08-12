@@ -17,16 +17,31 @@ MOCK_POST_DATA = {
 
 
 @pytest.fixture
-def mock_playwright() -> MagicMock:
-    """Create a mock playwright for testing."""
-    playwright = MagicMock()
-    browser = MagicMock()
-    context = MagicMock()
-    page = MagicMock()
-    context.pages = [page]
-    browser.contexts = [context]
-    playwright.chromium.connect_over_cdp.return_value = browser
-    return playwright
+def mock_args() -> MagicMock:
+    """Create mock command line arguments."""
+    args = MagicMock()
+    args.days = 1
+    args.accounts = None
+    args.output = "/tmp"
+    args.log_dir = "/tmp"
+    args.no_open = False
+    args.verbose = False
+    return args
+
+
+@pytest.fixture
+def mock_logger() -> MagicMock:
+    """Create a mock logger."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_playwright_context() -> Generator[MagicMock, None, None]:
+    """Mock the playwright context manager."""
+    with patch("cli.sync_playwright") as mock_sync_playwright:
+        mock_p = MagicMock()
+        mock_sync_playwright.return_value.__enter__.return_value = mock_p
+        yield mock_p
 
 
 @pytest.fixture
@@ -59,144 +74,86 @@ def mock_report_generator() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def mock_os_startfile() -> Generator[MagicMock, None, None]:
+def mock_webbrowser() -> Generator[MagicMock, None, None]:
     """Mock the webbrowser.open function."""
     with patch("cli.webbrowser.open") as mock_webbrowser:
         yield mock_webbrowser
 
 
 def test_main_success(
+    mock_playwright_context: MagicMock,
     mock_browser_manager: MagicMock,
     mock_instagram_scraper: MagicMock,
     mock_report_generator: MagicMock,
-    mock_os_startfile: MagicMock,
+    mock_webbrowser: MagicMock,
+    mock_args: MagicMock,
+    mock_logger: MagicMock,
 ) -> None:
     """Test successful main execution."""
-    with patch("cli.sync_playwright") as mock_sync_playwright:
-        mock_p = MagicMock()
-        mock_sync_playwright.return_value.__enter__.return_value = mock_p
+    with (
+        patch("cli.parse_args", return_value=mock_args),
+        patch("cli.setup_logging", return_value=mock_logger),
+    ):
+        result = main()
 
-        # Mock command line arguments
-        with patch("cli.parse_args") as mock_parse_args:
-            mock_args = MagicMock()
-            mock_args.days = 1
-            mock_args.accounts = None
-            mock_args.output = "/tmp"
-            mock_args.log_dir = "/tmp"
-            mock_args.no_open = False
-            mock_args.verbose = False
-            mock_parse_args.return_value = mock_args
-
-            # Mock logging setup
-            with patch("cli.setup_logging") as mock_setup_logging:
-                mock_logger = MagicMock()
-                mock_setup_logging.return_value = mock_logger
-
-                result = main()
-
-                assert result == 0
-                mock_browser_manager.assert_called_once_with(mock_p)
-                mock_instagram_scraper.assert_called()
-                mock_report_generator.assert_called_once()
-                mock_os_startfile.assert_called_once_with(
-                    "file:///tmp/test_report.html"
-                )
+        assert result == 0
+        mock_browser_manager.assert_called_once_with(mock_playwright_context)
+        mock_instagram_scraper.assert_called()
+        mock_report_generator.assert_called_once()
+        mock_webbrowser.assert_called_once_with("file:///tmp/test_report.html")
 
 
 def test_main_no_posts(
+    mock_playwright_context: MagicMock,
     mock_browser_manager: MagicMock,
     mock_instagram_scraper: MagicMock,
     mock_report_generator: MagicMock,
+    mock_args: MagicMock,
+    mock_logger: MagicMock,
 ) -> None:
     """Test main execution when no posts are found."""
-    with patch("cli.sync_playwright") as mock_sync_playwright:
-        mock_p = MagicMock()
-        mock_sync_playwright.return_value.__enter__.return_value = mock_p
+    with (
+        patch("cli.parse_args", return_value=mock_args),
+        patch("cli.setup_logging", return_value=mock_logger),
+    ):
+        # Mock no posts found
+        mock_instagram_scraper.return_value = []
 
-        # Mock command line arguments
-        with patch("cli.parse_args") as mock_parse_args:
-            mock_args = MagicMock()
-            mock_args.days = 1
-            mock_args.accounts = None
-            mock_args.output = "/tmp"
-            mock_args.log_dir = "/tmp"
-            mock_args.no_open = False
-            mock_args.verbose = False
-            mock_parse_args.return_value = mock_args
+        result = main()
 
-            # Mock logging setup
-            with patch("cli.setup_logging") as mock_setup_logging:
-                mock_logger = MagicMock()
-                mock_setup_logging.return_value = mock_logger
-
-                # Mock no posts found
-                mock_instagram_scraper.return_value = []
-
-                result = main()
-
-                assert result == 0
-                mock_report_generator.assert_not_called()
+        assert result == 0
+        mock_report_generator.assert_not_called()
 
 
-def test_main_browser_connection_error() -> None:
+def test_main_browser_connection_error(
+    mock_playwright_context: MagicMock,
+    mock_args: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
     """Test main execution when browser connection fails."""
-    with patch("cli.sync_playwright") as mock_sync_playwright:
-        mock_p = MagicMock()
-        mock_sync_playwright.return_value.__enter__.return_value = mock_p
+    with (
+        patch("cli.parse_args", return_value=mock_args),
+        patch("cli.setup_logging", return_value=mock_logger),
+        patch("cli.setup_browser", side_effect=Exception("ECONNREFUSED")),
+    ):
+        result = main()
 
-        # Mock command line arguments
-        with patch("cli.parse_args") as mock_parse_args:
-            mock_args = MagicMock()
-            mock_args.days = 1
-            mock_args.accounts = None
-            mock_args.output = "/tmp"
-            mock_args.log_dir = "/tmp"
-            mock_args.no_open = False
-            mock_args.verbose = False
-            mock_parse_args.return_value = mock_args
-
-            # Mock logging setup
-            with patch("cli.setup_logging") as mock_setup_logging:
-                mock_logger = MagicMock()
-                mock_setup_logging.return_value = mock_logger
-
-                # Mock browser connection error
-                with patch("cli.setup_browser") as mock_setup_browser:
-                    mock_setup_browser.side_effect = Exception("ECONNREFUSED")
-
-                    result = main()
-
-                    assert result == 1
-                    mock_logger.error.assert_called()
+        assert result == 1
+        mock_logger.error.assert_called()
 
 
-def test_main_general_error() -> None:
+def test_main_general_error(
+    mock_playwright_context: MagicMock,
+    mock_args: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
     """Test main execution when a general error occurs."""
-    with patch("cli.sync_playwright") as mock_sync_playwright:
-        mock_p = MagicMock()
-        mock_sync_playwright.return_value.__enter__.return_value = mock_p
+    with (
+        patch("cli.parse_args", return_value=mock_args),
+        patch("cli.setup_logging", return_value=mock_logger),
+        patch("cli.setup_browser", side_effect=Exception("General error")),
+    ):
+        result = main()
 
-        # Mock command line arguments
-        with patch("cli.parse_args") as mock_parse_args:
-            mock_args = MagicMock()
-            mock_args.days = 1
-            mock_args.accounts = None
-            mock_args.output = "/tmp"
-            mock_args.log_dir = "/tmp"
-            mock_args.no_open = False
-            mock_args.verbose = False
-            mock_parse_args.return_value = mock_args
-
-            # Mock logging setup
-            with patch("cli.setup_logging") as mock_setup_logging:
-                mock_logger = MagicMock()
-                mock_setup_logging.return_value = mock_logger
-
-                # Mock general error
-                with patch("cli.setup_browser") as mock_setup_browser:
-                    mock_setup_browser.side_effect = Exception("General error")
-
-                    result = main()
-
-                    assert result == 1
-                    mock_logger.error.assert_called()
+        assert result == 1
+        mock_logger.error.assert_called()

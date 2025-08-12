@@ -11,8 +11,6 @@ from playwright.sync_api import sync_playwright
 
 from browser_manager import setup_browser
 from config import (
-    BROWSER_CONNECTION_ERROR,
-    FILE_PROTOCOL,
     INSTAGRAM_ACCOUNTS,
     LOG_DIR,
     OUTPUT_DIR,
@@ -24,6 +22,8 @@ from utils import setup_logging
 
 # Constants
 TEMPLATE_PATH = "templates/template.html"
+FILE_PROTOCOL = "file://"
+BROWSER_CONNECTION_ERROR = "ECONNREFUSED"
 
 
 def parse_args() -> argparse.Namespace:

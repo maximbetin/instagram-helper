@@ -7,13 +7,6 @@ from datetime import timedelta, timezone
 SECONDS_IN_MS = 1000
 DEFAULT_TIMEZONE_OFFSET = 2
 
-# Protocol constants
-FILE_PROTOCOL = "file://"
-LOCALHOST_URL = "http://localhost:"
-
-# Error constants
-BROWSER_CONNECTION_ERROR = "ECONNREFUSED"
-
 # General settings
 TIMEZONE = timezone(
     timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", str(DEFAULT_TIMEZONE_OFFSET))))

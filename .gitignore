@@ -36,8 +36,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Debug HTML files
-debug_html/
+
 
 # Unit test / coverage reports
 htmlcov/

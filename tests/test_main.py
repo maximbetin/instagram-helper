@@ -117,7 +117,6 @@ def test_get_post_date_no_element(mock_page: MagicMock) -> None:
 @patch("time.sleep")
 def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) -> None:
     """Test successful post data extraction."""
-    # Use a date that's after the mock post date (2024-01-01)
     cutoff_date = datetime(2023, 12, 31, tzinfo=timezone.utc)
 
     # Mock page.goto to not raise exceptions
@@ -129,7 +128,7 @@ def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) 
     mock_time = MagicMock()
     mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
 
-    # Mock the query_selector calls - first call for caption (h1), second for date (time[datetime])
+    # Mock the query_selector calls
     def mock_query_selector(selector: str) -> MagicMock | None:
         if selector == "h1":
             return mock_caption
@@ -151,9 +150,7 @@ def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) 
 
 def test_extract_post_data_old_post(mock_page: MagicMock) -> None:
     """Test post data extraction for old posts."""
-    cutoff_date = datetime(
-        2024, 1, 2, tzinfo=timezone.utc
-    )  # After the mock post date (2024-01-01)
+    cutoff_date = datetime(2024, 1, 2, tzinfo=timezone.utc)
 
     # Mock caption and date elements
     mock_caption = MagicMock()
@@ -161,7 +158,7 @@ def test_extract_post_data_old_post(mock_page: MagicMock) -> None:
     mock_time = MagicMock()
     mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
 
-    # Mock the query_selector calls - first call for caption (h1), second for date (time[datetime])
+    # Mock the query_selector calls
     def mock_query_selector(selector: str) -> MagicMock | None:
         if selector == "h1":
             return mock_caption

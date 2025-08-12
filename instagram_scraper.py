@@ -23,89 +23,6 @@ from utils import setup_logging
 logger = setup_logging(__name__)
 
 
-def debug_page_structure(page: Page, account: str) -> None:
-    """Debug function to analyze the current page structure and help find the right selectors."""
-    try:
-        logger.debug(f"@{account}: === PAGE STRUCTURE DEBUG ===")
-        _log_element_counts(page, account)
-        _log_potential_captions(page, account)
-        _log_time_elements(page, account)
-        _save_debug_html(page, account)
-        logger.debug(f"@{account}: === END DEBUG ===")
-    except Exception as e:
-        logger.debug(f"@{account}: Debug function failed: {e}")
-
-
-def _log_element_counts(page: Page, account: str) -> None:
-    """Log counts of common Instagram page elements."""
-    article_count = len(page.query_selector_all("article"))
-    h1_count = len(page.query_selector_all("h1"))
-    time_count = len(page.query_selector_all("time"))
-    ul_count = len(page.query_selector_all("ul"))
-    li_count = len(page.query_selector_all("li"))
-
-    logger.debug(
-        f"@{account}: Found {article_count} articles, {h1_count} h1 elements, {time_count} time elements"
-    )
-    logger.debug(f"@{account}: Found {ul_count} ul elements, {li_count} li elements")
-
-
-def _log_potential_captions(page: Page, account: str) -> None:
-    """Log potential caption elements found on the page."""
-    caption_candidates = page.query_selector_all("h1, h2, h3, p, span, div")
-    caption_texts = []
-
-    for element in caption_candidates[:10]:  # Check first 10 elements
-        try:
-            text = element.inner_text().strip()
-            if text and 10 < len(text) < 500:  # Reasonable caption length
-                tag_name = element.evaluate("el => el.tagName.toLowerCase()")
-                caption_texts.append(f"{tag_name}: '{text[:100]}...'")
-        except Exception:
-            continue
-
-    if caption_texts:
-        logger.debug(f"@{account}: Potential caption elements:")
-        for text in caption_texts[:5]:  # Show first 5
-            logger.debug(f"@{account}:   {text}")
-
-
-def _log_time_elements(page: Page, account: str) -> None:
-    """Log time elements found on the page."""
-    time_elements = page.query_selector_all("time")
-    for i, time_elem in enumerate(time_elements[:3]):
-        try:
-            datetime_attr = time_elem.get_attribute("datetime")
-            text_content = time_elem.inner_text().strip()
-            logger.debug(
-                f"@{account}: Time element {i + 1}: datetime='{datetime_attr}', text='{text_content}'"
-            )
-        except Exception as e:
-            logger.debug(f"@{account}: Could not read time element {i + 1}: {e}")
-
-
-def _save_debug_html(page: Page, account: str) -> None:
-    """Save page HTML for manual analysis if debug is enabled."""
-    try:
-        import os
-        from datetime import datetime
-
-        debug_dir = os.path.join(os.getcwd(), "debug_html")
-        os.makedirs(debug_dir, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{account}_{timestamp}.html"
-        filepath = os.path.join(debug_dir, filename)
-
-        html_content = page.content()
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(html_content)
-
-        logger.debug(f"@{account}: Saved debug HTML to: {filepath}")
-    except Exception as e:
-        logger.debug(f"@{account}: Failed to save debug HTML: {e}")
-
-
 def _handle_scraping_error(
     account: str, operation: str, error: Exception, retry_attempt: Optional[int] = None
 ) -> None:
@@ -280,10 +197,6 @@ def extract_post_data(
                 timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
             )
             time.sleep(INSTAGRAM_POST_LOAD_DELAY / SECONDS_IN_MS)
-
-            # Debug: Log the current page structure for troubleshooting
-            if attempt == 0:  # Only log on first attempt to avoid spam
-                debug_page_structure(page, account)
 
             post_date = get_post_date(page)
             if not post_date or post_date < cutoff_date:

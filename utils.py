@@ -2,7 +2,6 @@
 
 import logging
 import os
-from datetime import datetime
 from typing import Optional
 
 # Logging configuration
@@ -53,6 +52,8 @@ def setup_logging(
             os.makedirs(log_dir, exist_ok=True)
 
             # Generate log filename with current date
+            from datetime import datetime
+
             log_filename = f"{datetime.now().strftime('%d-%m-%Y')}.log"
             log_filepath = os.path.join(log_dir, log_filename)
 
