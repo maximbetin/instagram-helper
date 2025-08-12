@@ -1,42 +1,46 @@
 """Browser management functionality."""
 
-import os
+from __future__ import annotations
+
 import subprocess
 import time
+from typing import TYPE_CHECKING
 
-from playwright.sync_api import Browser, Playwright
+from playwright.sync_api import Browser, Error, Playwright
 
-from config import (
-    BROWSER_ATTACH_ONLY,
-    BROWSER_CONNECT_SCHEME,
-    BROWSER_DEBUG_PORT,
-    BROWSER_LOAD_DELAY,
-    BROWSER_PATH,
-    BROWSER_PROFILE_DIR,
-    BROWSER_REMOTE_HOST,
-    BROWSER_START_URL,
-    BROWSER_USER_DATA_DIR,
-)
+from config import settings
 from utils import setup_logging
+
+if TYPE_CHECKING:
+    from config import Settings
 
 logger = setup_logging(__name__)
 
 
-def _connect_to_browser(playwright: Playwright, url: str) -> Browser | None:
-    """Try to connect to an existing browser instance over CDP."""
+def _connect_to_browser(playwright: Playwright, connect_url: str) -> Browser | None:
+    """Tries to connect to an existing browser instance over CDP."""
     try:
-        browser = playwright.chromium.connect_over_cdp(url)
-        logger.info(f"Successfully connected to existing browser at {url}")
+        browser = playwright.chromium.connect_over_cdp(connect_url)
+        logger.info(f"Successfully connected to existing browser at {connect_url}")
         return browser
-    except Exception as e:
-        logger.debug(f"Could not connect to existing browser at {url}: {e}")
+    except (Error, Exception) as e:
+        logger.debug(f"Could not connect to existing browser at {connect_url}: {e}")
         return None
 
 
-def _kill_existing_brave_processes() -> None:
-    """Attempt to kill existing Brave processes to prevent conflicts."""
-    if not BROWSER_PATH or "taskkill.exe" not in BROWSER_PATH.lower():
+def _kill_existing_browser_processes() -> None:
+    """Attempts to kill existing browser processes to prevent conflicts.
+
+    This is a Windows-specific solution using `taskkill` and is intended
+    for WSL environments to manage the host's browser processes.
+    """
+    if (
+        not settings.BROWSER_PATH
+        or "brave.exe" not in settings.BROWSER_PATH.name.lower()
+    ):
+        logger.debug("Skipping process kill: Not configured for Brave on Windows.")
         return
+
     try:
         subprocess.run(
             ["taskkill.exe", "/f", "/im", "brave.exe"],
@@ -44,54 +48,55 @@ def _kill_existing_brave_processes() -> None:
             check=False,
             text=True,
         )
-        logger.debug("Attempted to stop existing Brave browser processes.")
+        logger.info("Attempted to stop existing Brave browser processes.")
     except FileNotFoundError:
         logger.debug(
-            "'taskkill.exe' not found. "
-            "Skipping process cleanup. "
-            "This is expected if not on WSL with Windows interop."
+            "'taskkill.exe' not found. Skipping process cleanup. "
+            "This is expected on non-Windows systems."
         )
     except Exception as e:
         logger.warning(f"An error occurred while trying to kill Brave processes: {e}")
 
 
-def _launch_brave_browser(
-    playwright: Playwright, url: str, port: int
+def _launch_local_browser(
+    playwright: Playwright, app_settings: Settings
 ) -> Browser | None:
-    """Launch Brave browser with specific user data and debugging port."""
-    if not (BROWSER_PATH and os.path.exists(BROWSER_PATH)):
-        logger.debug(
-            "Brave browser path not configured or not found. Skipping Brave launch."
-        )
+    """Launches a local browser with remote debugging enabled."""
+    if not app_settings.BROWSER_PATH or not app_settings.BROWSER_PATH.exists():
+        logger.debug("Browser path not configured or not found. Skipping local launch.")
         return None
 
-    logger.info("Attempting to launch Brave browser...")
-    _kill_existing_brave_processes()
+    logger.info("Attempting to launch local browser...")
+    _kill_existing_browser_processes()
 
     browser_args = [
-        BROWSER_PATH,
-        f"--remote-debugging-port={port}",
-        "--remote-debugging-address=0.0.0.0",
-        f"--user-data-dir={BROWSER_USER_DATA_DIR}",
-        f"--profile-directory={BROWSER_PROFILE_DIR}",
-        BROWSER_START_URL,
+        str(app_settings.BROWSER_PATH),
+        f"--remote-debugging-port={app_settings.BROWSER_DEBUG_PORT}",
+        f"--user-data-dir={app_settings.BROWSER_USER_DATA_DIR}",
+        f"--profile-directory={app_settings.BROWSER_PROFILE_DIR}",
+        app_settings.BROWSER_START_URL,
     ]
 
     try:
         subprocess.Popen(browser_args)
         logger.debug(
-            f"Waiting {BROWSER_LOAD_DELAY / 1000:.1f}s for Brave to initialize..."
+            f"Waiting {app_settings.BROWSER_LOAD_DELAY / 1000:.1f}s for browser..."
         )
-        time.sleep(BROWSER_LOAD_DELAY / 1000)
-        # Try connecting after launch
-        return _connect_to_browser(playwright, url)
+        time.sleep(app_settings.BROWSER_LOAD_DELAY / 1000)
+        connect_url = (
+            f"{app_settings.BROWSER_CONNECT_SCHEME}://"
+            f"{app_settings.BROWSER_REMOTE_HOST}:{app_settings.BROWSER_DEBUG_PORT}"
+        )
+        return _connect_to_browser(playwright, connect_url)
     except Exception as e:
-        logger.error(f"Failed to launch Brave browser: {e}")
+        logger.error(f"Failed to launch local browser: {e}")
         return None
 
 
-def _launch_playwright_chromium(playwright: Playwright, port: int) -> Browser:
-    """Launch a managed Playwright Chromium instance as a fallback."""
+def _launch_playwright_chromium(
+    playwright: Playwright, app_settings: Settings
+) -> Browser:
+    """Launches a managed Playwright Chromium instance as a fallback."""
     logger.info("Falling back to Playwright-managed Chromium browser.")
     try:
         return playwright.chromium.launch(
@@ -99,43 +104,61 @@ def _launch_playwright_chromium(playwright: Playwright, port: int) -> Browser:
             args=[
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
-                f"--remote-debugging-port={port}",
+                f"--remote-debugging-port={app_settings.BROWSER_DEBUG_PORT}",
             ],
         )
-    except Exception as e:
+    except (Error, Exception) as e:
         logger.critical(f"Failed to launch Playwright Chromium: {e}")
         raise
 
 
 def setup_browser(playwright: Playwright) -> Browser:
-    """Set up and return a browser instance.
+    """Sets up and returns a browser instance based on configuration.
 
-    This function attempts the following strategies in order:
-    1. Connect to an existing browser instance.
-    2. If BROWSER_PATH is set, launch a local Brave browser with custom user data.
-    3. If BROWSER_ATTACH_ONLY is true, it will not proceed to launch a browser.
-    4. As a fallback, launch a new Playwright-managed Chromium instance.
+    This function follows a specific strategy to establish a browser connection:
+    1.  Tries to connect to an existing browser instance using the configured URL.
+    2.  If connection fails and `BROWSER_ATTACH_ONLY` is `False`, it attempts
+        to launch a local browser instance (e.g., Brave).
+    3.  If both connection and local launch fail, it falls back to launching a
+        Playwright-managed Chromium instance.
+    4.  If `BROWSER_ATTACH_ONLY` is `True`, it raises an error if the initial
+        connection fails.
+
+    Returns:
+        A Playwright `Browser` instance.
+
+    Raises:
+        ConnectionError: If no browser connection can be established.
     """
-    target_url = (
-        f"{BROWSER_CONNECT_SCHEME}://{BROWSER_REMOTE_HOST}:{BROWSER_DEBUG_PORT}"
+    connect_url = (
+        f"{settings.BROWSER_CONNECT_SCHEME}://"
+        f"{settings.BROWSER_REMOTE_HOST}:{settings.BROWSER_DEBUG_PORT}"
     )
-    logger.debug(f"Attempting to connect to browser at {target_url}")
+    logger.debug(f"Attempting to connect to browser at {connect_url}")
 
     # 1. Try to connect to an existing browser
-    if browser := _connect_to_browser(playwright, target_url):
+    if browser := _connect_to_browser(playwright, connect_url):
         return browser
 
-    # If attach-only is enabled, fail here
-    if BROWSER_ATTACH_ONLY:
-        logger.error("Failed to connect to browser, and BROWSER_ATTACH_ONLY is enabled.")
-        raise ConnectionError(f"Could not connect to browser at {target_url}")
+    # If attach-only is enabled, fail here without attempting to launch
+    if settings.BROWSER_ATTACH_ONLY:
+        logger.error("Connection failed and BROWSER_ATTACH_ONLY is enabled.")
+        raise ConnectionError(f"Could not connect to browser at {connect_url}")
 
-    # 2. Try to launch local Brave browser
-    if browser := _launch_brave_browser(playwright, target_url, BROWSER_DEBUG_PORT):
-        logger.info("Successfully launched and connected to Brave browser.")
+    # 2. Try to launch a local browser if configured
+    if browser := _launch_local_browser(playwright, settings):
+        logger.info("Successfully launched and connected to local browser.")
         return browser
 
     # 3. Fallback to Playwright-managed Chromium
-    browser = _launch_playwright_chromium(playwright, BROWSER_DEBUG_PORT)
-    logger.info("Successfully launched Playwright-managed Chromium browser.")
-    return browser
+    logger.warning(
+        "Could not connect to or launch a local browser. "
+        "Falling back to Playwright-managed Chromium."
+    )
+    try:
+        browser = _launch_playwright_chromium(playwright, settings)
+        logger.info("Successfully launched Playwright-managed Chromium browser.")
+        return browser
+    except Exception:
+        logger.critical("All attempts to set up a browser have failed.")
+        raise ConnectionError("Could not launch any browser.") from None

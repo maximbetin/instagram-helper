@@ -33,6 +33,7 @@ dependencies = [
     "playwright>=1.40.0",  # Browser automation and web scraping
     "jinja2>=3.1.0",       # HTML template rendering
     "python-dotenv>=1.0.0", # Load .env automatically if present
+    "fake-useragent>=1.5.1", # Fake User-Agent generator
 ]
 
 # Optional dependency groups
@@ -97,7 +98,6 @@ markers = [
 [tool.ruff]
 target-version = "py312"     # Target Python version
 line-length = 88             # Maximum line length (Black-compatible)
-interpreter = "/home/maxim/instagram-helper/venv/bin/python"
 
 # Ruff linting rules
 [tool.ruff.lint]
@@ -150,6 +150,7 @@ exclude = [
 module = [
     "playwright.*",  # Browser automation library
     "jinja2.*",      # Template engine
+    "fake_useragent.*", # Fake User-Agent generator
 ]
 ignore_missing_imports = true            # Ignore missing imports for these modules
 

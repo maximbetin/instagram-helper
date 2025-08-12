@@ -7,14 +7,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from freezegun import freeze_time
 
+from config import settings
 from instagram_scraper import (
     InstagramPost,
-    _get_post_caption,
-    _get_post_date,
-    _get_post_urls,
-    process_account,
+    InstagramScraper,
 )
-from report_generator import generate_html_report
+from report_generator import ReportData, generate_html_report
 
 # Mock data for testing
 FROZEN_TIME = "2024-01-01 12:00:00"
@@ -40,7 +38,8 @@ def test_get_post_urls_success(mock_page: MagicMock) -> None:
     mock_link_reel.get_attribute.return_value = "/reel/456/"
     mock_page.query_selector_all.return_value = [mock_link_p, mock_link_reel]
 
-    urls = _get_post_urls(mock_page, MOCK_ACCOUNT)
+    scraper = InstagramScraper(mock_page, settings)
+    urls = scraper._get_post_urls(MOCK_ACCOUNT)
     assert len(urls) == 2
     assert "https://www.instagram.com/p/123" in urls
     assert "https://www.instagram.com/reel/456" in urls
@@ -51,7 +50,8 @@ def test_get_post_urls_no_links(mock_page: MagicMock) -> None:
     mock_link_story = MagicMock()
     mock_link_story.get_attribute.return_value = "/stories/789/"
     mock_page.query_selector_all.return_value = [mock_link_story]
-    assert not _get_post_urls(mock_page, MOCK_ACCOUNT)
+    scraper = InstagramScraper(mock_page, settings)
+    assert not scraper._get_post_urls(MOCK_ACCOUNT)
 
 
 def test_get_post_caption_found(mock_page: MagicMock) -> None:
@@ -63,7 +63,8 @@ def test_get_post_caption_found(mock_page: MagicMock) -> None:
     mock_locator.first = mock_element
     mock_page.locator.return_value = mock_locator
 
-    assert _get_post_caption(mock_page) == "A test caption."
+    scraper = InstagramScraper(mock_page, settings)
+    assert scraper._get_post_caption() == "A test caption."
 
 
 def test_get_post_caption_not_found(mock_page: MagicMock) -> None:
@@ -74,7 +75,8 @@ def test_get_post_caption_not_found(mock_page: MagicMock) -> None:
     mock_locator.first = mock_element
     mock_page.locator.return_value = mock_locator
 
-    assert _get_post_caption(mock_page) == ""
+    scraper = InstagramScraper(mock_page, settings)
+    assert scraper._get_post_caption() == ""
 
 
 @freeze_time(FROZEN_TIME)
@@ -83,23 +85,25 @@ def test_get_post_date_found(mock_page: MagicMock) -> None:
     mock_time_element = MagicMock()
     mock_time_element.get_attribute.return_value = "2024-01-01T10:00:00Z"
     mock_page.query_selector.return_value = mock_time_element
-    post_date = _get_post_date(mock_page)
+    scraper = InstagramScraper(mock_page, settings)
+    post_date = scraper._get_post_date()
     assert post_date is not None
     assert post_date.year == 2024
     assert post_date.month == 1
     assert post_date.day == 1
-    assert post_date.hour == 12  # Assuming TIMEZONE_OFFSET=+2
+    assert post_date.hour == 12
     assert post_date.tzinfo is not None
 
 
 def test_get_post_date_not_found(mock_page: MagicMock) -> None:
     """Test that None is returned when the time element is not found."""
     mock_page.query_selector.return_value = None
-    assert _get_post_date(mock_page) is None
+    scraper = InstagramScraper(mock_page, settings)
+    assert scraper._get_post_date() is None
 
 
 @freeze_time(FROZEN_TIME)
-@patch("instagram_scraper._extract_post_data")
+@patch("instagram_scraper.InstagramScraper._extract_post_data")
 def test_process_account_success(
     mock_extract_post_data: MagicMock, mock_page: MagicMock
 ) -> None:
@@ -110,11 +114,12 @@ def test_process_account_success(
     post2 = InstagramPost(
         "url2", MOCK_ACCOUNT, "caption2", datetime.now(UTC) - timedelta(hours=2)
     )
-    mock_extract_post_data.side_effect = [post1, post2, None]  # The third post is old
+    mock_extract_post_data.side_effect = [post1, post2, None]
 
-    with patch("instagram_scraper._get_post_urls", return_value=["url1", "url2", "url3"]):
+    scraper = InstagramScraper(mock_page, settings)
+    with patch.object(scraper, "_get_post_urls", return_value=["url1", "url2", "url3"]):
         cutoff_date = datetime.now(UTC) - timedelta(days=1)
-        result = process_account(MOCK_ACCOUNT, mock_page, cutoff_date)
+        result = scraper.process_account(MOCK_ACCOUNT, cutoff_date)
 
         assert len(result) == 2
         assert result[0] == post1
@@ -127,7 +132,8 @@ def test_process_account_navigation_fails(mock_page: MagicMock) -> None:
     """Test that account processing returns an empty list if navigation fails."""
     mock_page.goto.side_effect = Exception("Navigation failed")
     cutoff_date = datetime.now(UTC) - timedelta(days=1)
-    result = process_account(MOCK_ACCOUNT, mock_page, cutoff_date)
+    scraper = InstagramScraper(mock_page, settings)
+    result = scraper.process_account(MOCK_ACCOUNT, cutoff_date)
     assert result == []
 
 
@@ -147,13 +153,10 @@ def test_generate_html_report_success(tmp_path: Path) -> None:
     template_path = template_dir / "template.html"
     template_path.write_text("<html>{{ total_posts }} posts</html>")
 
-    report_path = generate_html_report(
-        posts=posts,
-        cutoff_date=datetime.now(UTC) - timedelta(days=1),
-        output_dir=tmp_path,
-        template_path=str(template_path),
-        logger=MagicMock(),
+    report_data = ReportData(
+        posts=posts, cutoff_date=datetime.now(UTC) - timedelta(days=1)
     )
+    report_path = generate_html_report(report_data, tmp_path, str(template_path))
 
     assert report_path is not None
     report_file = Path(report_path)
@@ -163,11 +166,8 @@ def test_generate_html_report_success(tmp_path: Path) -> None:
 
 def test_generate_html_report_no_posts(tmp_path: Path) -> None:
     """Test that no report is generated if there are no posts."""
-    report_path = generate_html_report(
-        posts=[],
-        cutoff_date=datetime.now(UTC) - timedelta(days=1),
-        output_dir=tmp_path,
-        template_path="dummy.html",
-        logger=MagicMock(),
+    report_data = ReportData(
+        posts=[], cutoff_date=datetime.now(UTC) - timedelta(days=1)
     )
+    report_path = generate_html_report(report_data, tmp_path, "dummy.html")
     assert report_path is None

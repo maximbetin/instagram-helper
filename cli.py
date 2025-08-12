@@ -1,43 +1,103 @@
 """Command-line interface for Instagram Helper."""
 
+from __future__ import annotations
+
 import argparse
-import logging
-import os
 import sys
 import webbrowser
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 
 from browser_manager import setup_browser
-from config import (
-    FILE_PROTOCOL,
-    INSTAGRAM_ACCOUNTS,
-    LOG_DIR,
-    OUTPUT_DIR,
-    TEMPLATE_PATH,
-    TIMEZONE,
-)
-from instagram_scraper import process_account
-from report_generator import generate_html_report
+from config import settings
+from instagram_scraper import InstagramPost, InstagramScraper
+from report_generator import ReportData, generate_html_report
 from utils import setup_logging
 
-load_dotenv()
+if TYPE_CHECKING:
+    from config import Settings
+
+
+logger = setup_logging(__name__)
+
+
+class App:
+    """Main application class for the Instagram Helper."""
+
+    def __init__(self, app_settings: Settings, args: argparse.Namespace):
+        self.settings = app_settings
+        self.args = args
+        self.all_posts: list[InstagramPost] = []
+
+    def run(self) -> None:
+        """Executes the main application logic."""
+        with sync_playwright() as p:
+            browser = self._setup_browser(p)
+            try:
+                page = self._get_browser_page(browser)
+                scraper = InstagramScraper(page, self.settings)
+
+                cutoff_date = datetime.now(self.settings.TIMEZONE) - timedelta(
+                    days=self.args.days
+                )
+                accounts = self.args.accounts or self.settings.INSTAGRAM_ACCOUNTS
+
+                logger.info(
+                    f"Fetching posts from the last {self.args.days} days (since "
+                    f"{cutoff_date.strftime('%Y-%m-%d')})."
+                )
+                logger.info(
+                    f"Processing {len(accounts)} account(s): {', '.join(accounts)}"
+                )
+
+                for account in accounts:
+                    posts = scraper.process_account(account, cutoff_date)
+                    self.all_posts.extend(posts)
+
+                self._generate_report(cutoff_date)
+
+            finally:
+                logger.debug("Closing browser.")
+                browser.close()
+
+    def _setup_browser(self, playwright: Playwright) -> Browser:
+        """Sets up the browser, launching it if in headless mode."""
+        if self.args.headless:
+            logger.info("Running in headless mode.")
+            return playwright.chromium.launch(headless=True)
+        return setup_browser(playwright)
+
+    def _get_browser_page(self, browser: Browser) -> Page:
+        """Retrieves or creates a browser page."""
+        context = browser.contexts[0] if browser.contexts else browser.new_context()
+        return context.pages[0] if context.pages else context.new_page()
+
+    def _generate_report(self, cutoff_date: datetime) -> None:
+        """Generates and optionally opens the HTML report."""
+        if not self.all_posts:
+            logger.info("No new posts found. No report generated.")
+            return
+
+        logger.info(f"Found {len(self.all_posts)} total posts. Generating report...")
+        report_data = ReportData(posts=self.all_posts, cutoff_date=cutoff_date)
+        report_path = generate_html_report(
+            report_data, self.args.output, self.settings.TEMPLATE_PATH
+        )
+
+        if report_path:
+            logger.info(f"Report generated: {report_path}")
+            if self.args.open_report:
+                webbrowser.open(report_path.as_uri())
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Parses command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Fetch recent Instagram posts and generate HTML reports",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-        Examples:
-            python cli.py                           # Use default settings
-            python cli.py --days 3                  # Fetch posts from last 3 days
-            python cli.py --accounts aytoviedo      # Only fetch from specific accounts
-            python cli.py --output ./reports        # Save reports to custom directory
-        """,
+        description="Fetch recent Instagram posts and generate HTML reports.",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     parser.add_argument(
@@ -58,78 +118,39 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         "-o",
-        default=OUTPUT_DIR,
-        help=f"Output directory for reports (default: {OUTPUT_DIR})",
+        type=Path,
+        default=settings.OUTPUT_DIR,
+        help=f"Output directory for reports (default: {settings.OUTPUT_DIR})",
     )
 
     parser.add_argument(
         "--log-dir",
-        default=LOG_DIR,
-        help=f"Directory for log files (default: {LOG_DIR})",
+        type=Path,
+        default=settings.LOG_DIR,
+        help=f"Directory for log files (default: {settings.LOG_DIR})",
     )
-
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run the browser in headless mode (no GUI).",
+    )
+    parser.add_argument(
+        "--open-report",
+        action="store_true",
+        help="Open the generated report in a web browser.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
-    """Main CLI function."""
-    args = parse_args()
-
-    # Setup logging
-    logger = setup_logging(
-        log_dir=args.log_dir,
-        log_level=logging.DEBUG,  # Always use DEBUG level for verbose output
-    )
-
-    # Determine accounts to process
-    accounts_to_process = args.accounts if args.accounts else INSTAGRAM_ACCOUNTS
-
-    browser = None
-    context = None
+    """Main CLI entry point."""
     try:
-        with sync_playwright() as p:
-            browser = setup_browser(p)
-            # Safely get an existing context/page or create new ones
-            context = browser.contexts[0] if browser.contexts else browser.new_context()
-            page = context.pages[0] if context.pages else context.new_page()
-
-            cutoff_date = datetime.now(TIMEZONE) - timedelta(days=args.days)
-            logger.info(
-                f"Fetching posts from the last {args.days} days (since {cutoff_date.strftime('%Y-%m-%d')})."
-            )
-            logger.info(
-                f"Processing {len(accounts_to_process)} account(s): {', '.join(accounts_to_process)}"
-            )
-
-            all_posts = []
-            for account in accounts_to_process:
-                posts = process_account(account, page, cutoff_date)
-                all_posts.extend(posts)
-
-            if all_posts:
-                logger.info(f"Total posts found: {len(all_posts)}. Generating HTML report...")
-                report_path = generate_html_report(
-                    all_posts, cutoff_date, args.output, TEMPLATE_PATH, logger
-                )
-                if report_path:
-                    logger.info(f"Report successfully generated at: {report_path}")
-            else:
-                logger.info("No new posts found. No report will be generated.")
-
-            # Gracefully close browser resources
-            try:
-                if context:
-                    logger.debug("Closing browser context.")
-                    context.close()
-                if browser:
-                    logger.debug("Closing browser.")
-                    browser.close()
-            except Exception as e:
-                logger.warning(f"Browser cleanup finished with a minor issue: {e}")
-
+        args = parse_args()
+        setup_logging(log_dir=args.log_dir)
+        app = App(settings, args)
+        app.run()
         logger.info("Scraping process completed successfully.")
         return 0
-
     except Exception as e:
         logger.critical(f"A critical error occurred: {e}", exc_info=True)
         return 1

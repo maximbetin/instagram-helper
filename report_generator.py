@@ -1,41 +1,63 @@
 """HTML report generation functionality."""
 
-import logging
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from jinja2 import Environment, FileSystemLoader
 
-from instagram_scraper import InstagramPost
 from utils import setup_logging
+
+if TYPE_CHECKING:
+    from instagram_scraper import InstagramPost
 
 logger = setup_logging(__name__)
 
 
+@dataclass
+class ReportData:
+    """Holds all data required for generating the HTML report."""
+
+    posts: list[InstagramPost]
+    cutoff_date: datetime
+    generation_time: datetime = field(default_factory=datetime.now)
+
+    @property
+    def total_posts(self) -> int:
+        return len(self.posts)
+
+    @property
+    def accounts_count(self) -> int:
+        return len({p.account for p in self.posts})
+
+    @property
+    def sorted_posts(self) -> list[InstagramPost]:
+        return sorted(self.posts, key=lambda p: p.date_posted, reverse=True)
+
+    @property
+    def template_data(self) -> dict[str, str | int | list[InstagramPost]]:
+        return {
+            "posts": self.sorted_posts,
+            "total_posts": self.total_posts,
+            "generated_on": self.generation_time.strftime("%d-%m-%Y %H:%M:%S"),
+            "date_range": (
+                f"{self.cutoff_date.strftime('%d-%m-%Y')} - "
+                f"{self.generation_time.strftime('%d-%m-%Y')}"
+            ),
+            "accounts_count": self.accounts_count,
+        }
+
+
 def generate_html_report(
-    posts: list[InstagramPost],
-    cutoff_date: datetime,
-    output_dir: Path,
-    template_path: str,
-    logger: logging.Logger,
-) -> str | None:
-    """Generate a stylized HTML report from a list of Instagram posts."""
-    if not posts:
+    report_data: ReportData, output_dir: Path, template_path: str
+) -> Path | None:
+    """Generates a stylized HTML report from a list of Instagram posts."""
+    if not report_data.posts:
         logger.warning("No posts were provided, skipping report generation.")
         return None
-
-    # Sort posts by date, newest first
-    posts.sort(key=lambda p: p.date_posted, reverse=True)
-
-    # Prepare data for the template
-    now = datetime.now()
-    template_data = {
-        "posts": posts,
-        "total_posts": len(posts),
-        "generated_on": now.strftime("%d-%m-%Y %H:%M:%S"),
-        "date_range": f"{cutoff_date.strftime('%d-%m-%Y')} - {now.strftime('%d-%m-%Y')}",
-        "accounts_count": len({p.account for p in posts}),
-    }
 
     try:
         # Set up Jinja2 environment
@@ -47,18 +69,18 @@ def generate_html_report(
         template = env.get_template(template_name)
 
         # Render the HTML content
-        html_content = template.render(template_data)
+        html_content = template.render(report_data.template_data)
 
         # Ensure output directory exists and save the report
         output_dir.mkdir(parents=True, exist_ok=True)
-        report_filename = f"instagram_report_{now.strftime('%Y%m%d_%H%M%S')}.html"
+        report_filename = f"instagram_report_{report_data.generation_time.strftime('%Y%m%d_%H%M%S')}.html"
         report_path = output_dir / report_filename
 
         with report_path.open("w", encoding="utf-8") as f:
             f.write(html_content)
 
         logger.info(f"Successfully generated HTML report: {report_path}")
-        return str(report_path)
+        return report_path
 
     except Exception as e:
         logger.error(f"Failed to generate HTML report: {e}", exc_info=True)

@@ -7,12 +7,35 @@ stylized HTML report with global date sorting and corresponding links.
 
 - **Automated Scraping**: Fetches recent posts from a configurable list of Instagram accounts.
 - **Date Filtering**: Retrieves posts published within a specified number of days.
-- **HTML Report Generation**: Creates a clean, responsive HTML report of all fetched posts, sorted chronologically.
+- **HTML Report Generation**: Creates a clean, responsive HTML report of all fetched posts, sorted
+  chronologically.
 - **CLI Interface**: Provides a command-line interface for flexible execution and customization.
 - **WSL2 Integration**: Optimized for Windows Subsystem for Linux 2, with support for launching a
   local browser instance.
 - **Quality Assured**: Enforced code quality through `ruff`, `mypy`, and a comprehensive `pytest`
   test suite.
+
+## Getting Started
+
+To get started with the Instagram Helper, follow these steps:
+
+1. **Prerequisites**:
+
+   - Ensure you have **Python 3.12+** installed.
+   - You need a **Chromium-based browser** (like Chrome, Brave, or Edge) with remote debugging
+     enabled.
+
+2. **Setup**:
+
+   - Clone the repository and run `make setup-dev` to prepare the environment.
+
+3. **Configuration**:
+
+   - Create a `.env` file in the project root to configure your browser settings. See the
+     [Environment Variables](#environment-variables) section for details.
+
+4. **Run**:
+   - Execute `python cli.py --help` to see the available commands and options.
 
 ## Requirements
 
@@ -24,29 +47,25 @@ stylized HTML report with global date sorting and corresponding links.
 
 1. **Clone the Repository**
 
-    ```bash
-    git clone https://github.com/maximbetin/instagram-helper.git
-    cd instagram-helper
-    ```
+   ```bash
+   git clone https://github.com/maximbetin/instagram-helper.git
+   cd instagram-helper
+   ```
 
-2. **Set Up a Virtual Environment**
+2. **Set Up the Development Environment**
 
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
+   We recommend using the provided `Makefile` to simplify setup. This command creates a virtual
+   environment, and installs all required dependencies.
 
-3. **Install Dependencies**
+   ```bash
+   make setup-dev
+   ```
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+   After setup, activate the virtual environment:
 
-    For development, install the additional testing and linting tools:
-
-    ```bash
-    pip install -r requirements-dev.txt
-    ```
+   ```bash
+   source venv/bin/activate
+   ```
 
 ## Usage
 
@@ -70,19 +89,24 @@ By default, this will:
 You can customize the scraper's behavior using these options:
 
 ```text
-usage: cli.py [-h] [--days DAYS] [--accounts [ACCOUNTS ...]] [--output OUTPUT] [--log-dir LOG_DIR]
+usage: cli.py [-h] [--days DAYS] [--accounts [ACCOUNTS ...]] [--output OUTPUT]
+              [--log-dir LOG_DIR] [--headless] [--open-report]
 
 Fetch recent Instagram posts and generate HTML reports.
 
-optional arguments:
-  -h, --help            Show this help message and exit
-  --days DAYS, -d DAYS  Number of days back to fetch posts from (default: 3).
+options:
+  -h, --help            show this help message and exit
+  --days DAYS, -d DAYS  Number of days back to fetch posts from (default: 3)
   --accounts [ACCOUNTS ...], -a [ACCOUNTS ...]
-                        Space-separated list of Instagram accounts to fetch from (default: all
-                        configured accounts).
+                        Specific Instagram accounts to fetch from (default: all
+                        configured accounts)
   --output OUTPUT, -o OUTPUT
-                        Output directory for reports (default: project root).
-  --log-dir LOG_DIR     Directory for log files (default: project root).
+                        Output directory for reports (default:
+                        /home/maxim/instagram-helper)
+  --log-dir LOG_DIR     Directory for log files (default: /home/maxim/instagram-
+                        helper)
+  --headless            Run the browser in headless mode (no GUI).
+  --open-report         Open the generated report in a web browser.
 ```
 
 ### Examples
@@ -109,15 +133,15 @@ optional arguments:
 
 ### Environment Variables
 
-The application can be configured via a `.env` file in the project root. This is the recommended
-way to manage settings, especially for browser paths and user data.
+The application can be configured via a `.env` file in the project root. This is the recommended way
+to manage settings, especially for browser paths and user data.
 
 - `BROWSER_PATH`: The absolute path to your browser's executable.
 - `BROWSER_USER_DATA_DIR`: Path to your browser's user data directory (to reuse sessions).
 - `BROWSER_PROFILE_DIR`: The profile directory to use (e.g., "Default" or "Profile 1").
 - `BROWSER_DEBUG_PORT`: The remote debugging port.
-- `BROWSER_ATTACH_ONLY`: Set to `"true"` to only attach to an existing browser
-instance and not launch a new one.
+- `BROWSER_ATTACH_ONLY`: Set to `"true"` to only attach to an existing browser instance and not
+  launch a new one.
 
 An example `.env` file for WSL2 users targeting a Windows browser:
 
@@ -140,25 +164,26 @@ You can also modify `config.py` directly to change:
 
 ### Quality Checks
 
-This project uses `ruff` for linting/formatting, `mypy` for static type checking, and `pytest` for testing.
+This project uses `ruff` for linting/formatting, `mypy` for static type checking, and `pytest` for
+testing.
 
 - **Run all checks**:
 
-    ```bash
-    make check-all
-    ```
+  ```bash
+  make check-all
+  ```
 
 - **Format code**:
 
-    ```bash
-    make format
-    ```
+  ```bash
+  make format
+  ```
 
 - **Run tests**:
 
-    ```bash
-    make test
-    ```
+  ```bash
+  make test
+  ```
 
 All configurations are located in `pyproject.toml` and the `Makefile`.
 

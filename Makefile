@@ -20,8 +20,7 @@ help:
 setup-dev:
 	@echo "Setting up development environment..."
 	@python -m venv venv
-	@./venv/bin/pip install -r requirements.txt
-	@./venv/bin/pip install -r requirements-dev.txt
+	@./venv/bin/pip install -e ".[dev]"
 	@echo "Development environment created. Activate with 'source venv/bin/activate'"
 
 # --- Quality Checks -----------------------------------------------------------

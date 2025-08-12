@@ -29,11 +29,12 @@ def reset_logging_handlers() -> None:
 
 def test_setup_logging_basic_configuration() -> None:
     """Test that the logger is configured with the correct name and level."""
-    logger = setup_logging(name="test_logger", log_level=logging.INFO)
-    assert logger.name == "test_logger"
-    assert logger.level == logging.INFO
-    assert logger.propagate is False
-    assert len(logger.handlers) == 1  # Should only have console handler
+    with patch.dict("os.environ", {"LOG_LEVEL": "INFO"}):
+        logger = setup_logging(name="test_logger")
+        assert logger.name == "test_logger"
+        assert logger.level == logging.INFO
+        assert not logger.propagate
+        assert len(logger.handlers) == 1  # Should only have console handler
 
 
 def test_setup_logging_console_handler_format() -> None:

@@ -1,111 +1,153 @@
 """Configuration settings for Instagram Helper."""
 
+from __future__ import annotations
+
 import os
+from dataclasses import dataclass, field
 from datetime import timedelta, timezone
 from pathlib import Path
+from typing import ClassVar
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Path Configuration ---
-# Use pathlib for robust and platform-independent path management.
-# BASE_DIR is the project's root directory.
-BASE_DIR = Path(__file__).resolve().parent
 
-# Default output, log, and template directories.
-# These can be overridden by environment variables.
-OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", BASE_DIR))
-LOG_DIR = Path(os.getenv("LOG_DIR", BASE_DIR))
-TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", "templates/template.html")
+@dataclass(frozen=True, kw_only=True)
+class Settings:
+    """Manages all application settings, loading them from environment variables.
+
+    This class centralizes configuration management, providing default values
+    and validation for required settings. Using a frozen dataclass ensures that
+    settings are immutable at runtime, preventing unintended modifications.
+
+    Attributes:
+        BASE_DIR (ClassVar[Path]): The project's root directory.
+        BROWSER_PATH (Path): The absolute path to the browser executable.
+        BROWSER_USER_DATA_DIR (Path): Path to the browser's user data directory.
+        BROWSER_PROFILE_DIR (str): The profile directory to use.
+        BROWSER_DEBUG_PORT (int): The remote debugging port.
+        BROWSER_ATTACH_ONLY (bool): If true, attach to an existing browser.
+        INSTAGRAM_ACCOUNTS (list[str]): Default list of Instagram accounts.
+    """
+
+    # --- Class-level Constants ---
+    BASE_DIR: ClassVar[Path] = Path(__file__).resolve().parent
+
+    # --- Path Configuration ---
+    OUTPUT_DIR: Path = field(
+        default_factory=lambda: Path(os.getenv("OUTPUT_DIR", Settings.BASE_DIR))
+    )
+    LOG_DIR: Path = field(
+        default_factory=lambda: Path(os.getenv("LOG_DIR", Settings.BASE_DIR))
+    )
+    TEMPLATE_PATH: str = "templates/template.html"
+
+    # --- Timezone Configuration ---
+    TIMEZONE: timezone = field(
+        default_factory=lambda: timezone(
+            timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", "2")))
+        )
+    )
+
+    # --- Browser Configuration ---
+    BROWSER_PATH: Path | None = field(default=None)
+    BROWSER_USER_DATA_DIR: Path | None = field(default=None)
+    BROWSER_PROFILE_DIR: str = "Default"
+    BROWSER_DEBUG_PORT: int = 9222
+    BROWSER_START_URL: str = "https://www.instagram.com/"
+    BROWSER_LOAD_DELAY: int = 5000  # In milliseconds
+    BROWSER_ATTACH_ONLY: bool = False
+    BROWSER_CONNECT_SCHEME: str = "http"
+    BROWSER_REMOTE_HOST: str = "localhost"
+
+    # --- Instagram Scraper Configuration ---
+    INSTAGRAM_ACCOUNTS: list[str] = field(
+        default_factory=lambda: [
+            "agendagijon",
+            "allandestars",
+            "asociacionelviescu",
+            "asturias_en_vena",
+            "asturiasacoge",
+            "asturiesculturaenrede",
+            "aytocastrillon",
+            "aytoviedo",
+            "ayuntamientocabranes",
+            "ayuntamientodegozon",
+            "bandinalagarrapiella",
+            "bibliotecasdegijonxixon",
+            "biodevas",
+            "centroniemeyer",
+            "centros_sociales_oviedo",
+            "chigreculturallatadezinc",
+            "cia.proyectopiloto",
+            "cinesfoncalada",
+            "clubsemperludens",
+            "conectaoviedo",
+            "conocerasturias",
+            "conseyu_cmx",
+            "crjasturias",
+            "cuentosdemaleta",
+            "cultura.gijon",
+        ]
+    )
+    INSTAGRAM_URL: str = "https://www.instagram.com/"
+    INSTAGRAM_POST_LOAD_TIMEOUT: int = 10000
+    INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 5
+    FILE_PROTOCOL: str = "file:///"
+
+    def __post_init__(self) -> None:
+        """Performs validation after the object has been initialized.
+
+        This method checks for required environment variables and ensures that
+        critical paths are correctly configured.
+
+        Raises:
+            ValueError: If a required environment variable is missing or invalid.
+        """
+        # Load string-based paths from environment variables
+        browser_path_str = os.getenv("BROWSER_PATH")
+        user_data_dir_str = os.getenv("BROWSER_USER_DATA_DIR")
+
+        # Dynamically override defaults from environment variables
+        # This is necessary because frozen dataclasses don't allow direct mutation.
+        object.__setattr__(
+            self, "BROWSER_PATH", Path(browser_path_str) if browser_path_str else None
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_USER_DATA_DIR",
+            Path(user_data_dir_str) if user_data_dir_str else None,
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_PROFILE_DIR",
+            os.getenv("BROWSER_PROFILE_DIR", self.BROWSER_PROFILE_DIR),
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_DEBUG_PORT",
+            int(os.getenv("BROWSER_DEBUG_PORT", str(self.BROWSER_DEBUG_PORT))),
+        )
+        object.__setattr__(
+            self,
+            "BROWSER_ATTACH_ONLY",
+            os.getenv("BROWSER_ATTACH_ONLY", "false").lower() == "true",
+        )
+
+        # We need to re-set the output and log directories here because their
+        # defaults depend on environment variables that should be loaded first.
+        object.__setattr__(
+            self, "OUTPUT_DIR", Path(os.getenv("OUTPUT_DIR", self.BASE_DIR))
+        )
+        object.__setattr__(self, "LOG_DIR", Path(os.getenv("LOG_DIR", self.BASE_DIR)))
+
+        # Validate that required paths are set
+        if self.BROWSER_PATH is None:
+            raise ValueError("BROWSER_PATH environment variable is not set.")
+        if self.BROWSER_USER_DATA_DIR is None:
+            raise ValueError("BROWSER_USER_DATA_DIR environment variable is not set.")
 
 
-# --- Timezone Configuration ---
-# Set the local timezone for date calculations.
-# Defaults to UTC+2, but can be configured via TIMEZONE_OFFSET.
-TIMEZONE_OFFSET = int(os.getenv("TIMEZONE_OFFSET", "2"))
-TIMEZONE = timezone(timedelta(hours=TIMEZONE_OFFSET))
-
-
-# --- Browser Configuration ---
-# Settings for launching and connecting to the browser.
-# BROWSER_PATH should be the full path to the browser executable.
-# Set BROWSER_ATTACH_ONLY to "true" to prevent launching a new browser.
-BROWSER_PATH = os.getenv("BROWSER_PATH")
-BROWSER_USER_DATA_DIR = os.getenv("BROWSER_USER_DATA_DIR")
-BROWSER_PROFILE_DIR = os.getenv("BROWSER_PROFILE_DIR", "Default")
-BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
-BROWSER_START_URL = "https://www.instagram.com/"
-BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))  # In milliseconds
-BROWSER_ATTACH_ONLY = os.getenv("BROWSER_ATTACH_ONLY", "false").lower() == "true"
-BROWSER_CONNECT_SCHEME = os.getenv("BROWSER_CONNECT_SCHEME", "http")
-BROWSER_REMOTE_HOST = os.getenv("BROWSER_REMOTE_HOST", "localhost")
-
-
-# --- Instagram Scraper Configuration ---
-# Accounts to scrape and settings for controlling scraping behavior.
-# Delays are in milliseconds.
-INSTAGRAM_ACCOUNTS: list[str] = [
-    "agendagijon",
-    "allandestars",
-    "asociacionelviescu",
-    "asturias_en_vena",
-    "asturiasacoge",
-    "asturiesculturaenrede",
-    "aytocastrillon",
-    "aytoviedo",
-    "ayuntamientocabranes",
-    "ayuntamientodegozon",
-    "bandinalagarrapiella",
-    "bibliotecasdegijonxixon",
-    "biodevas",
-    "centroniemeyer",
-    "centros_sociales_oviedo",
-    "chigreculturallatadezinc",
-    "cia.proyectopiloto",
-    "cinesfoncalada",
-    "clubsemperludens",
-    "conectaoviedo",
-    "conocerasturias",
-    "conseyu_cmx",
-    "crjasturias",
-    "cuentosdemaleta",
-    "cultura.gijon",
-    "cultura.grau",
-    "culturacolunga",
-    "culturallanes",
-    "deportesayov",
-    "exprime.gijon",
-    "ferialibroxixon",
-    "gijon",
-    "gonggalaxyclub",
-    "gteatrolospintores",
-    "juventudgijon",
-    "juventudoviedo",
-    "kbunsgijon",
-    "kuivi_almacenes",
-    "laboralcinemateca",
-    "laboralciudadcultura",
-    "lacompaniadelalba",
-    "lasalvaje.oviedo",
-    "meidinerzclub",
-    "mierescultura",
-    "museosgijonxixon",
-    "museudelpuebludasturies",
-    "nortes.me",
-    "oviedo_secrets",
-    "oviedo.turismo",
-    "paramo_bar",
-    "patioh_laboral",
-    "prestosofest",
-    "prial_asociacion",
-    "traslapuertatiteres",
-    "trivilorioyeimpro",
-    "youropia_asociacion",
-]
-INSTAGRAM_URL = "https://www.instagram.com/"
-INSTAGRAM_POST_LOAD_TIMEOUT = int(os.getenv("INSTAGRAM_POST_LOAD_TIMEOUT", "10000"))
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT = int(
-    os.getenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "5")
-)
-FILE_PROTOCOL = "file:///"
+# Create a single, immutable instance of the settings
+settings = Settings()
