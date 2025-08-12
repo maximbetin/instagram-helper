@@ -136,7 +136,7 @@ Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
 & "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222
 ```
 
-**Option 3: Bind to all interfaces (if you need external access)**:
+**Option 3: Bind to all interfaces (recommended for WSL2 connectivity)**:
 
 ```powershell
 Stop-Process -Name brave -Force -ErrorAction SilentlyContinue
@@ -165,13 +165,17 @@ Chromium if needed.
    netstat -ano | findstr :9222
    ```
 
-2. From WSL2, test the connection:
+2. From WSL2, test the connection (try Windows host IP first on WSL2):
 
    ```bash
-   curl "http://localhost:9222/json/version"
+   # Discover Windows host IP (WSL2)
+   grep nameserver /etc/resolv.conf
+   # Example: if it prints 172.27.208.1
+   curl "http://172.27.208.1:9222/json/version" || curl "http://localhost:9222/json/version"
    ```
 
-3. Make sure Brave is running with the `--remote-debugging-port=9222` flag
+3. Make sure Brave is running with the `--remote-debugging-port=9222` flag and, on WSL2, ideally
+   also `--remote-debugging-address=0.0.0.0`
 4. Check Windows Firewall if using external binding
 
 ## Configuration
@@ -179,13 +183,6 @@ Chromium if needed.
 ### Environment Variables
 
 ```bash
-# Browser settings
-export BROWSER_DEBUG_PORT=9222
-export BROWSER_LOAD_DELAY=5000
-export BROWSER_LOAD_TIMEOUT=15000
-# BROWSER_PATH is only needed if not using remote debugging
-# export BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-
 # Instagram settings
 export INSTAGRAM_POST_LOAD_DELAY=3000
 export INSTAGRAM_MAX_POSTS_PER_ACCOUNT=3
@@ -197,7 +194,7 @@ export INSTAGRAM_URL="https://www.instagram.com/"
 # Output settings
 export OUTPUT_DIR="/path/to/output"
 export LOG_DIR="/path/to/logs"
-export TIMEZONE_OFFSET=2
+export _OFFSET=2
 ```
 
 ### Configuration File

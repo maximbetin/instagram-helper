@@ -32,6 +32,7 @@ requires-python = ">=3.12"
 dependencies = [
     "playwright>=1.40.0",  # Browser automation and web scraping
     "jinja2>=3.1.0",       # HTML template rendering
+    "python-dotenv>=1.0.0", # Load .env automatically if present
 ]
 
 # Optional dependency groups

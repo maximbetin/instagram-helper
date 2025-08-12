@@ -7,22 +7,23 @@ import sys
 import webbrowser
 from datetime import datetime, timedelta
 
+from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
 from browser_manager import setup_browser
 from config import (
+    FILE_PROTOCOL,
     INSTAGRAM_ACCOUNTS,
     LOG_DIR,
     OUTPUT_DIR,
+    TEMPLATE_PATH,
     TIMEZONE,
 )
 from instagram_scraper import process_account
 from report_generator import generate_html_report
 from utils import setup_logging
 
-# Constants
-TEMPLATE_PATH = "templates/template.html"
-FILE_PROTOCOL = "file://"
+load_dotenv()
 
 
 def parse_args() -> argparse.Namespace:

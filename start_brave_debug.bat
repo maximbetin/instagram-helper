@@ -11,7 +11,8 @@ echo.
 echo Starting in 3 seconds...
 timeout /t 3 /nobreak >nul
 
-start "" "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222
+REM Bind to all interfaces so WSL2 can reach it via Windows host IP
+start "" "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0
 
 echo.
 echo Brave started with remote debugging enabled.

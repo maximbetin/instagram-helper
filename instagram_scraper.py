@@ -1,7 +1,7 @@
 """Instagram scraping functionality."""
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -13,8 +13,7 @@ from config import (
     INSTAGRAM_POST_LOAD_TIMEOUT,
     INSTAGRAM_RETRY_DELAY,
     INSTAGRAM_URL,
-    SECONDS_IN_MS,
-    TIMEZONE,
+    TIMEZONE_OFFSET,
 )
 from utils import setup_logging
 
@@ -184,7 +183,9 @@ def _try_date_selector(page: Page, selector: str) -> datetime | None:
                     datetime_attr.replace("Z", "+00:00")
                 )
                 logger.debug(f"Found date using selector: {selector}")
-                return utc_datetime.astimezone(TIMEZONE)
+                return utc_datetime.astimezone(
+                    timezone(timedelta(hours=TIMEZONE_OFFSET))
+                )
     except Exception as e:
         logger.debug(f"Date selector {selector} failed: {e}")
     return None
@@ -212,7 +213,7 @@ def extract_post_data(
                 wait_until="domcontentloaded",
                 timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
             )
-            time.sleep(INSTAGRAM_POST_LOAD_DELAY / SECONDS_IN_MS)
+            time.sleep(INSTAGRAM_POST_LOAD_DELAY / 1000)
 
             post_date = get_post_date(page)
             if not post_date or post_date < cutoff_date:
@@ -228,7 +229,7 @@ def extract_post_data(
         except PlaywrightTimeoutError as e:
             if attempt < max_retries:
                 _handle_scraping_error(account, f"loading post {post_url}", e, attempt)
-                time.sleep(INSTAGRAM_RETRY_DELAY / SECONDS_IN_MS)
+                time.sleep(INSTAGRAM_RETRY_DELAY / 1000)
                 continue
             else:
                 _handle_scraping_error(account, f"loading post {post_url}", e)
@@ -251,7 +252,7 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
             wait_until="domcontentloaded",
             timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
         )
-        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / SECONDS_IN_MS)
+        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / 1000)
     except Exception as e:
         _handle_scraping_error(account, "loading account page", e)
         return []
