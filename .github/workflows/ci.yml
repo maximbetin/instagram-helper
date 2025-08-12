@@ -1,7 +1,7 @@
 # Instagram Helper - Continuous Integration Pipeline
 # This workflow ensures code quality, runs tests, and builds packages automatically
 
-name: CI Pipeline
+name: GitHub Actions
 
 # Trigger conditions for the workflow
 on:

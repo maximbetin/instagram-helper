@@ -1,6 +1,6 @@
 # Instagram Helper
 
-[![CI Pipeline](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
+[![GitHub Actions](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
 
 A tool that automatically fetches recent posts from specified Instagram accounts and generates a
 stylized HTML report with global date sorting and corresponding links.
