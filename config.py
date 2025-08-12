@@ -30,7 +30,7 @@ BROWSER_CONNECT_SCHEME = os.getenv("BROWSER_CONNECT_SCHEME", "http")
 BROWSER_ATTACH_ONLY = os.getenv("BROWSER_ATTACH_ONLY", "false").lower() in {"1", "true", "yes", "on"}
 BROWSER_USER_DATA_DIR = os.getenv("BROWSER_USER_DATA_DIR", r"C:\Users\Maxim\AppData\Local\BraveSoftware\Brave-Browser\User Data")
 BROWSER_PROFILE_DIR = os.getenv("BROWSER_PROFILE_DIR", "Default")
-BROWSER_START_URL = os.getenv("BROWSER_START_URL", "about:blank")
+BROWSER_START_URL = os.getenv("BROWSER_START_URL", os.getenv("INSTAGRAM_URL", "https://www.instagram.com/"))
 
 # Output settings
 BASE_DIR = os.getenv("BASE_DIR", "/mnt/c/Users/Maxim/Desktop/ig_helper")

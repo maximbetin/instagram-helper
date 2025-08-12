@@ -105,6 +105,8 @@ def main() -> int:
     # Determine accounts to process
     accounts_to_process = args.accounts if args.accounts else INSTAGRAM_ACCOUNTS
 
+    browser = None
+    context = None
     try:
         with sync_playwright() as p:
             browser = setup_browser(p)
@@ -137,6 +139,17 @@ def main() -> int:
                     logger.info(f"Report saved to: {report_path}")
             else:
                 logger.info("No new posts found to generate a report.")
+            
+            # Gracefully close browser resources
+            try:
+                if context:
+                    logger.debug("Closing browser context...")
+                    context.close()
+                if browser:
+                    logger.debug("Closing browser...")
+                    browser.close()
+            except Exception as e:
+                logger.debug(f"Browser cleanup completed with minor issue: {e}")
 
         logger.info("Done :)")
         return 0

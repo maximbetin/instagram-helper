@@ -16,6 +16,7 @@ from config import (
     BROWSER_REMOTE_HOST,
     BROWSER_START_URL,
     BROWSER_USER_DATA_DIR,
+    INSTAGRAM_URL,
 )
 from utils import setup_logging
 
@@ -30,7 +31,7 @@ def setup_browser(playwright: Playwright) -> Browser:
     
     This function:
     1. Tries to connect to an existing browser on localhost:9222
-    2. If no browser found, launches Brave with WSL2-optimized settings
+    2. If no browser found, launches Brave with WSL2-optimized settings starting on Instagram
     3. Falls back to Playwright Chromium as last resort
     """
     port = BROWSER_DEBUG_PORT
