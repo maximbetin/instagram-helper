@@ -8,15 +8,21 @@ stylized HTML report with global date sorting and corresponding links.
 ## Features
 
 - **Automatic fetching**: Fetches posts from specified Instagram accounts
+- **Advanced caption extraction**: Uses XPath-based selectors for accurate extraction of full post
+  content, descriptions, and context
 - **Date filtering**: Only fetches posts from the last few days (configurable)
 - **HTML report generation**: Creates a stylized, responsive HTML report with all fetched posts
 - **Global date sorting**: All posts are sorted by date across all accounts (newest first)
 - **Interactive report**: HTML report includes copy-to-clipboard functionality for post links and
-  captions
+  complete captions
+- **Robust content detection**: Multiple fallback methods ensure caption extraction works even when
+  Instagram changes their layout
 - **Progress tracking**: Real-time console output showing processing progress
 - **CLI interface**: Command-line options for flexible usage
 - **Environment configuration**: Support for environment variables
-- **WSL2 Integration**: Optimized for Windows Subsystem for Linux 2
+- **WSL2 Integration**: Optimized for Windows Subsystem for Linux 2 with automatic browser
+  management
+- **Debug capabilities**: Built-in page structure analysis for troubleshooting
 - **Quality Assurance**: Comprehensive testing, linting, and type checking
 - **CI/CD**: Automated testing and building via GitHub Actions
 
@@ -124,15 +130,18 @@ python cli.py --output ./reports
 # Don't automatically open the report
 python cli.py --no-open
 
-# Enable verbose logging
+# Enable verbose logging (shows caption extraction details)
 python cli.py --verbose
+
+# Debug caption extraction for specific accounts
+python cli.py --accounts gijon --days 1 --verbose
 ```
 
 ## WSL2 Integration
 
 The Instagram Helper automatically handles browser setup when running from WSL2. It will launch your
 Windows Brave browser directly from WSL2, preserving your existing profile, cookies, and login
-sessions.
+sessions. The browser opens directly to Instagram for immediate use.
 
 ### Quick Start (WSL2)
 
@@ -155,9 +164,11 @@ sessions.
 The tool will:
 
 - Automatically launch Brave browser with remote debugging enabled
+- Open Instagram directly for immediate access
 - Use your existing Windows Brave profile (keeps you logged in)
 - Connect to the browser via `localhost:9222`
-- Clean up any existing browser processes first
+- Extract complete post captions using advanced XPath selectors
+- Clean up browser processes gracefully when finished
 
 ### How It Works
 
@@ -250,10 +261,12 @@ The tool generates an interactive HTML report and detailed logs:
 **HTML Report**:
 
 - Summary statistics (total accounts checked, total posts found, date range)
-- All posts sorted by date (newest first) with captions, dates, and account information
+- All posts sorted by date (newest first) with complete captions, descriptions, and metadata
+- Full post content including event details, descriptions, people mentioned, and relevant hashtags
 - Direct links to original Instagram posts
-- Copy-to-clipboard buttons for post URLs and captions
+- Copy-to-clipboard buttons for post URLs and full captions
 - Responsive design for desktop and mobile
+- Clean, readable formatting with proper line breaks and emoji support
 
 **Log Files**:
 
@@ -405,13 +418,20 @@ instagram-helper/
    - Check firewall settings and port accessibility
    - Verify WSL2 network configuration
 
-2. **Instagram Rate Limiting**:
+2. **Caption Extraction Issues**:
+
+   - Tool uses advanced XPath selectors for Instagram's current layout
+   - If captions appear empty, Instagram may have changed their DOM structure
+   - Run with `--verbose` flag to see detailed extraction debugging
+   - Check log files for page structure analysis
+
+3. **Instagram Rate Limiting**:
 
    - Reduce `INSTAGRAM_POST_LOAD_DELAY` values
    - Limit `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`
    - Use longer delays between requests
 
-3. **Package Installation Issues**:
+4. **Package Installation Issues**:
    - Ensure virtual environment is activated
    - Check Python version compatibility (3.12+)
    - Verify all dependencies are available
@@ -431,6 +451,34 @@ Check log files for detailed error information:
 - Location: Configured via `LOG_DIR` environment variable
 - Format: Daily log files with timestamps
 - Content: Detailed operation logs and error traces
+
+## Technical Details
+
+### Caption Extraction
+
+The Instagram Helper uses a robust, multi-layered approach for extracting post captions:
+
+1. **XPath Selectors** (Primary): Targets Instagram's specific DOM structure for accurate content
+   extraction
+2. **CSS Selectors** (Fallback): Uses Instagram's data-testid attributes when available
+3. **Text Analysis** (Last Resort): Intelligent text content analysis to find captions when
+   selectors fail
+
+This approach ensures reliable extraction of complete post content including:
+
+- Full event descriptions and details
+- People and organizations mentioned
+- Dates and location information
+- Relevant hashtags and social media tags
+
+### Debug Capabilities
+
+When run with `--verbose`, the tool provides detailed debugging information:
+
+- Page structure analysis
+- Element count reporting
+- Potential caption candidate identification
+- Selector success/failure logging
 
 ## Contributing
 

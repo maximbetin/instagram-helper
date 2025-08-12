@@ -13,13 +13,82 @@ from config import (
     INSTAGRAM_POST_LOAD_TIMEOUT,
     INSTAGRAM_RETRY_DELAY,
     INSTAGRAM_URL,
-    TIMEZONE_OFFSET,
+    SECONDS_IN_MS,
+    TIMEZONE,
 )
 from utils import setup_logging
 
+# Logger will be properly configured when the module functions are called
 logger = setup_logging(__name__)
 
-# Constants for caption extraction
+
+def debug_page_structure(page: Page, account: str) -> None:
+    """Debug function to analyze the current page structure and help find the right selectors."""
+    try:
+        logger.debug(f"@{account}: === PAGE STRUCTURE DEBUG ===")
+        _log_element_counts(page, account)
+        _log_potential_captions(page, account)
+        _log_time_elements(page, account)
+        logger.debug(f"@{account}: === END DEBUG ===")
+    except Exception as e:
+        logger.debug(f"@{account}: Debug function failed: {e}")
+
+
+def _log_element_counts(page: Page, account: str) -> None:
+    """Log counts of common Instagram page elements."""
+    article_count = len(page.query_selector_all("article"))
+    h1_count = len(page.query_selector_all("h1"))
+    time_count = len(page.query_selector_all("time"))
+    ul_count = len(page.query_selector_all("ul"))
+    li_count = len(page.query_selector_all("li"))
+
+    logger.debug(
+        f"@{account}: Found {article_count} articles, {h1_count} h1 elements, {time_count} time elements"
+    )
+    logger.debug(f"@{account}: Found {ul_count} ul elements, {li_count} li elements")
+
+
+def _log_potential_captions(page: Page, account: str) -> None:
+    """Log potential caption elements found on the page."""
+    caption_candidates = page.query_selector_all("h1, h2, h3, p, span, div")
+    caption_texts = []
+
+    for element in caption_candidates[:10]:  # Check first 10 elements
+        try:
+            text = element.inner_text().strip()
+            if text and 10 < len(text) < 500:  # Reasonable caption length
+                tag_name = element.evaluate("el => el.tagName.toLowerCase()")
+                caption_texts.append(f"{tag_name}: '{text[:100]}...'")
+        except Exception:
+            continue
+
+    if caption_texts:
+        logger.debug(f"@{account}: Potential caption elements:")
+        for text in caption_texts[:5]:  # Show first 5
+            logger.debug(f"@{account}:   {text}")
+
+
+def _log_time_elements(page: Page, account: str) -> None:
+    """Log time elements found on the page."""
+    time_elements = page.query_selector_all("time")
+    for i, time_elem in enumerate(time_elements[:3]):
+        try:
+            datetime_attr = time_elem.get_attribute("datetime")
+            text_content = time_elem.inner_text().strip()
+            logger.debug(
+                f"@{account}: Time element {i + 1}: datetime='{datetime_attr}', text='{text_content}'"
+            )
+        except Exception as e:
+            logger.debug(f"@{account}: Could not read time element {i + 1}: {e}")
+
+
+# XPath selectors for Instagram post captions (more reliable than CSS selectors)
+CAPTION_XPATHS = [
+    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span",
+    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/h1",
+]
+
+# Fallback CSS selectors for caption extraction
 CAPTION_SELECTORS = [
     "div[data-testid='post-caption'] h1",
     "div[data-testid='post-caption'] span",
@@ -155,20 +224,43 @@ def _find_caption_by_text_content(page: Page) -> str:
     return ""
 
 
+def _try_caption_xpath(page: Page, xpath: str) -> str | None:
+    """Try to extract caption using a specific XPath."""
+    try:
+        caption_element = page.locator(f"xpath={xpath}").first
+        if caption_element and caption_element.is_visible():
+            caption = caption_element.inner_text().strip()
+            if caption:
+                logger.debug(f"Found caption using XPath: {xpath[:50]}...")
+                return caption
+    except Exception as e:
+        logger.debug(f"XPath {xpath[:50]}... failed: {e}")
+    return None
+
+
 def get_post_caption(page: Page) -> str:
     """Extract post's caption from Instagram post."""
-    # Try selectors first
+    # Try XPath selectors first (most reliable for Instagram)
+    for xpath in CAPTION_XPATHS:
+        caption = _try_caption_xpath(page, xpath)
+        if caption:
+            logger.debug(f"Caption extracted via XPath: '{caption[:100]}...'")
+            return caption
+    
+    # Try CSS selectors as fallback
     for selector in CAPTION_SELECTORS:
         caption = _try_caption_selector(page, selector)
         if caption:
+            logger.debug(f"Caption extracted via CSS: '{caption[:100]}...'")
             return caption
 
-    # Fallback: look for elements with substantial text content
+    # Final fallback: look for elements with substantial text content
     caption = _find_caption_by_text_content(page)
     if caption:
+        logger.debug(f"Caption extracted via text search: '{caption[:100]}...'")
         return caption
 
-    logger.warning("Could not find post caption with any selector")
+    logger.warning("Could not find post caption with any method")
     return ""
 
 
@@ -183,9 +275,7 @@ def _try_date_selector(page: Page, selector: str) -> datetime | None:
                     datetime_attr.replace("Z", "+00:00")
                 )
                 logger.debug(f"Found date using selector: {selector}")
-                return utc_datetime.astimezone(
-                    timezone(timedelta(hours=TIMEZONE_OFFSET))
-                )
+                return utc_datetime.astimezone(TIMEZONE)
     except Exception as e:
         logger.debug(f"Date selector {selector} failed: {e}")
     return None
@@ -213,7 +303,11 @@ def extract_post_data(
                 wait_until="domcontentloaded",
                 timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
             )
-            time.sleep(INSTAGRAM_POST_LOAD_DELAY / 1000)
+            time.sleep(INSTAGRAM_POST_LOAD_DELAY / SECONDS_IN_MS)
+
+            # Debug: Log the current page structure for troubleshooting
+            if attempt == 0:  # Only log on first attempt to avoid spam
+                debug_page_structure(page, account)
 
             post_date = get_post_date(page)
             if not post_date or post_date < cutoff_date:
@@ -229,7 +323,7 @@ def extract_post_data(
         except PlaywrightTimeoutError as e:
             if attempt < max_retries:
                 _handle_scraping_error(account, f"loading post {post_url}", e, attempt)
-                time.sleep(INSTAGRAM_RETRY_DELAY / 1000)
+                time.sleep(INSTAGRAM_RETRY_DELAY / SECONDS_IN_MS)
                 continue
             else:
                 _handle_scraping_error(account, f"loading post {post_url}", e)
@@ -243,6 +337,11 @@ def extract_post_data(
 
 def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dict]:
     """Process a single Instagram account and return its recent posts."""
+    # Ensure logger inherits the current logging level
+    import logging
+    if logging.getLogger().level <= logging.DEBUG:
+        logger.setLevel(logging.DEBUG)
+    
     logger.info(f"@{account}: Processing posts...")
 
     try:
@@ -252,7 +351,7 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
             wait_until="domcontentloaded",
             timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
         )
-        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / 1000)
+        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / SECONDS_IN_MS)
     except Exception as e:
         _handle_scraping_error(account, "loading account page", e)
         return []
