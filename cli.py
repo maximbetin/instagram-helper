@@ -32,12 +32,11 @@ def parse_args() -> argparse.Namespace:
         description="Fetch recent Instagram posts and generate HTML reports",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-    python cli.py                           # Use default settings
-    python cli.py --days 3                  # Fetch posts from last 3 days
-    python cli.py --accounts gijon biodevas # Only fetch from specific accounts
-    python cli.py --output ./reports        # Save reports to custom directory
-    python cli.py --no-open                 # Don't automatically open the report
+        Examples:
+            python cli.py                           # Use default settings
+            python cli.py --days 3                  # Fetch posts from last 3 days
+            python cli.py --accounts aytoviedo      # Only fetch from specific accounts
+            python cli.py --output ./reports        # Save reports to custom directory
         """,
     )
 
@@ -69,29 +68,7 @@ Examples:
         help=f"Directory for log files (default: {LOG_DIR})",
     )
 
-    parser.add_argument(
-        "--no-open",
-        action="store_true",
-        help="Do not automatically open the generated report",
-    )
-
-    # Verbose mode is now enabled by default, so we don't need this flag anymore
-    # parser.add_argument(
-    #     "--verbose", "-v", action="store_true", help="Enable verbose logging"
-    # )
-
     return parser.parse_args()
-
-
-def open_report(report_path: str, logger: logging.Logger) -> None:
-    """Open the generated report in the default browser."""
-    try:
-        # Use webbrowser module for cross-platform compatibility
-        webbrowser.open(f"{FILE_PROTOCOL}{os.path.abspath(report_path)}")
-        logger.info("Opening the HTML report...")
-    except Exception as e:
-        logger.warning(f"Could not automatically open report: {e}")
-        logger.info(f"Please open manually: {report_path}")
 
 
 def main() -> int:
@@ -118,10 +95,10 @@ def main() -> int:
 
             cutoff_date = datetime.now(TIMEZONE) - timedelta(days=args.days)
             logger.info(
-                f"Fetching posts not older than {cutoff_date.strftime('%d-%m-%Y')}."
+                f"Fetching posts from the last {args.days} days (since {cutoff_date.strftime('%Y-%m-%d')})."
             )
             logger.info(
-                f"Processing {len(accounts_to_process)} accounts: {', '.join(accounts_to_process)}"
+                f"Processing {len(accounts_to_process)} account(s): {', '.join(accounts_to_process)}"
             )
 
             all_posts = []
@@ -130,34 +107,31 @@ def main() -> int:
                 all_posts.extend(posts)
 
             if all_posts:
-                logger.info(f"Found {len(all_posts)} posts. Generating HTML report...")
+                logger.info(f"Total posts found: {len(all_posts)}. Generating HTML report...")
                 report_path = generate_html_report(
-                    all_posts, cutoff_date, args.output, TEMPLATE_PATH
+                    all_posts, cutoff_date, args.output, TEMPLATE_PATH, logger
                 )
-
-                if not args.no_open and report_path:
-                    open_report(report_path, logger)
-                else:
-                    logger.info(f"Report saved to: {report_path}")
+                if report_path:
+                    logger.info(f"Report successfully generated at: {report_path}")
             else:
-                logger.info("No new posts found to generate a report.")
+                logger.info("No new posts found. No report will be generated.")
 
             # Gracefully close browser resources
             try:
                 if context:
-                    logger.debug("Closing browser context...")
+                    logger.debug("Closing browser context.")
                     context.close()
                 if browser:
-                    logger.debug("Closing browser...")
+                    logger.debug("Closing browser.")
                     browser.close()
             except Exception as e:
-                logger.debug(f"Browser cleanup completed with minor issue: {e}")
+                logger.warning(f"Browser cleanup finished with a minor issue: {e}")
 
-        logger.info("Done :)")
+        logger.info("Scraping process completed successfully.")
         return 0
 
     except Exception as e:
-        logger.error(f"An error occurred: {e}", exc_info=True)
+        logger.critical(f"A critical error occurred: {e}", exc_info=True)
         return 1
 
 

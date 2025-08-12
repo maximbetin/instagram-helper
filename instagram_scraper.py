@@ -1,346 +1,205 @@
 """Instagram scraping functionality."""
 
 import time
+from dataclasses import dataclass
 from datetime import datetime
 
-from playwright.sync_api import Page
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from config import (
-    INSTAGRAM_ACCOUNT_LOAD_DELAY,
     INSTAGRAM_MAX_POSTS_PER_ACCOUNT,
-    INSTAGRAM_POST_LOAD_DELAY,
     INSTAGRAM_POST_LOAD_TIMEOUT,
-    INSTAGRAM_RETRY_DELAY,
     INSTAGRAM_URL,
-    SECONDS_IN_MS,
     TIMEZONE,
 )
 from utils import setup_logging
 
-# Logger will be properly configured when the module functions are called
 logger = setup_logging(__name__)
 
-
-def debug_page_structure(page: Page, account: str) -> None:
-    """Debug function to analyze the current page structure and help find the right selectors."""
-    try:
-        logger.debug(f"@{account}: === PAGE STRUCTURE DEBUG ===")
-        _log_element_counts(page, account)
-        _log_potential_captions(page, account)
-        _log_time_elements(page, account)
-        logger.debug(f"@{account}: === END DEBUG ===")
-    except Exception as e:
-        logger.debug(f"@{account}: Debug function failed: {e}")
-
-
-def _log_element_counts(page: Page, account: str) -> None:
-    """Log counts of common Instagram page elements."""
-    article_count = len(page.query_selector_all("article"))
-    h1_count = len(page.query_selector_all("h1"))
-    time_count = len(page.query_selector_all("time"))
-    ul_count = len(page.query_selector_all("ul"))
-    li_count = len(page.query_selector_all("li"))
-
-    logger.debug(
-        f"@{account}: Found {article_count} articles, {h1_count} h1 elements, {time_count} time elements"
-    )
-    logger.debug(f"@{account}: Found {ul_count} ul elements, {li_count} li elements")
-
-
-def _log_potential_captions(page: Page, account: str) -> None:
-    """Log potential caption elements found on the page."""
-    caption_candidates = page.query_selector_all("h1, h2, h3, p, span, div")
-    caption_texts = []
-
-    for element in caption_candidates[:10]:  # Check first 10 elements
-        try:
-            text = element.inner_text().strip()
-            if text and 10 < len(text) < 500:  # Reasonable caption length
-                tag_name = element.evaluate("el => el.tagName.toLowerCase()")
-                caption_texts.append(f"{tag_name}: '{text[:100]}...'")
-        except Exception:
-            continue
-
-    if caption_texts:
-        logger.debug(f"@{account}: Potential caption elements:")
-        for text in caption_texts[:5]:  # Show first 5
-            logger.debug(f"@{account}:   {text}")
-
-
-def _log_time_elements(page: Page, account: str) -> None:
-    """Log time elements found on the page."""
-    time_elements = page.query_selector_all("time")
-    for i, time_elem in enumerate(time_elements[:3]):
-        try:
-            datetime_attr = time_elem.get_attribute("datetime")
-            text_content = time_elem.inner_text().strip()
-            logger.debug(
-                f"@{account}: Time element {i + 1}: datetime='{datetime_attr}', text='{text_content}'"
-            )
-        except Exception as e:
-            logger.debug(f"@{account}: Could not read time element {i + 1}: {e}")
-
-
-# XPath selectors for Instagram post captions (more reliable than CSS selectors)
+# XPath selectors for post captions. The first one is the most recent and specific.
 CAPTION_XPATHS = [
     "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span",
-    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/h1",
 ]
 
+@dataclass
+class InstagramPost:
+    """Represents a single scraped Instagram post."""
 
-# Constants for date extraction
-DATE_SELECTORS = [
-    "time[datetime]",
-    "time",
-    "div[data-testid='post-timestamp'] time[datetime]",
-    "div[data-testid='post-timestamp']",
-]
-
-# Constants for post link detection
-POST_PATH_PATTERNS = ["/p/", "/reel/"]
-
-
-def _handle_scraping_error(
-    account: str, operation: str, error: Exception, retry_attempt: int | None = None
-) -> None:
-    """Handle common scraping errors with consistent logging."""
-    if isinstance(error, PlaywrightTimeoutError):
-        if retry_attempt is not None:
-            logger.warning(
-                f"@{account}: Timeout during {operation} "
-                f"(attempt {retry_attempt + 1}). Retrying..."
-            )
-        else:
-            logger.error(f"@{account}: Timeout during {operation}: {error}")
-    elif isinstance(error, ValueError | OSError):
-        logger.error(f"@{account}: System error during {operation}: {error}")
-    else:
-        logger.error(f"@{account}: Unexpected error during {operation}: {error}")
+    url: str
+    account: str
+    caption: str
+    date_posted: datetime
 
 
 def _is_valid_post_url(url: str) -> bool:
     """Check if a URL is a valid Instagram post URL."""
-    return any(pattern in url for pattern in POST_PATH_PATTERNS)
+    return any(pattern in url for pattern in ["/p/", "/reel/"])
 
 
 def _normalize_post_url(url: str) -> str:
-    """Normalize a post URL by removing query parameters and trailing slashes."""
+    """Normalize a post URL by ensuring it's absolute and clean."""
+    base_url = INSTAGRAM_URL.rstrip("/")
     if url.startswith("/"):
-        full_url = f"{INSTAGRAM_URL.rstrip('/')}{url}"
+        full_url = f"{base_url}{url}"
     else:
         full_url = url
-
     return full_url.split("?")[0].rstrip("/")
 
 
-def get_account_post_urls(page: Page) -> list[str]:
-    """Fetch all post URLs from a specific Instagram account page, preserving order."""
-    post_urls = []
-    seen_urls = set()
+def _get_post_urls(page: Page, account: str) -> list[str]:
+    """Fetch all unique post URLs from the account's page."""
+    logger.debug(f"@{account}: Searching for post URLs...")
+    selector = "a[href*='/p/'], a[href*='/reel/']"
+    try:
+        links = page.query_selector_all(selector)
+        if not links:
+            logger.warning(f"@{account}: No post links found with selector: {selector}")
+            return []
 
-    # Try multiple approaches to find post links
-    link_selectors = [
-        "a[href*='/p/']",  # Direct post links
-        "a[href*='/reel/']",  # Reel links
-        "a",  # All links as fallback
-    ]
+        post_urls = []
+        seen_urls = set()
+        for link in links:
+            href = link.get_attribute("href")
+            if href and _is_valid_post_url(href):
+                normalized_url = _normalize_post_url(href)
+                if normalized_url not in seen_urls:
+                    post_urls.append(normalized_url)
+                    seen_urls.add(normalized_url)
 
-    for selector in link_selectors:
-        try:
-            links = page.query_selector_all(selector)
-            logger.debug(f"Found {len(links)} links with selector: {selector}")
+        logger.info(
+            f"@{account}: Found {len(post_urls)} unique post URLs."
+            f" Limited to {INSTAGRAM_MAX_POSTS_PER_ACCOUNT}."
+        )
+        return post_urls[:INSTAGRAM_MAX_POSTS_PER_ACCOUNT]
 
-            for link in links:
-                post_url = link.get_attribute("href")
-                if post_url and _is_valid_post_url(post_url):
-                    normalized_url = _normalize_post_url(post_url)
-
-                    if normalized_url not in seen_urls:
-                        post_urls.append(normalized_url)
-                        seen_urls.add(normalized_url)
-                        logger.debug(f"Found post URL: {normalized_url}")
-
-            # If we found posts with this selector, no need to try others
-            if post_urls:
-                break
-
-        except Exception as e:
-            logger.debug(f"Selector {selector} failed: {e}")
-            continue
-
-    logger.info(f"Total unique post URLs found: {len(post_urls)}")
-    return post_urls
+    except Exception as e:
+        logger.error(f"@{account}: Failed to query for post URLs: {e}")
+        return []
 
 
 def _try_caption_xpath(page: Page, xpath: str) -> str | None:
-    """Try to extract caption using a specific XPath."""
+    """Attempt to extract a caption using a specific XPath selector."""
     try:
-        logger.debug(f"Trying XPath: {xpath}")
         caption_element = page.locator(f"xpath={xpath}").first
-        if caption_element and caption_element.is_visible():
+        if caption_element and caption_element.is_visible(timeout=1000):
             caption = caption_element.inner_text().strip()
             if caption:
-                logger.debug(f"✓ Found caption using XPath: {xpath[:50]}...")
-                logger.debug(f"  Caption preview: '{caption[:100]}...'")
+                logger.debug(f"Successfully extracted caption with XPath: {xpath}")
                 return caption
-            else:
-                logger.debug(
-                    f"✗ XPath found element but caption is empty: {xpath[:50]}..."
-                )
-        else:
-            logger.debug(f"✗ XPath element not found or not visible: {xpath[:50]}...")
     except Exception as e:
-        logger.debug(f"✗ XPath {xpath[:50]}... failed with error: {e}")
+        logger.debug(f"XPath lookup failed for '{xpath}': {e}")
     return None
 
 
-def _log_available_xpaths() -> None:
-    """Log all available XPath selectors for debugging purposes."""
-    logger.debug("Available XPath selectors for caption extraction:")
-    for i, xpath in enumerate(CAPTION_XPATHS, 1):
-        logger.debug(f"  {i}. {xpath}")
-    logger.debug("")
-
-
-def get_post_caption(page: Page) -> str:
-    """Extract post's caption from Instagram post using XPath selectors."""
-    _log_available_xpaths()
-    logger.debug(
-        f"Attempting to extract caption using {len(CAPTION_XPATHS)} XPath selectors..."
-    )
-
-    # Use XPath selectors only for reliable Instagram caption extraction
-    for i, xpath in enumerate(CAPTION_XPATHS, 1):
-        logger.debug(f"XPath attempt {i}/{len(CAPTION_XPATHS)}:")
+def _get_post_caption(page: Page) -> str:
+    """Extract the post caption by trying a list of XPath selectors."""
+    for xpath in CAPTION_XPATHS:
         caption = _try_caption_xpath(page, xpath)
         if caption:
-            logger.debug(f"Caption successfully extracted on attempt {i}")
             return caption
-
-    logger.warning(
-        f"Could not find post caption with any of the {len(CAPTION_XPATHS)} XPath selectors"
-    )
+    logger.warning("Could not find post caption.")
     return ""
 
 
-def _try_date_selector(page: Page, selector: str) -> datetime | None:
-    """Try to extract date using a specific selector."""
+def _get_post_date(page: Page) -> datetime | None:
+    """Extract the post's date from the page."""
+    selector = "time[datetime]"
     try:
-        date_element = page.query_selector(selector)
-        if date_element:
-            datetime_attr = date_element.get_attribute("datetime")
-            if datetime_attr:
-                utc_datetime = datetime.fromisoformat(
-                    datetime_attr.replace("Z", "+00:00")
-                )
-                logger.debug(f"Found date using selector: {selector}")
-                return utc_datetime.astimezone(TIMEZONE)
+        time_element = page.query_selector(selector)
+        if time_element and (datetime_attr := time_element.get_attribute("datetime")):
+            utc_dt = datetime.fromisoformat(datetime_attr.replace("Z", "+00:00"))
+            return utc_dt.astimezone(TIMEZONE)
+        logger.warning("Could not find time element with a datetime attribute.")
     except Exception as e:
-        logger.debug(f"Date selector {selector} failed: {e}")
+        logger.error(f"Error parsing date from time element: {e}")
     return None
 
 
-def get_post_date(page: Page) -> datetime | None:
-    """Extract post's date from Instagram post page."""
-    for selector in DATE_SELECTORS:
-        post_date = _try_date_selector(page, selector)
-        if post_date:
-            return post_date
-
-    logger.warning("Could not find post date with any selector")
-    return None
-
-
-def extract_post_data(
-    post_url: str, cutoff_date: datetime, account: str, page: Page, max_retries: int = 2
-) -> dict | None:
-    """Extract post data from the post URL with error handling and retries."""
+def _navigate_to_url(
+    page: Page, url: str, account: str, operation: str, max_retries: int = 1
+) -> bool:
+    """Navigate to a URL with retries and consistent error handling."""
     for attempt in range(max_retries + 1):
         try:
             page.goto(
-                post_url,
-                wait_until="domcontentloaded",
-                timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
+                url, wait_until="domcontentloaded", timeout=INSTAGRAM_POST_LOAD_TIMEOUT
             )
-            time.sleep(INSTAGRAM_POST_LOAD_DELAY / SECONDS_IN_MS)
-
-            # Debug: Log the current page structure for troubleshooting
-            if attempt == 0:  # Only log on first attempt to avoid spam
-                debug_page_structure(page, account)
-
-            post_date = get_post_date(page)
-            if not post_date or post_date < cutoff_date:
-                return None
-
-            return {
-                "url": post_url,
-                "account": account,
-                "caption": get_post_caption(page),
-                "date_posted": post_date,
-            }
-
-        except PlaywrightTimeoutError as e:
-            if attempt < max_retries:
-                _handle_scraping_error(account, f"loading post {post_url}", e, attempt)
-                time.sleep(INSTAGRAM_RETRY_DELAY / SECONDS_IN_MS)
-                continue
-            else:
-                _handle_scraping_error(account, f"loading post {post_url}", e)
-                return None
+            # A small, fixed delay can help if content loads lazily after the DOM is ready.
+            time.sleep(1)
+            return True
+        except PlaywrightTimeoutError:
+            logger.warning(
+                f"@{account}: Timeout loading {operation} at {url} "
+                f"(Attempt {attempt + 1}/{max_retries + 1})."
+            )
         except Exception as e:
-            _handle_scraping_error(account, f"loading post {post_url}", e)
-            return None
+            logger.error(f"@{account}: Failed to load {operation} at {url}: {e}")
+            break  # Don't retry on unexpected errors
+    return False
 
-    return None
 
+def _extract_post_data(
+    page: Page, post_url: str, account: str, cutoff_date: datetime
+) -> InstagramPost | None:
+    """Navigate to a post and extract its data if it's recent enough."""
+    if not _navigate_to_url(page, post_url, account, "post"):
+        return None
 
-def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dict]:
-    """Process a single Instagram account and return its recent posts."""
-    # Ensure logger inherits the current logging level
-    import logging
+    post_date = _get_post_date(page)
+    if not post_date:
+        logger.warning(f"@{account}: Could not determine post date for {post_url}.")
+        return None
 
-    if logging.getLogger().level <= logging.DEBUG:
-        logger.setLevel(logging.DEBUG)
-
-    logger.info(f"@{account}: Processing posts...")
-
-    try:
-        account_url = f"{INSTAGRAM_URL}{account}/"
-        page.goto(
-            account_url,
-            wait_until="domcontentloaded",
-            timeout=INSTAGRAM_POST_LOAD_TIMEOUT,
-        )
-        time.sleep(INSTAGRAM_ACCOUNT_LOAD_DELAY / SECONDS_IN_MS)
-    except Exception as e:
-        _handle_scraping_error(account, "loading account page", e)
-        return []
-
-    logger.debug(f"@{account}: Fetching post URLs...")
-    post_urls = get_account_post_urls(page)
-    if not post_urls:
-        logger.warning(f"@{account}: No post URLs found.")
-        return []
-
-    logger.debug(
-        f"@{account}: Found {len(post_urls)} post URLs. Fetching post details..."
-    )
-    account_posts = []
-
-    for i, post_url in enumerate(post_urls[:INSTAGRAM_MAX_POSTS_PER_ACCOUNT]):
+    if post_date < cutoff_date:
         logger.debug(
-            f"@{account}: Fetching post {i + 1}/"
-            f"{min(len(post_urls), INSTAGRAM_MAX_POSTS_PER_ACCOUNT)}: {post_url}"
+            f"@{account}: Skipping post from {post_date.date()} (older than cutoff)."
         )
-        post_data = extract_post_data(post_url, cutoff_date, account, page)
+        return None
+
+    return InstagramPost(
+        url=post_url,
+        account=account,
+        caption=_get_post_caption(page),
+        date_posted=post_date,
+    )
+
+
+def process_account(
+    account: str, page: Page, cutoff_date: datetime
+) -> list[InstagramPost]:
+    """
+    Process a single Instagram account:
+    - Navigate to the account page.
+    - Find all post URLs.
+    - For each post, extract data if it's newer than the cutoff date.
+    """
+    logger.info(f"Processing account: @{account}")
+    account_url = f"{INSTAGRAM_URL}{account}/"
+
+    if not _navigate_to_url(page, account_url, account, "account page"):
+        return []
+
+    post_urls = _get_post_urls(page, account)
+    if not post_urls:
+        return []
+
+    account_posts: list[InstagramPost] = []
+    for i, post_url in enumerate(post_urls):
+        logger.debug(
+            f"@{account}: Processing post {i + 1}/{len(post_urls)}: {post_url}"
+        )
+
+        post_data = _extract_post_data(page, post_url, account, cutoff_date)
         if post_data:
             account_posts.append(post_data)
-        else:
+        elif post_data is None:
+            # This means the post was older than the cutoff, so we can stop.
+            # Assumes posts are chronological.
             logger.info(
-                f"@{account}: Found post older than cutoff date, stopping for this account."
+                f"@{account}: Reached a post older than the cutoff date. "
+                "Moving to the next account."
             )
             break
 
-    logger.info(f"@{account}: Found {len(account_posts)} recent post(s).")
+    logger.info(f"@{account}: Found {len(account_posts)} new posts.")
     return account_posts

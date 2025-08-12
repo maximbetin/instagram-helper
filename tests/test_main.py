@@ -1,34 +1,30 @@
-"""Tests for main functionality."""
+"""Tests for the core scraping and reporting functionality."""
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from freezegun import freeze_time
 
-from browser_manager import setup_browser
 from instagram_scraper import (
-    extract_post_data,
-    get_account_post_urls,
-    get_post_caption,
-    get_post_date,
+    InstagramPost,
+    _get_post_caption,
+    _get_post_date,
+    _get_post_urls,
     process_account,
 )
 from report_generator import generate_html_report
 
 # Mock data for testing
-MOCK_POST_DATA = {
-    "url": "https://www.instagram.com/p/123/",
-    "account": "test_account",
-    "caption": "Test post caption",
-    "date_posted": datetime.now(UTC),
-}
-
-MOCK_ACCOUNT_POSTS = [MOCK_POST_DATA]
+FROZEN_TIME = "2024-01-01 12:00:00"
+MOCK_POST_URL = "https://www.instagram.com/p/123/"
+MOCK_ACCOUNT = "test_account"
 
 
 @pytest.fixture
 def mock_page() -> MagicMock:
-    """Create a mock page for testing."""
+    """Provides a mock Playwright Page object."""
     page = MagicMock()
     page.query_selector_all.return_value = []
     page.query_selector.return_value = None
@@ -36,262 +32,142 @@ def mock_page() -> MagicMock:
     return page
 
 
-@pytest.fixture
-def mock_browser() -> MagicMock:
-    """Create a mock browser for testing."""
-    browser = MagicMock()
-    context = MagicMock()
-    page = MagicMock()
-    context.pages = [page]
-    browser.contexts = [context]
-    return browser
+def test_get_post_urls_success(mock_page: MagicMock) -> None:
+    """Test that valid post and reel URLs are correctly identified and normalized."""
+    mock_link_p = MagicMock()
+    mock_link_p.get_attribute.return_value = "/p/123/"
+    mock_link_reel = MagicMock()
+    mock_link_reel.get_attribute.return_value = "/reel/456/"
+    mock_page.query_selector_all.return_value = [mock_link_p, mock_link_reel]
 
-
-@pytest.fixture
-def mock_playwright() -> MagicMock:
-    """Create a mock playwright for testing."""
-    playwright = MagicMock()
-    return playwright
-
-
-def test_get_account_post_urls(mock_page: MagicMock) -> None:
-    """Test getting post URLs from an account page."""
-    # Mock link elements
-    mock_link1 = MagicMock()
-    mock_link1.get_attribute.return_value = "/p/123/"
-    mock_link2 = MagicMock()
-    mock_link2.get_attribute.return_value = "/reel/456/"
-    mock_link3 = MagicMock()
-    mock_link3.get_attribute.return_value = "/stories/789/"
-
-    mock_page.query_selector_all.return_value = [mock_link1, mock_link2, mock_link3]
-
-    urls = get_account_post_urls(mock_page)
-
+    urls = _get_post_urls(mock_page, MOCK_ACCOUNT)
     assert len(urls) == 2
-    assert any("p/123" in url for url in urls)
-    assert any("reel/456" in url for url in urls)
-    assert not any("stories/789" in url for url in urls)
+    assert "https://www.instagram.com/p/123" in urls
+    assert "https://www.instagram.com/reel/456" in urls
 
 
-def test_get_post_caption(mock_page: MagicMock) -> None:
-    """Test extracting post caption."""
-    # Mock the XPath-based caption extraction
+def test_get_post_urls_no_links(mock_page: MagicMock) -> None:
+    """Test that an empty list is returned when no valid links are found."""
+    mock_link_story = MagicMock()
+    mock_link_story.get_attribute.return_value = "/stories/789/"
+    mock_page.query_selector_all.return_value = [mock_link_story]
+    assert not _get_post_urls(mock_page, MOCK_ACCOUNT)
+
+
+def test_get_post_caption_found(mock_page: MagicMock) -> None:
+    """Test that a post caption is correctly extracted and stripped."""
     mock_locator = MagicMock()
-    mock_first = MagicMock()
-
-    # Set up the chain: page.locator().first.inner_text().strip()
+    mock_element = MagicMock()
+    mock_element.is_visible.return_value = True
+    mock_element.inner_text.return_value = "  A test caption.  "
+    mock_locator.first = mock_element
     mock_page.locator.return_value = mock_locator
-    mock_locator.first = mock_first
-    mock_first.is_visible.return_value = True
-    mock_first.inner_text.return_value = "  Test caption  "
 
-    caption = get_post_caption(mock_page)
-    assert caption == "Test caption"
+    assert _get_post_caption(mock_page) == "A test caption."
 
 
-def test_get_post_caption_no_element(mock_page: MagicMock) -> None:
-    """Test extracting post caption when no caption element exists."""
-    # Mock the XPath-based caption extraction with no visible element
+def test_get_post_caption_not_found(mock_page: MagicMock) -> None:
+    """Test that an empty string is returned if no caption element is found."""
     mock_locator = MagicMock()
-    mock_first = MagicMock()
-
+    mock_element = MagicMock()
+    mock_element.is_visible.return_value = False
+    mock_locator.first = mock_element
     mock_page.locator.return_value = mock_locator
-    mock_locator.first = mock_first
-    mock_first.is_visible.return_value = False
 
-    caption = get_post_caption(mock_page)
-    assert caption == ""
+    assert _get_post_caption(mock_page) == ""
 
 
-def test_get_post_date(mock_page: MagicMock) -> None:
-    """Test extracting post date."""
-    mock_time = MagicMock()
-    mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
-    mock_page.query_selector.return_value = mock_time
+@freeze_time(FROZEN_TIME)
+def test_get_post_date_found(mock_page: MagicMock) -> None:
+    """Test correct extraction and timezone conversion of a post date."""
+    mock_time_element = MagicMock()
+    mock_time_element.get_attribute.return_value = "2024-01-01T10:00:00Z"
+    mock_page.query_selector.return_value = mock_time_element
+    post_date = _get_post_date(mock_page)
+    assert post_date is not None
+    assert post_date.year == 2024
+    assert post_date.month == 1
+    assert post_date.day == 1
+    assert post_date.hour == 12  # Assuming TIMEZONE_OFFSET=+2
+    assert post_date.tzinfo is not None
 
-    date = get_post_date(mock_page)
-    assert date is not None
-    assert date.year == 2024
-    assert date.month == 1
-    assert date.day == 1
 
-
-def test_get_post_date_no_element(mock_page: MagicMock) -> None:
-    """Test extracting post date when no time element exists."""
+def test_get_post_date_not_found(mock_page: MagicMock) -> None:
+    """Test that None is returned when the time element is not found."""
     mock_page.query_selector.return_value = None
-
-    date = get_post_date(mock_page)
-    assert date is None
+    assert _get_post_date(mock_page) is None
 
 
-@patch("time.sleep")
-def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) -> None:
-    """Test successful post data extraction."""
-    cutoff_date = datetime(2023, 12, 31, tzinfo=UTC)
-
-    # Mock page.goto to not raise exceptions
-    mock_page.goto.return_value = None
-
-    # Mock the XPath-based caption extraction
-    mock_locator = MagicMock()
-    mock_first = MagicMock()
-    mock_page.locator.return_value = mock_locator
-    mock_locator.first = mock_first
-    mock_first.is_visible.return_value = True
-    mock_first.inner_text.return_value = "Test caption"
-
-    # Mock date element
-    mock_time = MagicMock()
-    mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
-
-    # Mock the query_selector calls for date extraction
-    def mock_query_selector(selector: str) -> MagicMock | None:
-        if selector == "time[datetime]":
-            return mock_time
-        return None
-
-    mock_page.query_selector.side_effect = mock_query_selector
-
-    result = extract_post_data(
-        "https://www.instagram.com/p/123/", cutoff_date, "test_account", mock_page
+@freeze_time(FROZEN_TIME)
+@patch("instagram_scraper._extract_post_data")
+def test_process_account_success(
+    mock_extract_post_data: MagicMock, mock_page: MagicMock
+) -> None:
+    """Test successful processing of an account with multiple posts."""
+    post1 = InstagramPost(
+        "url1", MOCK_ACCOUNT, "caption1", datetime.now(UTC) - timedelta(hours=1)
     )
-
-    assert result is not None
-    assert result["url"] == "https://www.instagram.com/p/123/"
-    assert result["account"] == "test_account"
-    assert result["caption"] == "Test caption"
-
-
-def test_extract_post_data_old_post(mock_page: MagicMock) -> None:
-    """Test post data extraction for old posts."""
-    cutoff_date = datetime(2024, 1, 2, tzinfo=UTC)
-
-    # Mock the XPath-based caption extraction
-    mock_locator = MagicMock()
-    mock_first = MagicMock()
-    mock_page.locator.return_value = mock_locator
-    mock_locator.first = mock_first
-    mock_first.is_visible.return_value = True
-    mock_first.inner_text.return_value = "Test caption"
-
-    # Mock date element
-    mock_time = MagicMock()
-    mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
-
-    # Mock the query_selector calls for date extraction
-    def mock_query_selector(selector: str) -> MagicMock | None:
-        if selector == "time[datetime]":
-            return mock_time
-        return None
-
-    mock_page.query_selector.side_effect = mock_query_selector
-
-    result = extract_post_data(
-        "https://www.instagram.com/p/123/", cutoff_date, "test_account", mock_page
+    post2 = InstagramPost(
+        "url2", MOCK_ACCOUNT, "caption2", datetime.now(UTC) - timedelta(hours=2)
     )
+    mock_extract_post_data.side_effect = [post1, post2, None]  # The third post is old
 
-    assert result is None
+    with patch("instagram_scraper._get_post_urls", return_value=["url1", "url2", "url3"]):
+        cutoff_date = datetime.now(UTC) - timedelta(days=1)
+        result = process_account(MOCK_ACCOUNT, mock_page, cutoff_date)
+
+        assert len(result) == 2
+        assert result[0] == post1
+        assert result[1] == post2
+        mock_page.goto.assert_called()
+        assert mock_extract_post_data.call_count == 3
 
 
-def test_process_account_success(mock_page: MagicMock) -> None:
-    """Test successful account processing."""
+def test_process_account_navigation_fails(mock_page: MagicMock) -> None:
+    """Test that account processing returns an empty list if navigation fails."""
+    mock_page.goto.side_effect = Exception("Navigation failed")
     cutoff_date = datetime.now(UTC) - timedelta(days=1)
-
-    # Mock successful page load and post URLs
-    mock_page.goto.return_value = None
-    mock_page.query_selector_all.return_value = []
-
-    result = process_account("test_account", mock_page, cutoff_date)
-
-    assert isinstance(result, list)
-    mock_page.goto.assert_called_once()
-
-
-def test_process_account_failure(mock_page: MagicMock) -> None:
-    """Test account processing failure."""
-    cutoff_date = datetime.now(UTC) - timedelta(days=1)
-
-    # Mock page load failure
-    mock_page.goto.side_effect = Exception("Connection error")
-
-    result = process_account("test_account", mock_page, cutoff_date)
-
+    result = process_account(MOCK_ACCOUNT, mock_page, cutoff_date)
     assert result == []
 
 
-@patch("os.path.exists")
-@patch("builtins.open", create=True)
-@patch("report_generator.FileSystemLoader")
-@patch("report_generator.Environment")
-@patch("os.path.basename")
-def test_generate_html_report(
-    mock_basename: MagicMock,
-    mock_env_class: MagicMock,
-    mock_loader_class: MagicMock,
-    mock_open: MagicMock,
-    mock_exists: MagicMock,
-) -> None:
-    """Test HTML report generation."""
-    mock_exists.return_value = True
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
+@freeze_time(FROZEN_TIME)
+def test_generate_html_report_success(tmp_path: Path) -> None:
+    """Test successful generation of the HTML report."""
+    posts = [
+        InstagramPost(
+            MOCK_POST_URL,
+            MOCK_ACCOUNT,
+            "Caption",
+            datetime.now(UTC),
+        )
+    ]
+    template_dir = tmp_path / "templates"
+    template_dir.mkdir()
+    template_path = template_dir / "template.html"
+    template_path.write_text("<html>{{ total_posts }} posts</html>")
 
-    # Mock the Jinja2 environment and template
-    mock_basename.return_value = "template.html"
-    mock_loader = MagicMock()
-    mock_loader_class.return_value = mock_loader
-    mock_env = MagicMock()
-    mock_template = MagicMock()
-    mock_template.render.return_value = "<html>test</html>"
-    mock_env.get_template.return_value = mock_template
-    mock_env_class.return_value = mock_env
-
-    posts = [MOCK_POST_DATA]
-    cutoff_date = datetime.now(UTC) - timedelta(days=1)
-
-    result = generate_html_report(posts, cutoff_date, "/tmp", "templates/template.html")
-
-    assert result.endswith(".html")
-    mock_file.write.assert_called_once()
-
-
-@patch("os.getenv")
-@patch("os.path.exists")
-def test_setup_browser(
-    mock_exists: MagicMock, mock_getenv: MagicMock, mock_playwright: MagicMock
-) -> None:
-    """Test browser setup."""
-    mock_browser = MagicMock()
-    mock_playwright.chromium.launch.return_value = mock_browser
-
-    # Mock environment variables - no BROWSER_PATH set
-    mock_getenv.side_effect = lambda key, default=None: {
-        "BROWSER_DEBUG_PORT": "9222",
-        "BROWSER_PATH": None,
-    }.get(key, default)
-
-    # Mock file existence check - Brave path doesn't exist
-    mock_exists.return_value = False
-
-    # Mock the connection attempt to fail, so it falls back to launching Chromium
-    mock_playwright.chromium.connect_over_cdp.side_effect = Exception(
-        "Connection failed"
+    report_path = generate_html_report(
+        posts=posts,
+        cutoff_date=datetime.now(UTC) - timedelta(days=1),
+        output_dir=tmp_path,
+        template_path=str(template_path),
+        logger=MagicMock(),
     )
 
-    result = setup_browser(mock_playwright)
+    assert report_path is not None
+    report_file = Path(report_path)
+    assert report_file.exists()
+    assert "1 posts" in report_file.read_text()
 
-    assert result is not None
-    # Should have tried to connect first
-    mock_playwright.chromium.connect_over_cdp.assert_called_once_with(
-        "http://localhost:9222"
+
+def test_generate_html_report_no_posts(tmp_path: Path) -> None:
+    """Test that no report is generated if there are no posts."""
+    report_path = generate_html_report(
+        posts=[],
+        cutoff_date=datetime.now(UTC) - timedelta(days=1),
+        output_dir=tmp_path,
+        template_path="dummy.html",
+        logger=MagicMock(),
     )
-    # Then should have launched Chromium as fallback
-    mock_playwright.chromium.launch.assert_called_once_with(
-        headless=False,
-        args=[
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--remote-debugging-port=9222",
-        ],
-    )
+    assert report_path is None

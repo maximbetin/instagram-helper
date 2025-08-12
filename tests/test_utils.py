@@ -1,35 +1,89 @@
 """Tests for utility functions."""
 
 import logging
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from utils import LOG_DATE_FORMAT, LOG_FORMAT, LOG_LEVEL, setup_logging
+from utils import (
+    LOG_DATE_FORMAT,
+    LOG_FORMAT_CONSOLE,
+    LOG_FORMAT_FILE,
+    setup_logging,
+)
 
 
 @pytest.fixture(autouse=True)
-def reset_logging() -> None:
-    """Reset logging to a known state before each test."""
-    logging.root.handlers = []
-    logging.root.setLevel(logging.WARNING)  # Default level
+def reset_logging_handlers() -> None:
+    """Ensure each test starts with a clean slate for logging handlers."""
+    # This prevents handlers from accumulating across tests
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    # Also clear handlers for the logger under test if it exists
+    test_logger = logging.getLogger("test_logger")
+    if test_logger.hasHandlers():
+        test_logger.handlers.clear()
 
 
-def test_setup_logging() -> None:
-    """Test that the logger is configured correctly."""
-    logger = setup_logging("test_logger")
+def test_setup_logging_basic_configuration() -> None:
+    """Test that the logger is configured with the correct name and level."""
+    logger = setup_logging(name="test_logger", log_level=logging.INFO)
     assert logger.name == "test_logger"
-    assert logger.level == LOG_LEVEL
+    assert logger.level == logging.INFO
+    assert logger.propagate is False
+    assert len(logger.handlers) == 1  # Should only have console handler
 
-    # Check that the handler is configured correctly
-    assert len(logger.handlers) > 0
-    handler = logger.handlers[0]
-    formatter = handler.formatter
-    assert formatter is not None
-    assert formatter._fmt == LOG_FORMAT
+
+def test_setup_logging_console_handler_format() -> None:
+    """Test that the console handler has the correct formatter."""
+    logger = setup_logging(name="test_logger")
+    console_handler = logger.handlers[0]
+    formatter = console_handler.formatter
+    assert isinstance(formatter, logging.Formatter)
+    assert formatter._fmt == LOG_FORMAT_CONSOLE
+
+
+def test_setup_logging_with_file_handler(tmp_path: Path) -> None:
+    """Test that a file handler is correctly added and configured when a log directory is provided."""
+    log_dir = tmp_path / "logs"
+    logger = setup_logging(name="test_logger", log_dir=log_dir)
+
+    assert len(logger.handlers) == 2  # Console and file handler
+
+    # Find the file handler
+    file_handler = None
+    for handler in logger.handlers:
+        if isinstance(handler, logging.FileHandler):
+            file_handler = handler
+            break
+
+    assert file_handler is not None
+    assert log_dir.exists()
+
+    formatter = file_handler.formatter
+    assert isinstance(formatter, logging.Formatter)
+    assert formatter._fmt == LOG_FORMAT_FILE
     assert formatter.datefmt == LOG_DATE_FORMAT
 
 
-def test_setup_logging_default_name() -> None:
-    """Test that the logger gets a default name if none is provided."""
-    logger = setup_logging()
-    assert logger.name == "utils"  # Module name from utils.py
+def test_setup_logging_file_handler_creation_failure(tmp_path: Path) -> None:
+    """Test that logger setup does not fail if file handler creation raises an error."""
+    # Make the temp directory read-only to trigger a permission error
+    log_dir = tmp_path / "readonly"
+    log_dir.mkdir()
+    log_dir.chmod(0o444)
+
+    # We expect an error to be logged, but not an exception to be raised.
+    # We can patch the logger's error method to confirm it's called.
+    with patch.object(logging.getLogger("test_logger"), "error") as mock_error:
+        logger = setup_logging(name="test_logger", log_dir=log_dir)
+
+        # The logger should still have the console handler
+        assert len(logger.handlers) == 1
+        mock_error.assert_called_once()
+        assert "Failed to set up file logging" in mock_error.call_args[0][0]
+
+    # Clean up the read-only directory
+    log_dir.chmod(0o755)

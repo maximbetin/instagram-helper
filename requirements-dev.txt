@@ -1,0 +1,7 @@
+ruff
+mypy
+pytest
+freezegun
+pytest-cov
+pytest-mock
+types-freezegun

@@ -96,7 +96,8 @@ markers = [
 # Ruff configuration for code formatting and linting
 [tool.ruff]
 target-version = "py312"     # Target Python version
-line-length = 88            # Maximum line length (Black-compatible)
+line-length = 88             # Maximum line length (Black-compatible)
+interpreter = "/home/maxim/instagram-helper/venv/bin/python"
 
 # Ruff linting rules
 [tool.ruff.lint]
