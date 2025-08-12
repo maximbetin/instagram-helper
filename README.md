@@ -336,14 +336,42 @@ The tool now provides detailed debugging information by default:
 
 ## Development
 
-### Setup
+### Quick Start (WSL2)
+
+For WSL2 users, the fastest way to get started:
 
 ```bash
+# Run the WSL2-specific setup script
+./setup-dev.sh
+
+# Or use the Makefile command
+make setup-wsl2
+```
+
+This script automatically:
+
+- Checks Python 3.12+ availability
+- Creates and activates a virtual environment
+- Installs all Python and Node.js dependencies
+- Sets up Playwright browsers
+- Runs initial quality checks
+- Provides next steps guidance
+
+### Manual Setup
+
+```bash
+# Create virtual environment
+python3.12 -m venv venv
+source venv/bin/activate
+
 # Install with development dependencies
 make setup-dev
 
 # Install Playwright browsers
 make install-browsers
+
+# Install Node.js dependencies for Prettier
+make setup-node
 ```
 
 ### Available Commands
@@ -374,9 +402,99 @@ make build
 
 ### Code Quality Tools
 
-- **Ruff**: Code formatting and linting (88 character line length)
-- **MyPy**: Static type checking
-- **Pytest**: Testing framework with coverage reporting
+The project uses a comprehensive set of quality assurance tools configured in `pyproject.toml`:
+
+#### Ruff - Code Linting and Formatting
+
+- **Configuration**: Located in `pyproject.toml` under `[tool.ruff]`
+- **Line Length**: 88 characters (Black-compatible)
+- **Rules**: Enforces PEP 8, pyflakes, isort, and flake8-bugbear
+- **Commands**:
+
+  ```bash
+  make lint          # Check code quality
+  make format        # Auto-format code
+  ruff check .       # Direct linting
+  ruff format .      # Direct formatting
+  ```
+
+#### MyPy - Static Type Checking
+
+- **Configuration**: Located in `pyproject.toml` under `[tool.mypy]`
+- **Strict Mode**: Enabled with comprehensive type checking
+- **Target**: Python 3.12+
+- **Commands**:
+
+  ```bash
+  make type-check    # Run type checking
+  mypy .             # Direct type checking
+  ```
+
+#### Pytest - Testing Framework
+
+- **Configuration**: Located in `pyproject.toml` under `[tool.pytest.ini_options]`
+- **Coverage**: Integrated with coverage.py for comprehensive reporting
+- **Commands**:
+
+  ```bash
+  make test          # Run test suite
+  make test-cov      # Run tests with coverage
+  make test-fast     # Run tests without coverage (faster)
+  pytest tests/ -v   # Direct test execution
+  ```
+
+#### Prettier - Documentation Formatting
+
+- **Configuration**: Located in `.prettierrc` and `package.json`
+- **Target**: README.md formatting only
+- **Commands**:
+
+  ```bash
+  make format-readme # Format README.md
+  npm run format:readme    # Direct formatting
+  npm run format:check     # Check formatting
+  ```
+
+### Quality Check Workflow
+
+#### Before Committing
+
+```bash
+# Run all quality checks
+make check-all
+
+# This runs:
+# 1. ruff check . (linting)
+# 2. mypy . (type checking)
+# 3. pytest tests/ (testing)
+```
+
+#### Code Formatting
+
+```bash
+# Format all code and documentation
+make format-all
+
+# This runs:
+# 1. ruff format . (Python code)
+# 2. npm run format:readme (README.md)
+```
+
+#### Individual Checks
+
+```bash
+# Linting only
+make lint
+
+# Type checking only
+make type-check
+
+# Testing only
+make test
+
+# README formatting only
+make format-readme
+```
 
 ### Testing
 
@@ -387,12 +505,61 @@ make test
 # With coverage
 make test-cov
 
+# Fast tests (no coverage)
+make test-fast
+
 # Specific test file
 pytest tests/test_main.py -v
 
 # Specific test function
 pytest tests/test_main.py::test_get_account_post_urls -v
+
+# Run with specific markers
+pytest -m "not slow" tests/  # Skip slow tests
+pytest -m integration tests/  # Run only integration tests
 ```
+
+### Development Environment (WSL2)
+
+#### Virtual Environment Management
+
+The project uses Python virtual environments for dependency isolation:
+
+```bash
+# Create virtual environment
+python3.12 -m venv venv
+
+# Activate (WSL2)
+source venv/bin/activate
+
+# Deactivate
+deactivate
+
+# Install dependencies in venv
+pip install -e ".[dev]"
+```
+
+#### Node.js Dependencies
+
+Prettier is managed via npm for README.md formatting:
+
+```bash
+# Install Node.js dependencies
+npm install
+
+# Check README.md formatting
+npm run format:check
+
+# Format README.md
+npm run format:readme
+```
+
+#### WSL2-Specific Considerations
+
+- **Python Paths**: Use `python3.12` or `python3` commands
+- **Virtual Environment**: Always activate before running quality checks
+- **File Permissions**: Ensure scripts are executable (`chmod +x setup-dev.sh`)
+- **Network**: Localhost connections work seamlessly between WSL2 and Windows
 
 ## CI/CD Pipeline
 
@@ -401,8 +568,14 @@ The project uses GitHub Actions for automated testing and quality assurance.
 ### CI Job
 
 - **Python Version**: Tests against Python 3.12
-- **Quality Checks**: Linting (ruff), type checking (mypy), tests (pytest), README formatting (Prettier)
+- **Node.js**: Version 18 for Prettier
+- **Quality Checks**:
+  - Linting (ruff)
+  - Type checking (mypy)
+  - Tests (pytest with coverage)
+  - README formatting (Prettier)
 - **Coverage**: Reports uploaded to Codecov
+- **Dependencies**: Installs both Python and Node.js dependencies
 
 ### Build Job
 
@@ -412,8 +585,10 @@ The project uses GitHub Actions for automated testing and quality assurance.
 ### Local Development Workflow
 
 ```bash
-# 1. Set up development environment
-make dev-setup
+# 1. Set up development environment (WSL2)
+./setup-dev.sh
+# OR
+make setup-wsl2
 
 # 2. Make code changes
 
@@ -431,17 +606,32 @@ git push origin main
 
 ### Quality Assurance Tools
 
-The project uses several tools to ensure code quality and consistency:
+The project uses a comprehensive set of tools to ensure code quality and consistency:
 
 #### Code Quality
 
 - **Ruff**: Fast Python linter and formatter that enforces PEP 8 style guidelines
+  - Configured in `pyproject.toml` with 88-character line length
+  - Enforces multiple rule sets: E (pycodestyle), W (pycodestyle), F (pyflakes), I (isort), B (flake8-bugbear)
 - **MyPy**: Static type checker that ensures type safety across the codebase
+  - Strict mode enabled with comprehensive type checking
+  - Configured to target Python 3.12+
 - **Pytest**: Testing framework with comprehensive test coverage reporting
+  - Integrated with coverage.py for detailed coverage analysis
+  - Supports test markers for slow/integration tests
 
 #### Documentation Formatting
 
 - **Prettier**: Markdown formatter that ensures consistent README.md formatting
+  - Configured in `.prettierrc` with markdown-specific settings
+  - 88-character line width, double quotes, spaces for indentation
+
+#### Configuration Files
+
+- **`pyproject.toml`**: Central configuration for Python tools (ruff, mypy, pytest, coverage)
+- **`.prettierrc`**: Prettier configuration for README.md formatting
+- **`package.json`**: Node.js dependencies and scripts for Prettier
+- **`Makefile`**: Development automation commands for all quality checks
 
 #### Commands
 
@@ -457,10 +647,13 @@ make format-all         # Format everything (ruff + prettier)
 # Testing
 make test               # Run test suite
 make test-cov          # Run tests with coverage reporting
+make test-fast         # Run tests without coverage (faster)
 
 # Linting and type checking
 make lint               # Run ruff linting
-mypy .                  # Run type checking
+make type-check         # Run mypy type checking
+ruff check .            # Direct ruff linting
+mypy .                  # Direct mypy type checking
 ```
 
 ## Project Structure
@@ -544,13 +737,90 @@ Check log files for detailed error information:
 
 ### Development Setup
 
+#### Option 1: WSL2 Quick Setup (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/maximbetin/instagram-helper.git
+cd instagram-helper
+
+# Run the automated setup script
+./setup-dev.sh
+```
+
+#### Option 2: Manual Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/maximbetin/instagram-helper.git
+cd instagram-helper
+
+# Create virtual environment
+python3.12 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+make setup-dev
+make setup-node
+make install-browsers
+```
+
+#### Option 3: Makefile Commands
+
+```bash
+# Complete development setup
+make dev-setup
+
+# WSL2-specific setup
+make setup-wsl2
+```
+
+### Development Workflow
+
 1. Fork the repository
 2. Clone your fork locally
-3. Set up development environment: `make dev-setup`
+3. Set up development environment using one of the options above
 4. Create a feature branch
 5. Make changes and test locally
 6. Ensure all quality checks pass: `make check-all`
-7. Submit a pull request
+7. Format code and documentation: `make format-all`
+8. Submit a pull request
+
+### WSL2 Development Setup Script
+
+The `setup-dev.sh` script provides an automated way to set up the complete development environment:
+
+#### Features
+
+- **Automatic Detection**: Checks Python 3.12+ and Node.js availability
+- **Virtual Environment**: Creates and activates a Python virtual environment
+- **Dependency Installation**: Installs all Python and Node.js dependencies
+- **Browser Setup**: Installs Playwright browsers for testing
+- **Quality Checks**: Runs initial quality checks to verify setup
+- **WSL2 Optimized**: Designed specifically for WSL2 environments
+
+#### What It Does
+
+1. **Environment Checks**: Verifies Python 3.12+ and Node.js
+2. **Virtual Environment**: Creates `venv/` directory and activates it
+3. **Python Dependencies**: Installs package in development mode with all dev dependencies
+4. **Node.js Dependencies**: Installs Prettier for README.md formatting
+5. **Playwright Browsers**: Installs browser binaries for testing
+6. **Initial Quality Checks**: Runs ruff, mypy, and pytest to verify setup
+7. **Guidance**: Provides next steps and available commands
+
+#### Usage
+
+```bash
+# Make executable (first time only)
+chmod +x setup-dev.sh
+
+# Run the setup
+./setup-dev.sh
+
+# Or use the Makefile command
+make setup-wsl2
+```
 
 ### Code Standards
 

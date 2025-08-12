@@ -37,32 +37,44 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Step 3: Install Playwright browsers for testing
-      - name: Install Playwright browsers
+      # Step 3: Install Node.js for Prettier
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # Step 4: Install Node.js dependencies
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      # Step 5: Install Python dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install playwright
+          pip install -e ".[dev]"
+
+      # Step 6: Install Playwright browsers for testing
+      - name: Install Playwright browsers
+        run: |
           playwright install --with-deps
 
-      # Step 5: Install project dependencies
-      - name: Install project dependencies
+      # Step 7: Run code quality checks
+      - name: Run linting and formatting checks
         run: |
-          pip install -e ".[dev]"
-          npm install
+          echo "Running Ruff linting..."
+          ruff check .
+          echo "Running MyPy type checking..."
+          mypy .
+          echo "Checking README.md formatting..."
+          npm run format:check
 
-      # Step 6: Run code quality checks
-      - name: Run linting
-        run: |
-          ruff check .              # Code style and quality checks
-          mypy .                    # Static type checking
-          npm run format:check      # Check README.md formatting
-
-      # Step 7: Run tests with coverage
+      # Step 8: Run tests with coverage
       - name: Run tests
         run: |
-          pytest tests/ -v --cov=. --cov-report=xml
+          pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
 
-      # Step 8: Upload coverage to Codecov
+      # Step 9: Upload coverage to Codecov
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
