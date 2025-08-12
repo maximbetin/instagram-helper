@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import webbrowser
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -76,7 +75,7 @@ class App:
         return context.pages[0] if context.pages else context.new_page()
 
     def _generate_report(self, cutoff_date: datetime) -> None:
-        """Generates and optionally opens the HTML report."""
+        """Generates the HTML report."""
         if not self.all_posts:
             logger.info("No new posts found. No report generated.")
             return
@@ -89,8 +88,6 @@ class App:
 
         if report_path:
             logger.info(f"Report generated: {report_path}")
-            if self.args.open_report:
-                webbrowser.open(report_path.as_uri())
 
 
 def parse_args() -> argparse.Namespace:
@@ -129,16 +126,13 @@ def parse_args() -> argparse.Namespace:
         default=settings.LOG_DIR,
         help=f"Directory for log files (default: {settings.LOG_DIR})",
     )
+    
     parser.add_argument(
         "--headless",
         action="store_true",
         help="Run the browser in headless mode (no GUI).",
     )
-    parser.add_argument(
-        "--open-report",
-        action="store_true",
-        help="Open the generated report in a web browser.",
-    )
+    
     return parser.parse_args()
 
 

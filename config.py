@@ -27,7 +27,10 @@ class Settings:
         BROWSER_USER_DATA_DIR (Path): Path to the browser's user data directory.
         BROWSER_PROFILE_DIR (str): The profile directory to use.
         BROWSER_DEBUG_PORT (int): The remote debugging port.
-        BROWSER_ATTACH_ONLY (bool): If true, attach to an existing browser.
+        BROWSER_START_URL (str): The URL to start the browser at.
+        BROWSER_LOAD_DELAY (int): The delay in milliseconds between page loads.
+        BROWSER_CONNECT_SCHEME (str): The scheme to use for remote debugging.
+        BROWSER_REMOTE_HOST (str): The host for remote debugging.
         INSTAGRAM_ACCOUNTS (list[str]): Default list of Instagram accounts.
     """
 
@@ -57,7 +60,6 @@ class Settings:
     BROWSER_DEBUG_PORT: int = 9222
     BROWSER_START_URL: str = "https://www.instagram.com/"
     BROWSER_LOAD_DELAY: int = 5000  # In milliseconds
-    BROWSER_ATTACH_ONLY: bool = False
     BROWSER_CONNECT_SCHEME: str = "http"
     BROWSER_REMOTE_HOST: str = "localhost"
 
@@ -127,11 +129,6 @@ class Settings:
             self,
             "BROWSER_DEBUG_PORT",
             int(os.getenv("BROWSER_DEBUG_PORT", str(self.BROWSER_DEBUG_PORT))),
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_ATTACH_ONLY",
-            os.getenv("BROWSER_ATTACH_ONLY", "false").lower() == "true",
         )
 
         # We need to re-set the output and log directories here because their

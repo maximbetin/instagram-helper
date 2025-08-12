@@ -17,17 +17,6 @@ if TYPE_CHECKING:
 logger = setup_logging(__name__)
 
 
-def _connect_to_browser(playwright: Playwright, connect_url: str) -> Browser | None:
-    """Tries to connect to an existing browser instance over CDP."""
-    try:
-        browser = playwright.chromium.connect_over_cdp(connect_url)
-        logger.info(f"Successfully connected to existing browser at {connect_url}")
-        return browser
-    except (Error, Exception) as e:
-        logger.debug(f"Could not connect to existing browser at {connect_url}: {e}")
-        return None
-
-
 def _kill_existing_browser_processes() -> None:
     """Attempts to kill existing browser processes to prevent conflicts.
 
@@ -83,11 +72,27 @@ def _launch_local_browser(
             f"Waiting {app_settings.BROWSER_LOAD_DELAY / 1000:.1f}s for browser..."
         )
         time.sleep(app_settings.BROWSER_LOAD_DELAY / 1000)
+        
+        # Try to connect to the newly launched browser
         connect_url = (
             f"{app_settings.BROWSER_CONNECT_SCHEME}://"
             f"{app_settings.BROWSER_REMOTE_HOST}:{app_settings.BROWSER_DEBUG_PORT}"
         )
-        return _connect_to_browser(playwright, connect_url)
+        
+        try:
+            browser = playwright.chromium.connect_over_cdp(connect_url)
+            logger.info(f"Successfully connected to newly launched browser at {connect_url}")
+            return browser
+        except Exception as e:
+            if "ECONNREFUSED" in str(e):
+                logger.error(
+                    f"Connection refused to browser at {connect_url}. "
+                    "Please close any existing browser instances and try again."
+                )
+            else:
+                logger.error(f"Failed to connect to newly launched browser: {e}")
+            return None
+            
     except Exception as e:
         logger.error(f"Failed to launch local browser: {e}")
         return None
@@ -113,16 +118,12 @@ def _launch_playwright_chromium(
 
 
 def setup_browser(playwright: Playwright) -> Browser:
-    """Sets up and returns a browser instance based on configuration.
+    """Sets up and returns a browser instance.
 
     This function follows a specific strategy to establish a browser connection:
-    1.  Tries to connect to an existing browser instance using the configured URL.
-    2.  If connection fails and `BROWSER_ATTACH_ONLY` is `False`, it attempts
-        to launch a local browser instance (e.g., Brave).
-    3.  If both connection and local launch fail, it falls back to launching a
-        Playwright-managed Chromium instance.
-    4.  If `BROWSER_ATTACH_ONLY` is `True`, it raises an error if the initial
-        connection fails.
+    1. Attempts to launch a local browser instance (e.g., Brave) if configured.
+    2. If local launch fails, falls back to launching a Playwright-managed Chromium instance.
+    3. Provides clear error messages for connection issues.
 
     Returns:
         A Playwright `Browser` instance.
@@ -130,29 +131,16 @@ def setup_browser(playwright: Playwright) -> Browser:
     Raises:
         ConnectionError: If no browser connection can be established.
     """
-    connect_url = (
-        f"{settings.BROWSER_CONNECT_SCHEME}://"
-        f"{settings.BROWSER_REMOTE_HOST}:{settings.BROWSER_DEBUG_PORT}"
-    )
-    logger.debug(f"Attempting to connect to browser at {connect_url}")
+    logger.info("Setting up browser instance...")
 
-    # 1. Try to connect to an existing browser
-    if browser := _connect_to_browser(playwright, connect_url):
-        return browser
-
-    # If attach-only is enabled, fail here without attempting to launch
-    if settings.BROWSER_ATTACH_ONLY:
-        logger.error("Connection failed and BROWSER_ATTACH_ONLY is enabled.")
-        raise ConnectionError(f"Could not connect to browser at {connect_url}")
-
-    # 2. Try to launch a local browser if configured
+    # 1. Try to launch a local browser if configured
     if browser := _launch_local_browser(playwright, settings):
         logger.info("Successfully launched and connected to local browser.")
         return browser
 
-    # 3. Fallback to Playwright-managed Chromium
+    # 2. Fallback to Playwright-managed Chromium
     logger.warning(
-        "Could not connect to or launch a local browser. "
+        "Could not launch a local browser. "
         "Falling back to Playwright-managed Chromium."
     )
     try:

@@ -27,9 +27,9 @@ stylized HTML report with global date sorting and corresponding links.
 Your browser must support remote debugging. The tool will automatically:
 
 - Launch your browser with `--remote-debugging-port=9222`
-- Connect to existing browser instances if available
-- Manage browser processes to prevent conflicts
+- Kill existing browser processes to prevent conflicts
 - Handle WSL2-specific path translations
+- Provide clear error messages if connection fails (e.g., ECONNREFUSED)
 
 ## Getting Started
 
@@ -101,7 +101,7 @@ You can customize the scraper's behavior using these options:
 
 ```text
 usage: cli.py [-h] [--days DAYS] [--accounts [ACCOUNTS ...]] [--output OUTPUT]
-              [--log-dir LOG_DIR] [--headless] [--open-report]
+              [--log-dir LOG_DIR] [--headless]
 
 Fetch recent Instagram posts and generate HTML reports.
 
@@ -117,7 +117,6 @@ options:
   --log-dir LOG_DIR     Directory for log files (default: /home/maxim/instagram-
                         helper)
   --headless            Run the browser in headless mode (no GUI).
-  --open-report         Open the generated report in a web browser.
 ```
 
 ### Examples
@@ -160,10 +159,8 @@ to manage settings, especially for browser paths and user data.
 - `TIMEZONE_OFFSET`: Numeric hour offset used to localize times in reports (defaults to 2).
 - `BROWSER_PROFILE_DIR`: The profile directory to use (defaults to "Default").
 - `BROWSER_DEBUG_PORT`: The remote debugging port (defaults to 9222).
-- `BROWSER_ATTACH_ONLY`: Set to `"true"` to only attach to an existing browser instance and not
-  launch a new one (defaults to "false").
 - `BROWSER_START_URL`: URL opened when launching a local browser (defaults to Instagram).
-- `BROWSER_LOAD_DELAY`: Milliseconds to wait after launching the local browser before attaching
+- `BROWSER_LOAD_DELAY`: Milliseconds to wait after launching the local browser before connecting
   (defaults to 5000).
 - `BROWSER_CONNECT_SCHEME`: Connection scheme for CDP, usually `http` (defaults to "http").
 - `BROWSER_REMOTE_HOST`: Hostname for the browser remote debugger, usually `localhost` (defaults to
@@ -179,7 +176,6 @@ BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave
 BROWSER_USER_DATA_DIR="C:\Users\YourUsername\AppData\Local\BraveSoftware\Brave-Browser\User Data"
 BROWSER_PROFILE_DIR="Default"
 BROWSER_DEBUG_PORT=9222
-BROWSER_ATTACH_ONLY="false"
 BROWSER_START_URL="https://www.instagram.com/"
 BROWSER_LOAD_DELAY=5000
 BROWSER_CONNECT_SCHEME="http"
@@ -222,6 +218,7 @@ You can also modify `config.py` directly to change:
 - **Invalid browser path**: Check that `BROWSER_PATH` points to a valid executable
 - **User data directory inaccessible**: Verify `BROWSER_USER_DATA_DIR` exists and is writable
 - **Port conflicts**: Ensure port 9222 is not blocked or in use by another process
+- **ECONNREFUSED errors**: Close any existing browser instances before running the tool
 
 ### WSL2 Path Issues
 
@@ -241,7 +238,7 @@ You can also modify `config.py` directly to change:
 ### Common Error Messages
 
 - **"BROWSER_PATH environment variable is not set"**: Add `BROWSER_PATH` to your `.env` file
-- **"Could not connect to existing browser"**: Check that remote debugging is enabled
+- **"Connection refused to browser"**: Close any existing browser instances and try again
 - **"No post links found"**: Instagram may have changed their page structure
 - **"Timeout loading post"**: Increase `INSTAGRAM_POST_LOAD_TIMEOUT` in your `.env` file
 
@@ -258,6 +255,9 @@ settings are conservative to avoid this.
 
 **WSL2 Optimization**: This tool is specifically designed for Windows Subsystem for Linux 2
 environments and may not work optimally in other setups.
+
+**Browser Management**: The tool always launches a new browser instance to ensure reliable
+operation. If you encounter connection errors, close any existing browser instances and try again.
 
 ## Development
 
