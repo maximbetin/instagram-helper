@@ -8,9 +8,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
-
-
 # Time constants
 SECONDS_IN_MS = 1000
 DEFAULT_TIMEZONE_OFFSET = 2
@@ -27,10 +24,20 @@ BROWSER_REMOTE_HOST = os.getenv("BROWSER_REMOTE_HOST", "localhost")
 BROWSER_DEBUG_PORT = int(os.getenv("BROWSER_DEBUG_PORT", "9222"))
 BROWSER_LOAD_DELAY = int(os.getenv("BROWSER_LOAD_DELAY", "5000"))
 BROWSER_CONNECT_SCHEME = os.getenv("BROWSER_CONNECT_SCHEME", "http")
-BROWSER_ATTACH_ONLY = os.getenv("BROWSER_ATTACH_ONLY", "false").lower() in {"1", "true", "yes", "on"}
-BROWSER_USER_DATA_DIR = os.getenv("BROWSER_USER_DATA_DIR", r"C:\Users\Maxim\AppData\Local\BraveSoftware\Brave-Browser\User Data")
+BROWSER_ATTACH_ONLY = os.getenv("BROWSER_ATTACH_ONLY", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+BROWSER_USER_DATA_DIR = os.getenv(
+    "BROWSER_USER_DATA_DIR",
+    r"C:\Users\Maxim\AppData\Local\BraveSoftware\Brave-Browser\User Data",
+)
 BROWSER_PROFILE_DIR = os.getenv("BROWSER_PROFILE_DIR", "Default")
-BROWSER_START_URL = os.getenv("BROWSER_START_URL", os.getenv("INSTAGRAM_URL", "https://www.instagram.com/"))
+BROWSER_START_URL = os.getenv(
+    "BROWSER_START_URL", os.getenv("INSTAGRAM_URL", "https://www.instagram.com/")
+)
 
 # Output settings
 BASE_DIR = os.getenv("BASE_DIR", "/mnt/c/Users/Maxim/Desktop/ig_helper")

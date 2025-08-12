@@ -401,7 +401,7 @@ The project uses GitHub Actions for automated testing and quality assurance.
 ### CI Job
 
 - **Python Version**: Tests against Python 3.12
-- **Quality Checks**: Linting (ruff), type checking (mypy), tests (pytest)
+- **Quality Checks**: Linting (ruff), type checking (mypy), tests (pytest), README formatting (Prettier)
 - **Coverage**: Reports uploaded to Codecov
 
 ### Build Job
@@ -420,10 +420,47 @@ make dev-setup
 # 3. Run quality checks locally
 make check-all
 
-# 4. Commit and push (triggers CI)
+# 4. Format code and documentation
+make format-all
+
+# 5. Commit and push (triggers CI)
 git add .
 git commit -m "Description of changes"
 git push origin main
+```
+
+### Quality Assurance Tools
+
+The project uses several tools to ensure code quality and consistency:
+
+#### Code Quality
+
+- **Ruff**: Fast Python linter and formatter that enforces PEP 8 style guidelines
+- **MyPy**: Static type checker that ensures type safety across the codebase
+- **Pytest**: Testing framework with comprehensive test coverage reporting
+
+#### Documentation Formatting
+
+- **Prettier**: Markdown formatter that ensures consistent README.md formatting
+
+#### Commands
+
+```bash
+# Run all quality checks
+make check-all          # Lint + type-check + test
+
+# Format code and documentation
+make format             # Format Python code with ruff
+make format-readme      # Format README.md with Prettier
+make format-all         # Format everything (ruff + prettier)
+
+# Testing
+make test               # Run test suite
+make test-cov          # Run tests with coverage reporting
+
+# Linting and type checking
+make lint               # Run ruff linting
+mypy .                  # Run type checking
 ```
 
 ## Project Structure
@@ -461,6 +498,7 @@ instagram-helper/
 - `ruff` - Code formatting and linting
 - `mypy` - Static type checking
 - `coverage[toml]` - Coverage measurement
+- `prettier` - Markdown formatting for README.md
 
 ## Troubleshooting
 
@@ -521,6 +559,7 @@ Check log files for detailed error information:
 - Write tests for new functionality
 - Update documentation as needed
 - Keep commits atomic and well-described
+- Ensure README.md is properly formatted (enforced by Prettier)
 
 ### Pull Request Process
 

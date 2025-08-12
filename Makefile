@@ -19,6 +19,8 @@ help:
 	@echo "  test-cov       Run tests with coverage reporting"
 	@echo "  lint           Run code linting and style checks (ruff)"
 	@echo "  format         Auto-format code according to style guidelines (ruff)"
+	@echo "  format-readme  Format README.md with Prettier"
+	@echo "  format-all     Format all code and documentation (ruff + prettier)"
 	@echo "  check-all      Run all quality checks (lint + type-check + test)"
 	@echo "  clean          Clean all build artifacts and cache files"
 	@echo ""
@@ -32,6 +34,7 @@ help:
 	@echo "Examples:"
 	@echo "  make dev-setup    # Set up complete development environment"
 	@echo "  make check-all    # Run all quality checks before committing"
+	@echo "  make format-all   # Format all code and documentation"
 	@echo "  make build       # Build package for distribution"
 
 # Install with runtime dependencies only
@@ -49,8 +52,13 @@ install-browsers:
 	@echo "Installing Playwright browsers..."
 	playwright install
 
+# Install Node.js dependencies
+setup-node:
+	@echo "Installing Node.js dependencies..."
+	npm install
+
 # Complete development setup
-dev-setup: setup-dev install-browsers
+dev-setup: setup-dev setup-node install-browsers
 	@echo ""
 	@echo "Development environment setup complete!"
 	@echo "To activate the virtual environment:"
@@ -60,6 +68,7 @@ dev-setup: setup-dev install-browsers
 	@echo "  make test      # Run tests"
 	@echo "  make lint      # Check code quality"
 	@echo "  make format    # Format code"
+	@echo "  make format-readme # Format README.md"
 
 # Run tests
 test:
@@ -88,6 +97,15 @@ check-all: lint
 	@echo "Running tests..."
 	make test
 	@echo "All quality checks passed!"
+
+# Format README.md with Prettier
+format-readme:
+	@echo "Formatting README.md with Prettier..."
+	npm run format:readme
+
+# Format all code and documentation
+format-all: format format-readme
+	@echo "All formatting complete!"
 
 # Clean build artifacts and cache files
 clean:

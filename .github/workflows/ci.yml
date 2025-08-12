@@ -48,12 +48,14 @@ jobs:
       - name: Install project dependencies
         run: |
           pip install -e ".[dev]"
+          npm install
 
       # Step 6: Run code quality checks
       - name: Run linting
         run: |
           ruff check .              # Code style and quality checks
           mypy .                    # Static type checking
+          npm run format:check      # Check README.md formatting
 
       # Step 7: Run tests with coverage
       - name: Run tests

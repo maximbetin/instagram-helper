@@ -100,7 +100,8 @@ def main() -> int:
 
     # Setup logging
     logger = setup_logging(
-        log_dir=args.log_dir, log_level=logging.DEBUG  # Always use DEBUG level for verbose output
+        log_dir=args.log_dir,
+        log_level=logging.DEBUG,  # Always use DEBUG level for verbose output
     )
 
     # Determine accounts to process
@@ -140,7 +141,7 @@ def main() -> int:
                     logger.info(f"Report saved to: {report_path}")
             else:
                 logger.info("No new posts found to generate a report.")
-            
+
             # Gracefully close browser resources
             try:
                 if context:

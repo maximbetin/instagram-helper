@@ -1,7 +1,7 @@
 """Instagram scraping functionality."""
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -89,7 +89,6 @@ CAPTION_XPATHS = [
 ]
 
 
-
 # Constants for date extraction
 DATE_SELECTORS = [
     "time[datetime]",
@@ -174,9 +173,6 @@ def get_account_post_urls(page: Page) -> list[str]:
     return post_urls
 
 
-
-
-
 def _try_caption_xpath(page: Page, xpath: str) -> str | None:
     """Try to extract caption using a specific XPath."""
     try:
@@ -189,7 +185,9 @@ def _try_caption_xpath(page: Page, xpath: str) -> str | None:
                 logger.debug(f"  Caption preview: '{caption[:100]}...'")
                 return caption
             else:
-                logger.debug(f"✗ XPath found element but caption is empty: {xpath[:50]}...")
+                logger.debug(
+                    f"✗ XPath found element but caption is empty: {xpath[:50]}..."
+                )
         else:
             logger.debug(f"✗ XPath element not found or not visible: {xpath[:50]}...")
     except Exception as e:
@@ -208,8 +206,10 @@ def _log_available_xpaths() -> None:
 def get_post_caption(page: Page) -> str:
     """Extract post's caption from Instagram post using XPath selectors."""
     _log_available_xpaths()
-    logger.debug(f"Attempting to extract caption using {len(CAPTION_XPATHS)} XPath selectors...")
-    
+    logger.debug(
+        f"Attempting to extract caption using {len(CAPTION_XPATHS)} XPath selectors..."
+    )
+
     # Use XPath selectors only for reliable Instagram caption extraction
     for i, xpath in enumerate(CAPTION_XPATHS, 1):
         logger.debug(f"XPath attempt {i}/{len(CAPTION_XPATHS)}:")
@@ -218,7 +218,9 @@ def get_post_caption(page: Page) -> str:
             logger.debug(f"Caption successfully extracted on attempt {i}")
             return caption
 
-    logger.warning(f"Could not find post caption with any of the {len(CAPTION_XPATHS)} XPath selectors")
+    logger.warning(
+        f"Could not find post caption with any of the {len(CAPTION_XPATHS)} XPath selectors"
+    )
     return ""
 
 
@@ -297,9 +299,10 @@ def process_account(account: str, page: Page, cutoff_date: datetime) -> list[dic
     """Process a single Instagram account and return its recent posts."""
     # Ensure logger inherits the current logging level
     import logging
+
     if logging.getLogger().level <= logging.DEBUG:
         logger.setLevel(logging.DEBUG)
-    
+
     logger.info(f"@{account}: Processing posts...")
 
     try:
