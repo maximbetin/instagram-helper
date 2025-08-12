@@ -19,10 +19,7 @@ BROWSER_LOAD_TIMEOUT = int(os.getenv("BROWSER_LOAD_TIMEOUT", "15000"))  # millis
 
 
 def _is_running_in_wsl() -> bool:
-    """Detect if the process is running inside WSL/WSL2.
-
-    Checks common kernel strings that include 'Microsoft' in WSL.
-    """
+    """Detect if the process is running inside WSL/WSL2."""
     try:
         for probe in ("/proc/sys/kernel/osrelease", "/proc/version"):
             if os.path.exists(probe):
@@ -36,15 +33,12 @@ def _is_running_in_wsl() -> bool:
 
 
 # Remote/WSL2 bridging settings
-# If set, connect to this host instead of localhost (e.g., Windows host IP from /etc/resolv.conf)
 BROWSER_REMOTE_HOST = os.getenv("BROWSER_REMOTE_HOST")
-# When true, do not spawn a local browser process; only attach to an existing one via CDP
-# Default behavior: auto-enable attach-only in WSL environments to reuse Windows browser sessions
-_attach_only_env = os.getenv("BROWSER_ATTACH_ONLY")
-if _attach_only_env is not None:
-    BROWSER_ATTACH_ONLY = _attach_only_env.lower() in {"1", "true", "yes", "on"}
-else:
-    BROWSER_ATTACH_ONLY = _is_running_in_wsl()
+BROWSER_ATTACH_ONLY = (
+    os.getenv("BROWSER_ATTACH_ONLY", "").lower() in {"1", "true", "yes", "on"}
+    if os.getenv("BROWSER_ATTACH_ONLY") is not None
+    else _is_running_in_wsl()
+)
 
 # Scheme for CDP connection (http or ws). http://<host>:<port> works for Chromium-based browsers
 BROWSER_CONNECT_SCHEME = os.getenv("BROWSER_CONNECT_SCHEME", "http")

@@ -59,9 +59,6 @@ def generate_html_report(
         logger.info(f"HTML report generated: {output_file}")
         return output_file
 
-    except (OSError, ValueError) as e:
-        logger.error(f"Failed to generate HTML report: {e}")
-        raise
     except Exception as e:
-        logger.error(f"Unexpected error generating HTML report: {e}")
+        logger.error(f"Failed to generate HTML report: {e}")
         raise

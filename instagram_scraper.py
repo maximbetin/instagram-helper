@@ -22,6 +22,30 @@ from utils import setup_logging
 
 logger = setup_logging(__name__)
 
+# Constants for caption extraction
+CAPTION_SELECTORS = [
+    "div[data-testid='post-caption'] h1",
+    "div[data-testid='post-caption'] span",
+    "div[data-testid='post-caption'] div",
+    "article h1",
+    "div[role='button'] h1",
+    "h1",
+]
+
+# Constants for date extraction
+DATE_SELECTORS = [
+    "time[datetime]",
+    "time",
+    "div[data-testid='post-timestamp'] time[datetime]",
+    "div[data-testid='post-timestamp']",
+]
+
+# Constants for post link detection
+POST_PATH_PATTERNS = ["/p/", "/reel/"]
+SKIP_TEXT_PATTERNS = [
+    "follow", "like", "comment", "share", "save", "more"
+]
+
 
 def _handle_scraping_error(
     account: str, operation: str, error: Exception, retry_attempt: Optional[int] = None
@@ -39,6 +63,21 @@ def _handle_scraping_error(
         logger.error(f"@{account}: System error during {operation}: {error}")
     else:
         logger.error(f"@{account}: Unexpected error during {operation}: {error}")
+
+
+def _is_valid_post_url(url: str) -> bool:
+    """Check if a URL is a valid Instagram post URL."""
+    return any(pattern in url for pattern in POST_PATH_PATTERNS)
+
+
+def _normalize_post_url(url: str) -> str:
+    """Normalize a post URL by removing query parameters and trailing slashes."""
+    if url.startswith("/"):
+        full_url = f"{INSTAGRAM_URL.rstrip('/')}{url}"
+    else:
+        full_url = url
+
+    return full_url.split("?")[0].rstrip("/")
 
 
 def get_account_post_urls(page: Page) -> list[str]:
@@ -60,18 +99,13 @@ def get_account_post_urls(page: Page) -> list[str]:
 
             for link in links:
                 post_url = link.get_attribute("href")
-                if post_url and any(path in post_url for path in ["/p/", "/reel/"]):
-                    if post_url.startswith("/"):
-                        full_url = f"{INSTAGRAM_URL.rstrip('/')}{post_url}"
-                    else:
-                        full_url = post_url
+                if post_url and _is_valid_post_url(post_url):
+                    normalized_url = _normalize_post_url(post_url)
 
-                    full_url = full_url.split("?")[0].rstrip("/")
-
-                    if full_url not in seen_urls:
-                        post_urls.append(full_url)
-                        seen_urls.add(full_url)
-                        logger.debug(f"Found post URL: {full_url}")
+                    if normalized_url not in seen_urls:
+                        post_urls.append(normalized_url)
+                        seen_urls.add(normalized_url)
+                        logger.debug(f"Found post URL: {normalized_url}")
 
             # If we found posts with this selector, no need to try others
             if post_urls:
@@ -85,43 +119,22 @@ def get_account_post_urls(page: Page) -> list[str]:
     return post_urls
 
 
-def get_post_caption(page: Page) -> str:
-    """Extract post's caption from Instagram post."""
-    # Try multiple selectors for caption - Instagram changes their HTML structure frequently
-    caption_selectors = [
-        "div[data-testid='post-caption'] h1",  # Instagram's test ID
-        "div[data-testid='post-caption'] span",  # Alternative caption format
-        "div[data-testid='post-caption'] div",  # Another caption format
-        "article h1",  # h1 within article
-        "div[role='button'] h1",  # More specific h1 within button
-        "h1",  # Generic h1 (fallback)
-    ]
-
-    # Try selectors first
-    for selector in caption_selectors:
-        try:
-            caption_element = page.query_selector(selector)
-            if caption_element and caption_element.inner_text().strip():
-                caption = caption_element.inner_text().strip()
-                logger.debug(f"Found caption using selector: {selector}")
-                return caption
-        except Exception as e:
-            logger.debug(f"Selector {selector} failed: {e}")
-            continue
-
-    # Fallback: look for elements with substantial text content
-    caption = _find_caption_by_text_content(page)
-    if caption:
-        return caption
-
-    logger.warning("Could not find post caption with any selector")
-    return ""
+def _try_caption_selector(page: Page, selector: str) -> Optional[str]:
+    """Try to extract caption using a specific selector."""
+    try:
+        caption_element = page.query_selector(selector)
+        if caption_element and caption_element.inner_text().strip():
+            caption = caption_element.inner_text().strip()
+            logger.debug(f"Found caption using selector: {selector}")
+            return caption
+    except Exception as e:
+        logger.debug(f"Selector {selector} failed: {e}")
+    return None
 
 
 def _find_caption_by_text_content(page: Page) -> str:
     """Find caption by looking for elements with substantial text content."""
     try:
-        # Look for elements with substantial text content that might be captions
         all_elements = page.query_selector_all("*")
         for element in all_elements:
             try:
@@ -131,15 +144,7 @@ def _find_caption_by_text_content(page: Page) -> str:
                     text
                     and 10 < len(text) < 1000
                     and not any(
-                        skip in text.lower()
-                        for skip in [
-                            "follow",
-                            "like",
-                            "comment",
-                            "share",
-                            "save",
-                            "more",
-                        ]
+                        skip in text.lower() for skip in SKIP_TEXT_PATTERNS
                     )
                 ):
                     tag_name = element.evaluate("el => el.tagName.toLowerCase()")
@@ -157,29 +162,46 @@ def _find_caption_by_text_content(page: Page) -> str:
     return ""
 
 
+def get_post_caption(page: Page) -> str:
+    """Extract post's caption from Instagram post."""
+    # Try selectors first
+    for selector in CAPTION_SELECTORS:
+        caption = _try_caption_selector(page, selector)
+        if caption:
+            return caption
+
+    # Fallback: look for elements with substantial text content
+    caption = _find_caption_by_text_content(page)
+    if caption:
+        return caption
+
+    logger.warning("Could not find post caption with any selector")
+    return ""
+
+
+def _try_date_selector(page: Page, selector: str) -> Optional[datetime]:
+    """Try to extract date using a specific selector."""
+    try:
+        date_element = page.query_selector(selector)
+        if date_element:
+            datetime_attr = date_element.get_attribute("datetime")
+            if datetime_attr:
+                utc_datetime = datetime.fromisoformat(
+                    datetime_attr.replace("Z", "+00:00")
+                )
+                logger.debug(f"Found date using selector: {selector}")
+                return utc_datetime.astimezone(TIMEZONE)
+    except Exception as e:
+        logger.debug(f"Date selector {selector} failed: {e}")
+    return None
+
+
 def get_post_date(page: Page) -> Optional[datetime]:
     """Extract post's date from Instagram post page."""
-    date_selectors = [
-        "time[datetime]",  # Standard time element with datetime attribute
-        "time",  # Any time element
-        "div[data-testid='post-timestamp'] time[datetime]",  # Instagram's test ID
-        "div[data-testid='post-timestamp']",  # Alternative timestamp format
-    ]
-
-    for selector in date_selectors:
-        try:
-            date_element = page.query_selector(selector)
-            if date_element:
-                datetime_attr = date_element.get_attribute("datetime")
-                if datetime_attr:
-                    utc_datetime = datetime.fromisoformat(
-                        datetime_attr.replace("Z", "+00:00")
-                    )
-                    logger.debug(f"Found date using selector: {selector}")
-                    return utc_datetime.astimezone(TIMEZONE)
-        except Exception as e:
-            logger.debug(f"Date selector {selector} failed: {e}")
-            continue
+    for selector in DATE_SELECTORS:
+        post_date = _try_date_selector(page, selector)
+        if post_date:
+            return post_date
 
     logger.warning("Could not find post date with any selector")
     return None

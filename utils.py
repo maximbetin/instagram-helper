@@ -20,40 +20,31 @@ def setup_logging(
 
     Args:
         name: Logger name (optional)
-        log_dir: Directory path for file logging (optional). If provided, logs will be written to both console and file.
-        log_level: Logging level to apply to the logger and its handlers (optional). If not provided, defaults to LOG_LEVEL.
+        log_dir: Directory path for file logging (optional)
+        log_level: Logging level to apply (optional, defaults to LOG_LEVEL)
 
     Returns:
         Configured logger instance
     """
-    # Create logger
     logger = logging.getLogger(name or __name__)
-
-    # Determine effective level
     effective_level = log_level if log_level is not None else LOG_LEVEL
     logger.setLevel(effective_level)
 
     # Clear any existing handlers to avoid duplicates
     logger.handlers.clear()
 
-    # Create formatters
-    console_formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
-
     # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(effective_level)
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT))
     logger.addHandler(console_handler)
 
     # Add file logging if directory is specified
     if log_dir:
         try:
-            # Create log directory if it doesn't exist
             os.makedirs(log_dir, exist_ok=True)
 
-            # Generate log filename with current date
             from datetime import datetime
-
             log_filename = f"{datetime.now().strftime('%d-%m-%Y')}.log"
             log_filepath = os.path.join(log_dir, log_filename)
 
@@ -63,7 +54,6 @@ def setup_logging(
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
 
-            # File handler
             file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
             file_handler.setLevel(effective_level)
             file_handler.setFormatter(file_formatter)

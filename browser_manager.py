@@ -47,7 +47,7 @@ def setup_browser(playwright: Playwright) -> Browser:
 
     try:
         # Determine target host for CDP
-        target_host = BROWSER_REMOTE_HOST if BROWSER_REMOTE_HOST else "localhost"
+        target_host = BROWSER_REMOTE_HOST or "localhost"
 
         # In attach-only mode without explicit host, attempt WSL2 Windows host auto-detect
         if BROWSER_ATTACH_ONLY and not BROWSER_REMOTE_HOST:
@@ -57,6 +57,7 @@ def setup_browser(playwright: Playwright) -> Browser:
                 logger.info(
                     f"Attach-only mode: detected Windows host IP {detected_ip} from /etc/resolv.conf"
                 )
+
         target_base = f"{BROWSER_CONNECT_SCHEME}://{target_host}:{BROWSER_DEBUG_PORT}"
 
         if not BROWSER_ATTACH_ONLY and target_host == "localhost":
