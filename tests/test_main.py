@@ -76,9 +76,15 @@ def test_get_account_post_urls(mock_page: MagicMock) -> None:
 
 def test_get_post_caption(mock_page: MagicMock) -> None:
     """Test extracting post caption."""
-    mock_caption = MagicMock()
-    mock_caption.inner_text.return_value = "  Test caption  "
-    mock_page.query_selector.return_value = mock_caption
+    # Mock the XPath-based caption extraction
+    mock_locator = MagicMock()
+    mock_first = MagicMock()
+
+    # Set up the chain: page.locator().first.inner_text().strip()
+    mock_page.locator.return_value = mock_locator
+    mock_locator.first = mock_first
+    mock_first.is_visible.return_value = True
+    mock_first.inner_text.return_value = "  Test caption  "
 
     caption = get_post_caption(mock_page)
     assert caption == "Test caption"
@@ -86,7 +92,13 @@ def test_get_post_caption(mock_page: MagicMock) -> None:
 
 def test_get_post_caption_no_element(mock_page: MagicMock) -> None:
     """Test extracting post caption when no caption element exists."""
-    mock_page.query_selector.return_value = None
+    # Mock the XPath-based caption extraction with no visible element
+    mock_locator = MagicMock()
+    mock_first = MagicMock()
+
+    mock_page.locator.return_value = mock_locator
+    mock_locator.first = mock_first
+    mock_first.is_visible.return_value = False
 
     caption = get_post_caption(mock_page)
     assert caption == ""
@@ -121,17 +133,21 @@ def test_extract_post_data_success(mock_sleep: MagicMock, mock_page: MagicMock) 
     # Mock page.goto to not raise exceptions
     mock_page.goto.return_value = None
 
-    # Mock caption and date elements
-    mock_caption = MagicMock()
-    mock_caption.inner_text.return_value = "Test caption"
+    # Mock the XPath-based caption extraction
+    mock_locator = MagicMock()
+    mock_first = MagicMock()
+    mock_page.locator.return_value = mock_locator
+    mock_locator.first = mock_first
+    mock_first.is_visible.return_value = True
+    mock_first.inner_text.return_value = "Test caption"
+
+    # Mock date element
     mock_time = MagicMock()
     mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
 
-    # Mock the query_selector calls
+    # Mock the query_selector calls for date extraction
     def mock_query_selector(selector: str) -> MagicMock | None:
-        if selector == "h1":
-            return mock_caption
-        elif selector == "time[datetime]":
+        if selector == "time[datetime]":
             return mock_time
         return None
 
@@ -151,17 +167,21 @@ def test_extract_post_data_old_post(mock_page: MagicMock) -> None:
     """Test post data extraction for old posts."""
     cutoff_date = datetime(2024, 1, 2, tzinfo=UTC)
 
-    # Mock caption and date elements
-    mock_caption = MagicMock()
-    mock_caption.inner_text.return_value = "Test caption"
+    # Mock the XPath-based caption extraction
+    mock_locator = MagicMock()
+    mock_first = MagicMock()
+    mock_page.locator.return_value = mock_locator
+    mock_locator.first = mock_first
+    mock_first.is_visible.return_value = True
+    mock_first.inner_text.return_value = "Test caption"
+
+    # Mock date element
     mock_time = MagicMock()
     mock_time.get_attribute.return_value = "2024-01-01T12:00:00Z"
 
-    # Mock the query_selector calls
+    # Mock the query_selector calls for date extraction
     def mock_query_selector(selector: str) -> MagicMock | None:
-        if selector == "h1":
-            return mock_caption
-        elif selector == "time[datetime]":
+        if selector == "time[datetime]":
             return mock_time
         return None
 
