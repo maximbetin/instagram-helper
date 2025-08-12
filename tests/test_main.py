@@ -1,6 +1,7 @@
 """Tests for main functionality."""
 
 from datetime import datetime, timedelta, timezone
+
 from unittest.mock import MagicMock, patch
 
 import pytest

@@ -22,14 +22,13 @@ classifiers = [
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Internet :: WWW/HTTP :: Browsers",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 # Runtime dependencies - required for the application to function
 dependencies = [
@@ -97,7 +96,7 @@ markers = [
 
 # Ruff configuration for code formatting and linting
 [tool.ruff]
-target-version = "py39"     # Target Python version
+target-version = "py310"     # Target Python version
 line-length = 88            # Maximum line length (Black-compatible)
 
 # Ruff linting rules
