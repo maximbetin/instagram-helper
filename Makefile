@@ -1,55 +1,97 @@
-.PHONY: help install install-dev test test-cov lint format clean setup setup-dev run install-browsers
+# Instagram Helper - Development Automation Makefile
+# This Makefile provides common development tasks and automation commands
 
-# Default target
+.PHONY: help install install-dev test test-cov lint format clean setup setup-dev run install-browsers build check-all
+
+# Default target - show help
 help:
-	@echo "Instagram Helper - Available commands:"
+	@echo "Instagram Helper - Available Commands"
+	@echo "===================================="
 	@echo ""
-	@echo "Setup:"
-	@echo "  setup          Install package with runtime dependencies"
+	@echo "Setup Commands:"
+	@echo "  setup          Install package with runtime dependencies only"
 	@echo "  setup-dev      Install package with development dependencies"
-	@echo "  install-browsers Install Playwright browsers"
+	@echo "  install-browsers Install Playwright browsers for testing"
+	@echo "  dev-setup      Complete development environment setup (setup-dev + browsers)"
 	@echo ""
-	@echo "Development:"
-	@echo "  test           Run tests"
-	@echo "  test-cov       Run tests with coverage"
-	@echo "  lint           Run linting (ruff)"
-	@echo "  format         Format code (ruff)"
-	@echo "  clean          Clean build artifacts"
+	@echo "Development Commands:"
+	@echo "  test           Run the full test suite"
+	@echo "  test-cov       Run tests with coverage reporting"
+	@echo "  lint           Run code linting and style checks (ruff)"
+	@echo "  format         Auto-format code according to style guidelines (ruff)"
+	@echo "  check-all      Run all quality checks (lint + type-check + test)"
+	@echo "  clean          Clean all build artifacts and cache files"
 	@echo ""
-	@echo "Usage:"
-	@echo "  run            Run the application"
+	@echo "Build Commands:"
+	@echo "  build          Build package distribution (wheel + source)"
+	@echo ""
+	@echo "Usage Commands:"
+	@echo "  run            Run the application with help display"
 	@echo "  help           Show this help message"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make dev-setup    # Set up complete development environment"
+	@echo "  make check-all    # Run all quality checks before committing"
+	@echo "  make build       # Build package for distribution"
 
-# Install with runtime dependencies
+# Install with runtime dependencies only
 setup:
+	@echo "Installing package with runtime dependencies..."
 	pip install -e .
 
 # Install with development dependencies
 setup-dev:
+	@echo "Installing package with development dependencies..."
 	pip install -e ".[dev]"
 
 # Install Playwright browsers
 install-browsers:
+	@echo "Installing Playwright browsers..."
 	playwright install
+
+# Complete development setup
+dev-setup: setup-dev install-browsers
+	@echo ""
+	@echo "Development environment setup complete!"
+	@echo "To activate the virtual environment:"
+	@echo "  source .venv/bin/activate"
+	@echo ""
+	@echo "Available commands:"
+	@echo "  make test      # Run tests"
+	@echo "  make lint      # Check code quality"
+	@echo "  make format    # Format code"
 
 # Run tests
 test:
-	pytest
+	@echo "Running test suite..."
+	pytest tests/ -v
 
 # Run tests with coverage
 test-cov:
-	pytest --cov=. --cov-report=html --cov-report=term-missing
+	@echo "Running tests with coverage reporting..."
+	pytest tests/ --cov=. --cov-report=html --cov-report=term-missing
 
 # Run linting
 lint:
+	@echo "Running code linting and style checks..."
 	ruff check .
 
 # Format code
 format:
+	@echo "Auto-formatting code..."
 	ruff format .
 
-# Clean build artifacts
+# Run all quality checks
+check-all: lint
+	@echo "Running type checking..."
+	mypy .
+	@echo "Running tests..."
+	make test
+	@echo "All quality checks passed!"
+
+# Clean build artifacts and cache files
 clean:
+	@echo "Cleaning build artifacts and cache files..."
 	rm -rf build/
 	rm -rf dist/
 	rm -rf *.egg-info/
@@ -57,14 +99,20 @@ clean:
 	rm -rf .coverage
 	rm -rf htmlcov/
 	rm -rf .mypy_cache/
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
+	rm -rf .ruff_cache/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "Cleanup complete!"
+
+# Build package distribution
+build:
+	@echo "Building package distribution..."
+	python -m build
+	@echo "Package built successfully!"
+	@echo "Distribution files:"
+	@ls -la dist/
 
 # Run the application
 run:
+	@echo "Running Instagram Helper..."
 	instagram-helper --help
-
-# Full development setup
-dev-setup: setup-dev install-browsers
-	@echo "Development environment setup complete!"
-	@echo "Run 'source venv/bin/activate' to activate the virtual environment"

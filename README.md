@@ -1,6 +1,6 @@
 # Instagram Helper
 
-[![Build Executable](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
+[![CI Pipeline](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/maximbetin/instagram-helper/actions/workflows/ci.yml)
 
 A tool that automatically fetches recent posts from specified Instagram accounts and generates a
 stylized HTML report with global date sorting and corresponding links.
@@ -16,6 +16,9 @@ stylized HTML report with global date sorting and corresponding links.
 - **Progress tracking**: Real-time console output showing processing progress
 - **CLI interface**: Command-line options for flexible usage
 - **Environment configuration**: Support for environment variables
+- **WSL2 Integration**: Optimized for Windows Subsystem for Linux 2
+- **Quality Assurance**: Comprehensive testing, linting, and type checking
+- **CI/CD**: Automated testing and building via GitHub Actions
 
 ## Installation
 
@@ -40,8 +43,8 @@ make dev-setup
 #### Step 1: Create and activate a virtual environment
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
 #### Step 2: Install the package with development dependencies
@@ -107,7 +110,7 @@ Options:
   --days, -d INT          Number of days back to fetch posts from (default: 3)
   --accounts, -a TEXT...  Specific Instagram accounts to fetch from
   --output, -o PATH       Output directory for reports (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
---log-dir PATH          Directory for log files (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
+  --log-dir PATH          Directory for log files (default: /mnt/c/Users/Maxim/Desktop/ig_helper)
   --no-open               Do not automatically open the generated report
   --verbose, -v           Enable verbose logging
   --help                  Show this message and exit
@@ -159,7 +162,7 @@ There are two reliable options:
    netstat -ano | findstr :9222
    ```
 
-1. Keep loopback-only and add a Windows portproxy (safer)
+2. Keep loopback-only and add a Windows portproxy (safer)
 
    - Start Brave on loopback:
 
@@ -189,20 +192,20 @@ There are two reliable options:
 
 #### Connect from WSL2 (recommended defaults)
 
-1. Start Brave on Windows with DevTools port open (can be started from WSL2 too):
+1. Start Brave on Windows with DevTools port open (can be started from WSL2 too)
 
-```powershell
-& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" `
-  --remote-debugging-port=9222 `
-  --remote-debugging-address=0.0.0.0
-```
+   ```powershell
+   & "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" `
+   --remote-debugging-port=9222 `
+   --remote-debugging-address=0.0.0.0
+   ```
 
-2. Then in WSL2, run the tool normally. It will connect over CDP to the Windows Brave:
+2. Then in WSL2, run the tool normally. It will connect over CDP to the Windows Brave
 
-```bash
-export BROWSER_REMOTE_HOST=172.19.192.1
-python -u cli.py --days 3 -v
-```
+   ```bash
+   export BROWSER_REMOTE_HOST=172.19.192.1
+   python -u cli.py --days 3 -v
+   ```
 
 #### Get the Windows host IP inside WSL2 and export environment variables for this project
 
@@ -235,7 +238,7 @@ Notes:
    netstat -ano | findstr :9222
    ```
 
-1. From WSL2, probe the endpoint:
+2. From WSL2, probe the endpoint:
 
    ```bash
    curl "http://$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf):9222/json/version"
@@ -243,7 +246,7 @@ Notes:
    curl "http://172.19.192.1:9222/json/version"
    ```
 
-1. If curl fails, check Windows Firewall and the portproxy configuration:
+3. If curl fails, check Windows Firewall and the portproxy configuration:
 
    ```powershell
    netsh interface portproxy show all
@@ -319,55 +322,6 @@ Reports and logs are automatically saved with the format:
 
 Both files are saved in the `/mnt/c/Users/Maxim/Desktop/ig_helper/` directory by default.
 
-## Project Structure
-
-```bash
-instagram-helper/
-├── cli.py                  # Command-line interface (main entry point)
-├── config.py               # Configuration settings
-├── utils.py                # Logging utilities
-├── instagram_scraper.py    # Instagram scraping logic
-├── report_generator.py     # HTML report generation
-├── browser_manager.py      # Browser management
-├── templates/              # HTML templates
-│   ├── template.html       # Main report template
-│   └── test_template.html  # Test template
-├── tests/                  # Test suite
-│   ├── test_main.py        # Unit tests
-│   ├── test_main_integration.py  # Integration tests
-│   └── test_utils.py       # Utility tests
-├── pyproject.toml         # Project configuration and dependencies
-└── README.md              # This file
-```
-
-## Dependencies
-
-### Runtime Dependencies
-
-- `playwright` - Browser automation
-- `jinja2` - HTML template rendering
-
-### Development Dependencies
-
-- `pytest` - Testing framework
-- `pytest-cov` - Coverage reporting
-- `pytest-mock` - Mocking utilities
-- `ruff` - Code formatting and linting
-- `mypy` - Static type checking
-
-### Dependency Installation
-
-```bash
-# Runtime dependencies only
-pip install -e .
-
-# With development dependencies
-pip install -e ".[dev]"
-
-# With testing dependencies only
-pip install -e ".[test]"
-```
-
 ## Development
 
 ### Available Commands
@@ -398,6 +352,12 @@ make clean
 
 # Install Playwright browsers
 make install-browsers
+
+# Run all quality checks
+make check-all
+
+# Build package distribution
+make build
 ```
 
 ### Code Quality
@@ -430,6 +390,324 @@ Run tests with coverage:
 
 ```bash
 make test-cov
+```
+
+## Continuous Integration (CI)
+
+The project uses GitHub Actions for automated testing, building, and quality assurance.
+
+### CI Pipeline Overview
+
+The CI pipeline runs on every push to the main branch and pull request, ensuring code quality and
+reliability.
+
+#### Workflow Jobs
+
+1. **CI Job** (`ci`):
+
+   - **Matrix Testing**: Runs against Python 3.9, 3.10, 3.11, and 3.12
+   - **Platform**: Ubuntu latest
+   - **Steps**:
+     - Install system dependencies
+     - Install Playwright browsers
+     - Install project dependencies
+     - Run linting (ruff)
+     - Run type checking (mypy)
+     - Run tests with coverage
+     - Upload coverage to Codecov
+
+2. **Build Job** (`build`):
+   - **Trigger**: Only on main branch pushes
+   - **Platform**: Ubuntu latest
+   - **Steps**:
+     - Build package (wheel and source distribution)
+     - Test package installation
+     - Verify CLI entry point
+     - Test module imports
+     - Upload build artifacts
+
+#### Quality Gates
+
+- All linting checks must pass
+- All type checking must pass
+- All tests must pass
+- Package must build successfully
+- Package must install and function correctly
+
+#### Coverage Requirements
+
+- Code coverage is measured and reported
+- Coverage reports are uploaded to Codecov
+- Coverage data helps identify untested code paths
+
+### Local Development Workflow
+
+```bash
+# 1. Set up development environment
+make dev-setup
+
+# 2. Make code changes
+
+# 3. Run quality checks locally
+make check-all
+
+# 4. Commit and push (triggers CI)
+git add .
+git commit -m "Description of changes"
+git push origin main
+```
+
+### CI Configuration Files
+
+- **`.github/workflows/ci.yml`**: Main CI pipeline configuration
+- **`pyproject.toml`**: Project configuration, dependencies, and tool settings
+- **`.gitignore`**: Specifies files to exclude from version control
+- **`Makefile`**: Development commands and automation
+
+## Project Structure
+
+```bash
+instagram-helper/
+├── .github/                 # GitHub-specific files
+│   └── workflows/          # CI/CD pipeline definitions
+│       └── ci.yml         # Main CI workflow
+├── cli.py                  # Command-line interface (main entry point)
+├── config.py               # Configuration settings
+├── utils.py                # Logging utilities
+├── instagram_scraper.py    # Instagram scraping logic
+├── report_generator.py     # HTML report generation
+├── browser_manager.py      # Browser management
+├── templates/              # HTML templates
+│   ├── template.html       # Main report template
+│   └── test_template.html  # Test template
+├── tests/                  # Test suite
+│   ├── __init__.py         # Test package initialization
+│   ├── test_main.py        # Unit tests
+│   ├── test_main_integration.py  # Integration tests
+│   └── test_utils.py       # Utility tests
+├── scripts/                 # Development and setup scripts
+│   └── setup_dev.sh        # Automated development setup script
+├── pyproject.toml          # Project configuration and dependencies
+├── Makefile                # Development automation commands
+├── .env.example            # Environment variables template
+├── .gitignore              # Git ignore patterns
+└── README.md               # This file
+```
+
+## Dependencies
+
+### Runtime Dependencies
+
+- `playwright` - Browser automation and web scraping
+- `jinja2` - HTML template rendering and generation
+
+### Development Dependencies
+
+- `pytest` - Testing framework
+- `pytest-cov` - Coverage reporting
+- `pytest-mock` - Mocking utilities
+- `ruff` - Code formatting and linting
+- `mypy` - Static type checking
+- `coverage[toml]` - Coverage measurement and reporting
+
+### Dependency Installation
+
+```bash
+# Runtime dependencies only
+pip install -e .
+
+# With development dependencies
+pip install -e ".[dev]"
+
+# With testing dependencies only
+pip install -e ".[test]"
+```
+
+## Configuration Management
+
+### Environment Variables (`.env`)
+
+The project supports extensive configuration through environment variables. See the
+[Configuration](#configuration) section above for a complete list.
+
+### Configuration File (`config.py`)
+
+The main configuration file contains:
+
+- **Browser Settings**: Debug ports, timeouts, paths, and WSL2 integration
+- **Instagram Settings**: Post limits, delays, retry logic, and account lists
+- **Output Settings**: Directories for reports and logs
+- **Timezone Configuration**: Local timezone handling
+
+### WSL2 Integration
+
+The project automatically detects WSL2 environments and configures browser connections accordingly:
+
+- Auto-detects Windows host IP from `/etc/resolv.conf`
+- Enables attach-only mode by default in WSL2
+- Supports remote debugging to Windows browsers
+- Handles port forwarding and firewall configurations
+
+## Testing Strategy
+
+### Test Types
+
+1. **Unit Tests** (`test_main.py`):
+
+   - Individual function testing
+   - Mock-based isolation
+   - Fast execution
+
+2. **Integration Tests** (`test_main_integration.py`):
+
+   - End-to-end workflow testing
+   - Error handling scenarios
+   - Real-world usage patterns
+
+3. **Utility Tests** (`test_utils.py`):
+   - Logging configuration testing
+   - Helper function validation
+
+### Test Coverage
+
+- **Current Coverage**: ~71% (as of latest build)
+- **Coverage Goals**: Improve coverage for error handling paths
+- **Coverage Tools**: pytest-cov with XML and HTML reporting
+
+### Running Tests
+
+```bash
+# All tests
+make test
+
+# With coverage
+make test-cov
+
+# Specific test file
+pytest tests/test_main.py -v
+
+# Specific test function
+pytest tests/test_main.py::test_get_account_post_urls -v
+```
+
+## Build and Distribution
+
+### Package Building
+
+The project uses modern Python packaging standards:
+
+```bash
+# Build package
+python -m build
+
+# Install from built package
+pip install dist/instagram_helper-1.0.0-py3-none-any.whl
+```
+
+### Package Structure
+
+- **Single-file Package**: Each Python module is a top-level module
+- **Entry Points**: CLI command `instagram-helper`
+- **Dependencies**: Automatically managed through pyproject.toml
+- **Templates**: HTML templates included in package data
+
+### Distribution
+
+- **Wheel Distribution**: Modern Python wheel format
+- **Source Distribution**: Tar.gz archive for compatibility
+- **CI Artifacts**: Built packages uploaded to GitHub Actions
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Browser Connection Issues**:
+
+   - Ensure browser is running with remote debugging enabled
+   - Check firewall settings and port accessibility
+   - Verify WSL2 network configuration
+
+2. **Instagram Rate Limiting**:
+
+   - Reduce `INSTAGRAM_POST_LOAD_DELAY` values
+   - Limit `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`
+   - Use longer delays between requests
+
+3. **Package Installation Issues**:
+   - Ensure virtual environment is activated
+   - Check Python version compatibility (3.9+)
+   - Verify all dependencies are available
+
+### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
+```bash
+python cli.py --verbose
+# or
+instagram-helper --verbose
+```
+
+### Log Files
+
+Check log files for detailed error information:
+
+- Location: Configured via `LOG_DIR` environment variable
+- Format: Daily log files with timestamps
+- Content: Detailed operation logs and error traces
+
+## Contributing
+
+### Development Setup
+
+1. Fork the repository
+2. Clone your fork locally
+3. Set up development environment: `make dev-setup`
+4. Create a feature branch
+5. Make changes and test locally
+6. Ensure all quality checks pass: `make check-all`
+7. Submit a pull request
+
+### Code Standards
+
+- Follow PEP 8 style guidelines (enforced by ruff)
+- Use type hints for all functions (enforced by mypy)
+- Write tests for new functionality
+- Update documentation as needed
+- Keep commits atomic and well-described
+
+### Pull Request Process
+
+1. **Automated Checks**: CI pipeline runs automatically
+2. **Code Review**: All changes require review
+3. **Quality Gates**: Must pass linting, type checking, and tests
+4. **Build Verification**: Package must build and install correctly
+
+### Development Workflow
+
+```bash
+# 1. Create feature branch
+git checkout -b feature/description
+
+# 2. Make changes and test locally
+make check-all
+
+# 3. Commit changes
+git add .
+git commit -m "feat: add new functionality"
+
+# 4. Push and create PR
+git push origin feature/description
+```
+
+### Conventional Commits
+
+```bash
+feat: add new scraping functionality
+fix: resolve browser connection timeout
+docs: update installation instructions
+test: add tests for error handling
+refactor: simplify caption extraction logic
 ```
 
 ## License
