@@ -57,6 +57,7 @@ stylized HTML report with global date sorting and corresponding links.
    ```
 
 4. **Install Playwright browsers** (fallback only):
+
    ```bash
    playwright install chromium
    ```
@@ -153,6 +154,7 @@ sessions. The browser opens directly to Instagram for immediate use.
    ```
 
 2. **Run the Instagram Helper** - it handles everything automatically:
+
    ```bash
    python cli.py
    ```
@@ -201,8 +203,10 @@ If you encounter issues:
    ```
 
 4. **Manual browser test**:
+
    ```bash
-   "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe" --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0
+   "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe" \
+    --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0
    ```
 
 ## Configuration
