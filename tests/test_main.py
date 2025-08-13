@@ -5,7 +5,16 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from freezegun import freeze_time
+
+
+@pytest.fixture(autouse=True)
+def set_env_variables(monkeypatch: MonkeyPatch) -> None:
+    """Set environment variables required for testing."""
+    monkeypatch.setenv("BROWSER_PATH", "/usr/bin/mock-browser")
+    monkeypatch.setenv("BROWSER_USER_DATA_DIR", "/tmp/mock-user-data")
+
 
 from config import settings
 from instagram_scraper import (
