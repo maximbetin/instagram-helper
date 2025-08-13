@@ -12,6 +12,7 @@ on:
       - "**.py" # Python source files
       - ".github/workflows/**" # Workflow changes
       - "pyproject.toml" # Project configuration changes
+      - "templates/**" # HTML templates
   # Run on pull requests to main branch
   pull_request:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - "**.py" # Python source files
       - ".github/workflows/**" # Workflow changes
       - "pyproject.toml" # Project configuration changes
+      - "templates/**" # HTML templates
 
 # Define the jobs that will run
 jobs:
