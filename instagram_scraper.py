@@ -131,7 +131,7 @@ class InstagramScraper:
                     wait_until="domcontentloaded",
                     timeout=self.settings.INSTAGRAM_POST_LOAD_TIMEOUT,
                 )
-                time.sleep(1)  # Small delay for lazy-loaded content
+                time.sleep(3)  # Small delay for lazy-loaded content
                 return True
             except PlaywrightTimeoutError:
                 logger.warning(
