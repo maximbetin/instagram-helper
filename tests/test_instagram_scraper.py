@@ -54,8 +54,8 @@ def test_get_post_urls_max_posts_limit(mock_page: MagicMock, scraper: InstagramS
     assert len(urls) <= 5  # Should not exceed 5
 
 
-def test_get_post_urls_cutoff_date_early_stop(mock_page: MagicMock, scraper: InstagramScraper) -> None:
-    """Test that URL collection stops when cutoff date is reached."""
+def test_get_post_urls_collects_all_urls(mock_page: MagicMock, scraper: InstagramScraper) -> None:
+    """Test that URL collection gathers all available post URLs without date filtering."""
     # Create mock links with dates
     mock_links = []
     for i in range(3):
@@ -65,18 +65,14 @@ def test_get_post_urls_cutoff_date_early_stop(mock_page: MagicMock, scraper: Ins
     
     mock_page.query_selector_all.return_value = mock_links
     
-    # Mock the date check to return an old date for the second post
-    def mock_get_post_date_from_url(url: str) -> datetime | None:
-        if "post_1" in url:
-            return datetime.now(UTC) - timedelta(days=10)  # Old post
-        return datetime.now(UTC) - timedelta(hours=1)  # Recent post
+    cutoff_date = datetime.now(UTC) - timedelta(days=5)
+    urls = scraper._get_post_urls("test_account", cutoff_date)
     
-    with patch.object(scraper, '_get_post_date_from_url', side_effect=mock_get_post_date_from_url):
-        cutoff_date = datetime.now(UTC) - timedelta(days=5)
-        urls = scraper._get_post_urls("test_account", cutoff_date)
-        
-        # Should stop at the old post
-        assert len(urls) == 1
+    # Should collect all URLs (date filtering happens during processing)
+    assert len(urls) == 3
+    assert "https://www.instagram.com/p/post_0" in urls
+    assert "https://www.instagram.com/p/post_1" in urls
+    assert "https://www.instagram.com/p/post_2" in urls
 
 
 def test_get_post_urls_exception_handling(mock_page: MagicMock, scraper: InstagramScraper) -> None:

@@ -343,8 +343,9 @@ class InstagramHelperGUI:
         try:
             self.logger.info("Starting Instagram scraping process...")
 
-            # Calculate cutoff date
-            cutoff_date = datetime.now() - timedelta(days=settings_dict["max_age_days"])
+            # Calculate cutoff date (make it timezone-aware)
+            from datetime import timezone
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings_dict["max_age_days"])
             self.logger.info(f"Cutoff date: {cutoff_date}")
 
             # Update settings with GUI values

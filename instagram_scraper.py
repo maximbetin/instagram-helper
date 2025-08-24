@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from playwright.sync_api import Page
@@ -22,6 +22,14 @@ logger = setup_logging(__name__)
 # Selectors for post links and date elements
 POST_LINK_SELECTOR = "a[href*='/p/'], a[href*='/reel/']"
 POST_DATE_SELECTOR = "time[datetime]"
+
+# XPath for post captions (Instagram's DOM structure changes frequently)
+CAPTION_XPATHS = [
+    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span",
+    # Alternative XPath patterns that might work
+    "//article//span[contains(@class, '') and string-length(text()) > 0]",
+    "//div[@role='button']//span[string-length(text()) > 0]",
+]
 
 
 @dataclass
@@ -90,17 +98,13 @@ class InstagramScraper:
                 href = link.get_attribute("href")
                 if href and (normalized_url := self._normalize_post_url(href)):
                     if normalized_url not in seen_urls:
-                        # Check the date of this post before adding it
-                        post_date = self._get_post_date_from_url(normalized_url)
-                        if post_date and post_date < cutoff_date:
-                            logger.info(
-                                f"@{account}: Reached posts older than cutoff. "
-                                f"Stopping URL collection."
-                            )
-                            break
-
+                        # Add the URL without checking date - we'll check dates during processing
                         post_urls.append(normalized_url)
                         seen_urls.add(normalized_url)
+
+                        # Limit the number of URLs to prevent excessive processing
+                        if len(post_urls) >= self.settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
+                            break
 
             logger.info(f"@{account}: Found {len(post_urls)} recent post URLs.")
             return post_urls
@@ -147,6 +151,15 @@ class InstagramScraper:
             logger.warning(f"@{account}: Could not determine date for {post_url}.")
             return None
 
+        # Ensure both dates are timezone-aware for comparison
+        if post_date.tzinfo is None:
+            logger.warning(f"@{account}: Post date has no timezone info, skipping date comparison")
+            return None
+
+        if cutoff_date.tzinfo is None:
+            logger.warning(f"@{account}: Cutoff date has no timezone info, using UTC")
+            cutoff_date = cutoff_date.replace(tzinfo=timezone.utc)
+
         if post_date < cutoff_date:
             return None
 
@@ -179,9 +192,66 @@ class InstagramScraper:
 
     def _get_post_caption(self) -> str:
         """Extracts the post caption by trying a list of XPath selectors."""
-        # The CAPTION_XPATHS constant was removed, so this method is no longer used.
-        # If caption extraction is needed, it should be re-implemented or removed.
-        logger.warning("Caption extraction is not implemented.")
+        # Try XPath selectors first
+        for xpath in CAPTION_XPATHS:
+            try:
+                element = self.page.query_selector(f"xpath={xpath}")
+                if element:
+                    caption = element.text_content()
+                    if caption and caption.strip():
+                        logger.debug(f"Found caption using XPath: {caption[:50]}...")
+                        return caption.strip()
+            except Exception as e:
+                logger.debug(f"Failed to extract caption with XPath {xpath}: {e}")
+                continue
+
+        # If no caption found with XPaths, try alternative selectors
+        alternative_selectors = [
+            "div[data-testid='post-caption'] span",
+            "article div[role='button'] span",
+            "div[data-testid='post-caption']",
+            "article span[dir='auto']",
+            "div[role='button'] span[dir='auto']",
+            "article div span[dir='auto']"
+        ]
+
+        for selector in alternative_selectors:
+            try:
+                element = self.page.query_selector(selector)
+                if element:
+                    caption = element.text_content()
+                    if caption and caption.strip():
+                        logger.debug(f"Found caption using selector '{selector}': {caption[:50]}...")
+                        return caption.strip()
+            except Exception as e:
+                logger.debug(f"Failed to extract caption with selector '{selector}': {e}")
+                continue
+
+        # Debug: Log what elements are available for caption extraction
+        logger.debug("No caption found with any selector, debugging available elements...")
+        try:
+            # Try to find any text content that might be a caption
+            debug_selectors = [
+                "article",
+                "div[role='button']",
+                "span[dir='auto']",
+                "div[data-testid*='caption']"
+            ]
+            
+            for debug_selector in debug_selectors:
+                elements = self.page.query_selector_all(debug_selector)
+                if elements:
+                    logger.debug(f"Found {len(elements)} elements with selector '{debug_selector}'")
+                    for i, elem in enumerate(elements[:3]):  # Only log first 3
+                        try:
+                            text = elem.text_content()
+                            if text and text.strip():
+                                logger.debug(f"  Element {i}: '{text[:100].strip()}'")
+                        except Exception as e:
+                            logger.debug(f"  Element {i}: Could not extract text: {e}")
+        except Exception as e:
+            logger.debug(f"Debug logging failed: {e}")
+            
         return ""
 
     def _get_post_date(self) -> datetime | None:
@@ -189,8 +259,14 @@ class InstagramScraper:
         try:
             element = self.page.query_selector(POST_DATE_SELECTOR)
             if element and (dt_attr := element.get_attribute("datetime")):
+                # Parse the UTC datetime from Instagram
                 utc_dt = datetime.fromisoformat(dt_attr.replace("Z", "+00:00"))
-                return utc_dt.astimezone(self.settings.TIMEZONE)
+                # Convert to the configured timezone
+                if self.settings.TIMEZONE:
+                    return utc_dt.astimezone(self.settings.TIMEZONE)
+                else:
+                    # Fallback to UTC if no timezone configured
+                    return utc_dt
             logger.warning("Could not find time element with datetime attribute.")
         except Exception as e:
             logger.error(f"Error parsing date from time element: {e}")
