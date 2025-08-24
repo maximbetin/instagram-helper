@@ -14,13 +14,10 @@ help:
 	@echo "  type-check     Run static type checking with mypy"
 	@echo "  check-all      Run all quality checks (format, lint, type-check, test)"
 	@echo "  clean          Remove build artifacts and cache files"
-	@echo "  run            Run the CLI tool with --help"
+	@echo "  run            Run the GUI application"
 	@echo ""
 	@echo "Quick Run Shortcuts:"
-	@echo "  quick-run      Run with default settings (3 days, headless)"
-	@echo "  quick-run-interactive  Run with default settings (3 days, interactive)"
-	@echo "  run-week       Run for last 7 days (headless)"
-	@echo "  run-month      Run for last 30 days (headless)"
+	@echo "  run-gui        Run the Instagram Helper GUI"
 
 # --- Setup --------------------------------------------------------------------
 setup-dev:
@@ -57,8 +54,8 @@ clean:
 	@find . -type f -name "*.pyc" -delete
 
 run:
-	@echo "Running CLI tool..."
-	@./venv/bin/python cli.py --help
+	@echo "Running GUI application..."
+	@./venv/bin/python gui_app.py
 
 # --- Quick Run Shortcuts -----------------------------------------------------
 # Ensure venv exists and is set up before running
@@ -70,22 +67,6 @@ ensure-venv:
 		echo "Development environment created."; \
 	fi
 
-quick-run: ensure-venv
-	@echo "Running Instagram Helper with default settings (last 3 days, headless)..."
-	@./venv/bin/python cli.py --days 3 --headless
-	@echo "Done! Check the output directory for your report."
-
-quick-run-interactive: ensure-venv
-	@echo "Running Instagram Helper with default settings (last 3 days, interactive)..."
-	@./venv/bin/python cli.py --days 3
-	@echo "Done! Check the output directory for your report."
-
-run-week: ensure-venv
-	@echo "Running Instagram Helper for last 7 days (headless)..."
-	@./venv/bin/python cli.py --days 7 --headless
-	@echo "Done! Check the output directory for your report."
-
-run-month: ensure-venv
-	@echo "Running Instagram Helper for last 30 days (headless)..."
-	@./venv/bin/python cli.py --days 30 --headless
-	@echo "Done! Check the output directory for your report."
+run-gui: ensure-venv
+	@echo "Running Instagram Helper GUI..."
+	@./venv/bin/python gui_app.py

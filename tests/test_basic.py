@@ -13,7 +13,7 @@ def test_imports():
         "browser_manager",
         "config",
         "utils",
-        "cli"
+        "gui_app"
     ]
 
     for module_name in modules:

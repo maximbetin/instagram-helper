@@ -111,8 +111,8 @@ jobs:
           if [ -n "$wheel_file" ]; then
               pip install "$wheel_file"
 
-              # Test CLI entry point functionality
-              instagram-helper --help
+              # Test GUI entry point functionality
+              instagram-helper
 
               # Test module imports
               python -c "import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"

@@ -10,21 +10,23 @@ build-backend = "setuptools.build_meta"
 # Project metadata and basic information
 name = "instagram-helper"
 version = "1.0.0"
-description = "A tool that automatically fetches recent posts from Instagram accounts and generates HTML reports"
+description = "A modern GUI-based tool that automatically fetches recent posts from Instagram accounts and generates HTML reports with real-time monitoring"
 readme = "README.md"
 license = "MIT"
 authors = [
     {name = "Maxim"}
 ]
-keywords = ["instagram", "scraper", "browser", "automation", "reports"]
+keywords = ["instagram", "scraper", "browser", "automation", "reports", "gui", "tkinter", "monitoring"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Desktop Environment :: Desktop Environment :: GTK",
     "Topic :: Internet :: WWW/HTTP :: Browsers",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: User Interfaces",
 ]
 requires-python = ">=3.12"
 
@@ -54,9 +56,9 @@ test = [
     "freezegun>=1.4.0",
 ]
 
-# CLI entry points - makes the tool available as a command
+# GUI entry point - makes the tool available as a Python module
 [project.scripts]
-instagram-helper = "cli:main"
+instagram-helper = "gui_app:main"
 
 # Project URLs for documentation and source
 [project.urls]
@@ -71,7 +73,7 @@ packages = []
 py-modules = [
     "instagram_scraper",    # Main scraping functionality
     "utils",                # Utility functions and logging
-    "cli",                  # Command-line interface
+    "gui_app",              # GUI application
     "config",               # Configuration settings
     "browser_manager",      # Browser management
     "report_generator",     # HTML report generation

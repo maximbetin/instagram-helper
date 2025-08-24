@@ -1,20 +1,17 @@
 # Instagram Helper
 
-A tool that automatically fetches recent posts from specified Instagram accounts and generates a
-stylized HTML report with global date sorting and corresponding links.
+A modern, GUI-based tool that automatically fetches recent posts from specified Instagram accounts and generates stylized HTML reports with real-time monitoring and easy configuration.
 
 ## Features
 
-- **Automated Scraping**: Fetches recent posts from a configurable list of Instagram accounts.
-- **Date Filtering**: Retrieves posts published within a specified number of days.
-- **HTML Report Generation**: Creates a clean, responsive HTML report of all fetched posts, sorted
-  chronologically.
-- **GUI Interface**: User-friendly Tkinter-based interface with real-time monitoring and easy configuration.
-- **CLI Interface**: Provides a command-line interface for flexible execution and customization.
-- **WSL2 Integration**: Optimized for Windows Subsystem for Linux 2, with support for launching a
-  local browser instance.
-- **Quality Assured**: Enforced code quality through `ruff`, `mypy`, and a comprehensive `pytest`
-  test suite.
+- **GUI-First Design**: Beautiful Tkinter interface with real-time monitoring
+- **Real-Time Logs**: See scraping progress live as it happens
+- **Easy Configuration**: Adjust settings on the fly without editing files
+- **Account Management**: Add, remove, or modify Instagram accounts dynamically
+- **Progress Tracking**: Visual progress bar and status updates
+- **HTML Reports**: Clean, responsive reports automatically generated
+- **Browser Automation**: Smart browser management with Playwright
+- **Quality Assured**: Enforced code quality through `ruff`, `mypy`, and comprehensive tests
 
 ## Prerequisites
 
@@ -46,7 +43,7 @@ To get started with the Instagram Helper, follow these steps:
      [Environment Variables](#environment-variables) section for details.
 
 3. **Run**:
-   - Execute `python cli.py --help` to see the available commands and options.
+   - Execute `python run.py` or `python gui_app.py` to launch the GUI application.
 
 ## Requirements
 
@@ -81,88 +78,44 @@ To get started with the Instagram Helper, follow these steps:
 
 ## Usage
 
-### GUI Interface (Recommended)
+### **Quick Start**
 
-The Instagram Helper now includes a user-friendly GUI interface that makes it easy to:
-
-- **Monitor scraping progress in real-time** with live logs
-- **Customize Instagram accounts** - add, remove, or modify the list on the fly
-- **Adjust settings** like max post age, posts per account, and timeout values
-- **Start/stop scraping** with simple button controls
-- **View progress** with a visual progress bar and status updates
-
-To launch the GUI:
+Simply run the GUI application:
 
 ```bash
-python gui_app.py
-# or
-python run_gui.py
+python run.py
 ```
 
-**Note**: The GUI requires Tkinter, which is usually included with Python. If you encounter issues:
+That's it! The Instagram Helper will launch with a beautiful, intuitive interface.
+
+### **GUI Features**
+
+The Instagram Helper provides a modern, user-friendly interface that makes Instagram scraping effortless:
+
+- **Real-Time Monitoring**: Watch scraping progress live with detailed logs
+- **Instant Configuration**: Adjust settings without touching configuration files
+- **Dynamic Accounts**: Add, remove, or modify Instagram accounts on the fly
+- **Visual Progress**: See completion status with progress bars and status updates
+- **Simple Controls**: Start, stop, and monitor operations with simple buttons
+- **Automatic Reports**: HTML reports are generated automatically in your output directory
+
+### **How It Works**
+
+1. **Launch the GUI**: Run `python gui_app.py`
+2. **Configure Settings**: Adjust post age, posts per account, and timeout values
+3. **Manage Accounts**: Add or remove Instagram accounts as needed
+4. **Start Scraping**: Click "Start Scraping" and watch the magic happen
+5. **Monitor Progress**: Real-time logs show exactly what's happening
+6. **Get Results**: HTML reports are automatically saved to your output directory
+
+### **Tkinter Requirements**
+
+The GUI requires Tkinter, which is usually included with Python. If you encounter issues:
 
 - **Ubuntu/Debian**: `sudo apt-get install python3-tk`
 - **CentOS/RHEL**: `sudo yum install tkinter`
 - **macOS**: Usually included with Python
-
-### Command-Line Interface
-
-To run the scraper with default settings, use the following command:
-
-```bash
-python cli.py
-```
-
-By default, this will:
-
-- Fetch posts from the last **3 days**
-- Scrape all accounts listed in `config.py`
-- Save the HTML report to the project's root directory
-- Generate a report without opening it in a browser
-
-### Command-Line Options
-
-You can customize the scraper's behavior using these options:
-
-```text
-usage: cli.py [-h] [--days DAYS] [--accounts [ACCOUNTS ...]] [--output OUTPUT]
-              [--log-dir LOG_DIR] [--headless]
-
-Fetch recent Instagram posts and generate HTML reports.
-
-options:
-  -h, --help            show this help message and exit
-  --days DAYS, -d DAYS  Number of days back to fetch posts from (default: 3)
-  --accounts [ACCOUNTS ...], -a [ACCOUNTS ...]
-                        Specific Instagram accounts to fetch from (default: all
-                        configured accounts)
-  --output OUTPUT, -o OUTPUT
-                        Output directory for reports (default:
-                        /home/maxim/instagram-helper)
-  --log-dir LOG_DIR     Directory for log files (default: /home/maxim/instagram-
-                        helper)
-  --headless            Run the browser in headless mode (no GUI).
-```
-
-### Examples
-
-- **Fetch posts from the last 7 days**:
-
-  ```bash
-  python cli.py --days 7
-  ```
-
-- **Scrape specific accounts**:
-
-  ```bash
-  python cli.py --accounts aytoviedo biodevas
-  ```
-
-- **Save the report to a custom directory**:
-
-  ```bash
-  python cli.py --output ./reports
-  ```
+- **Windows**: Usually included with Python
 
 ## Configuration
 
@@ -334,7 +287,7 @@ source venv/bin/activate
 make check-all
 
 # Test with custom parameters
-python cli.py --days 7 --accounts aytoviedo biodevas
+python run.py
 
 # Run specific test files
 ./venv/bin/pytest tests/test_instagram_scraper.py -v
