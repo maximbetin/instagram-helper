@@ -133,8 +133,8 @@ class TestInstagramHelperGUI:
             # Verify Tkinter setup
             mock_tkinter['tk'].Tk.assert_called_once()
             mock_tkinter['root'].title.assert_called_once_with("Instagram Helper")
-            mock_tkinter['root'].geometry.assert_called_once_with("1000x700")
-            mock_tkinter['root'].minsize.assert_called_once_with(800, 600)
+            mock_tkinter['root'].geometry.assert_called_once_with("1400x700")
+            mock_tkinter['root'].minsize.assert_called_once_with(1200, 600)
 
             # Verify variables initialization
             assert app.log_queue is not None
@@ -200,7 +200,7 @@ class TestInstagramHelperGUI:
             app.add_account()
 
             # Verify dialog was created
-            mock_dialog_class.assert_called_once_with(app.root, "Add Instagram Account")
+            mock_dialog_class.assert_called_once_with(app.root, "Add Account")
 
             # Verify account was added
             app.account_listbox.insert.assert_called_once_with("end", "new_account")

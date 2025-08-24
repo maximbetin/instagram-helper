@@ -35,8 +35,8 @@ class InstagramHelperGUI:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("Instagram Helper")
-        self.root.geometry("1000x700")
-        self.root.minsize(800, 600)
+        self.root.geometry("1400x700")
+        self.root.minsize(1200, 600)
 
         # Initialize variables
         self.log_queue: queue.Queue = queue.Queue()
@@ -93,7 +93,7 @@ class InstagramHelperGUI:
 
         # Control frame
         self.control_frame = ttk.LabelFrame(
-            self.main_frame, text="Controls", padding="10"
+            self.main_frame, text="Actions", padding="10"
         )
 
         # Start/Stop buttons
@@ -109,21 +109,21 @@ class InstagramHelperGUI:
 
         # Settings frame
         self.settings_frame = ttk.LabelFrame(
-            self.main_frame, text="Settings", padding="10"
+            self.main_frame, text="Settings", padding="15"
         )
 
         # Max post age
-        ttk.Label(self.settings_frame, text="Max Post Age (days):").grid(
+        ttk.Label(self.settings_frame, text="Max Age (days):").grid(
             row=0, column=0, sticky="w", padx=(0, 5)
         )
         self.max_age_var = tk.StringVar(value="7")
         self.max_age_entry = ttk.Entry(
             self.settings_frame, textvariable=self.max_age_var, width=10
         )
-        self.max_age_entry.grid(row=0, column=1, sticky="w", padx=(0, 10))
+        self.max_age_entry.grid(row=0, column=1, sticky="w", padx=(0, 25))
 
         # Max posts per account
-        ttk.Label(self.settings_frame, text="Max Posts per Account:").grid(
+        ttk.Label(self.settings_frame, text="Max Posts:").grid(
             row=0, column=2, sticky="w", padx=(0, 5)
         )
         self.max_posts_var = tk.StringVar(
@@ -132,10 +132,10 @@ class InstagramHelperGUI:
         self.max_posts_entry = ttk.Entry(
             self.settings_frame, textvariable=self.max_posts_var, width=10
         )
-        self.max_posts_entry.grid(row=0, column=2, sticky="w", padx=(0, 10))
+        self.max_posts_entry.grid(row=0, column=3, sticky="w", padx=(0, 25))
 
         # Timeout
-        ttk.Label(self.settings_frame, text="Post Load Timeout (ms):").grid(
+        ttk.Label(self.settings_frame, text="Timeout (ms):").grid(
             row=0, column=4, sticky="w", padx=(0, 5)
         )
         self.timeout_var = tk.StringVar(value=str(settings.INSTAGRAM_POST_LOAD_TIMEOUT))
@@ -146,7 +146,7 @@ class InstagramHelperGUI:
 
         # Accounts frame
         self.accounts_frame = ttk.LabelFrame(
-            self.main_frame, text="Instagram Accounts", padding="10"
+            self.main_frame, text="Accounts", padding="10"
         )
 
         # Account list
@@ -161,16 +161,16 @@ class InstagramHelperGUI:
         # Account control buttons
         self.account_buttons_frame = ttk.Frame(self.accounts_frame)
         self.add_account_button = ttk.Button(
-            self.account_buttons_frame, text="Add Account", command=self.add_account
+            self.account_buttons_frame, text="Add", command=self.add_account
         )
         self.remove_account_button = ttk.Button(
             self.account_buttons_frame,
-            text="Remove Selected",
+            text="Remove",
             command=self.remove_account,
         )
         self.load_accounts_button = ttk.Button(
             self.account_buttons_frame,
-            text="Load from Config",
+            text="Load Config",
             command=self.load_accounts_from_config,
         )
 
@@ -178,11 +178,11 @@ class InstagramHelperGUI:
         self.logs_frame = ttk.LabelFrame(self.main_frame, text="Logs", padding="10")
 
         # Log text area
-        self.log_text = scrolledtext.ScrolledText(self.logs_frame, height=15, width=80)
+        self.log_text = scrolledtext.ScrolledText(self.logs_frame, height=15, width=100)
 
         # Clear logs button
         self.clear_logs_button = ttk.Button(
-            self.logs_frame, text="Clear Logs", command=self.clear_logs
+            self.logs_frame, text="Clear", command=self.clear_logs
         )
 
         # Progress frame
@@ -203,6 +203,9 @@ class InstagramHelperGUI:
     def setup_layout(self) -> None:
         """Setup the layout of all widgets."""
         self.main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Configure main frame columns for better horizontal distribution
+        self.main_frame.grid_columnconfigure(0, weight=1)
 
         # Title
         self.main_frame.grid_rowconfigure(0, weight=0)
@@ -226,6 +229,13 @@ class InstagramHelperGUI:
         self.settings_frame.grid(
             row=2, column=0, columnspan=2, sticky="ew", pady=(0, 10)
         )
+        # Configure settings frame columns for better spacing
+        self.settings_frame.grid_columnconfigure(0, weight=0)
+        self.settings_frame.grid_columnconfigure(1, weight=0)
+        self.settings_frame.grid_columnconfigure(2, weight=0)
+        self.settings_frame.grid_columnconfigure(3, weight=0)
+        self.settings_frame.grid_columnconfigure(4, weight=0)
+        self.settings_frame.grid_columnconfigure(5, weight=0)
 
         # Accounts frame
         self.main_frame.grid_rowconfigure(3, weight=0)
@@ -267,7 +277,7 @@ class InstagramHelperGUI:
 
     def add_account(self) -> None:
         """Add a new account to the list."""
-        dialog = AccountDialog(self.root, "Add Instagram Account")
+        dialog = AccountDialog(self.root, "Add Account")
         if dialog.result:
             account = dialog.result.strip()
             if account and account not in self.get_accounts():
