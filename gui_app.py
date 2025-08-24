@@ -43,6 +43,7 @@ class InstagramHelperGUI:
         self.scraping_thread: threading.Thread | None = None
         self.stop_scraping = threading.Event()
         self.playwright: Any | None = None
+        self.playwright_instance: Any | None = None
         self.browser: Browser | None = None
 
         # Setup logging
@@ -365,7 +366,8 @@ class InstagramHelperGUI:
 
             # Initialize browser
             self.playwright = sync_playwright()
-            self.browser = setup_browser(self.playwright.start())
+            self.playwright_instance = self.playwright.start()
+            self.browser = setup_browser(self.playwright_instance)
             page = self._get_browser_page(self.browser)
 
             if not page:
@@ -433,8 +435,8 @@ class InstagramHelperGUI:
             # Cleanup
             if self.browser:
                 self.browser.close()
-            if self.playwright:
-                self.playwright.stop()
+            if hasattr(self, 'playwright_instance') and self.playwright_instance:
+                self.playwright_instance.stop()
 
             # Re-enable start button, disable stop button
             self.root.after(0, lambda: self.start_button.config(state="normal"))
