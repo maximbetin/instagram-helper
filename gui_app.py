@@ -356,7 +356,7 @@ class InstagramHelperGUI:
 
             # Calculate cutoff date (make it timezone-aware)
             from datetime import timezone
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings_dict["max_age_days"])
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings_dict["max_age_days"])  # noqa: UP017
             self.logger.info(f"Cutoff date: {cutoff_date}")
 
             # Update settings with GUI values
@@ -392,9 +392,9 @@ class InstagramHelperGUI:
 
                 # Update progress
                 progress = (i / total_accounts) * 100
-                self.root.after(0, lambda p=progress: self.progress_var.set(p))
+                self.root.after(0, lambda p=progress: self._update_progress(p))  # type: ignore[misc]
                 self.root.after(
-                    0, lambda s=f"Processing @{account}...": self.status_var.set(s)
+                    0, lambda a=account: self._update_status(f"Processing @{a}...")  # type: ignore[misc]
                 )
 
                 # Scrape posts
@@ -406,7 +406,7 @@ class InstagramHelperGUI:
             # Generate report
             if all_posts and not self.stop_scraping.is_set():
                 self.logger.info("Generating HTML report...")
-                self.root.after(0, lambda: self.status_var.set("Generating report..."))
+                self.root.after(0, lambda: self._update_status("Generating report..."))
 
                 report_data = ReportData(posts=all_posts, cutoff_date=cutoff_date)
                 date_str = datetime.now().strftime("%d-%m-%Y")
@@ -417,12 +417,12 @@ class InstagramHelperGUI:
 
             # Update final status
             if self.stop_scraping.is_set():
-                self.root.after(0, lambda: self.status_var.set("Stopped"))
+                self.root.after(0, lambda: self._update_status("Stopped"))
             else:
-                self.root.after(0, lambda: self.progress_var.set(100))
+                self.root.after(0, lambda: self._update_progress(100))
                 self.root.after(
                     0,
-                    lambda: self.status_var.set(
+                    lambda: self._update_status(
                         f"Complete - {len(all_posts)} posts found"
                     ),
                 )
@@ -430,7 +430,7 @@ class InstagramHelperGUI:
         except Exception as e:
             error_msg = str(e)
             self.logger.error(f"Error during scraping: {error_msg}")
-            self.root.after(0, lambda: self.status_var.set(f"Error: {error_msg}"))
+            self.root.after(0, lambda: self._update_status(f"Error: {error_msg}"))
         finally:
             # Cleanup
             if self.browser:
@@ -459,6 +459,14 @@ class InstagramHelperGUI:
         """Retrieves or creates a browser page."""
         context = browser.contexts[0] if browser.contexts else browser.new_context()
         return context.pages[0] if context.pages else context.new_page()
+
+    def _update_progress(self, value: float) -> None:
+        """Update progress bar value."""
+        self.progress_var.set(value)
+
+    def _update_status(self, message: str) -> None:
+        """Update status label message."""
+        self.status_var.set(message)
 
     def clear_logs(self) -> None:
         """Clear the log display."""
