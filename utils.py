@@ -46,11 +46,16 @@ def setup_logging(
     """
     logger = logging.getLogger(name)
     logger.setLevel(LOG_LEVEL)
-    logger.propagate = False  # Prevent duplicate logs in parent loggers
 
-    # Clear existing handlers to avoid duplicate output
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    # Don't clear existing handlers if this is a root-level logger
+    # This prevents interference with existing logging setup
+    if name in ["", "root"]:
+        logger.propagate = False
+    else:
+        # For named loggers, we can be more aggressive about handler management
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        logger.propagate = True  # Allow propagation to parent loggers
 
     # Console Handler
     console_handler = logging.StreamHandler()
@@ -61,13 +66,19 @@ def setup_logging(
     if log_dir:
         try:
             log_dir.mkdir(parents=True, exist_ok=True)
-            log_file = log_dir / f"{datetime.now().strftime('%Y-%m-%d')}.log"
+            log_file = log_dir / f"{datetime.now().strftime('%d-%m-%Y')}.log"
 
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(
                 logging.Formatter(LOG_FORMAT_FILE, datefmt=LOG_DATE_FORMAT)
             )
             logger.addHandler(file_handler)
+
+            # Also ensure the root logger has file logging
+            root_logger = logging.getLogger()
+            if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
+                root_logger.addHandler(file_handler)
+
         except OSError as e:
             logger.error(f"Failed to set up file logging in {log_dir}: {e}")
 

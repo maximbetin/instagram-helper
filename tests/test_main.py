@@ -48,7 +48,8 @@ def test_get_post_urls_success(mock_page: MagicMock) -> None:
     mock_page.query_selector_all.return_value = [mock_link_p, mock_link_reel]
 
     scraper = InstagramScraper(mock_page, settings)
-    urls = scraper._get_post_urls(MOCK_ACCOUNT)
+    cutoff_date = datetime.now(UTC) - timedelta(days=1)
+    urls = scraper._get_post_urls(MOCK_ACCOUNT, cutoff_date)
     assert len(urls) == 2
     assert "https://www.instagram.com/p/123" in urls
     assert "https://www.instagram.com/reel/456" in urls
@@ -60,7 +61,8 @@ def test_get_post_urls_no_links(mock_page: MagicMock) -> None:
     mock_link_story.get_attribute.return_value = "/stories/789/"
     mock_page.query_selector_all.return_value = [mock_link_story]
     scraper = InstagramScraper(mock_page, settings)
-    assert not scraper._get_post_urls(MOCK_ACCOUNT)
+    cutoff_date = datetime.now(UTC) - timedelta(days=1)
+    assert not scraper._get_post_urls(MOCK_ACCOUNT, cutoff_date)
 
 
 def test_get_post_caption_found(mock_page: MagicMock) -> None:

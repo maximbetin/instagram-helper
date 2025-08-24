@@ -92,7 +92,7 @@ def generate_html_report(
 
         # Ensure output directory exists and save the report
         output_dir.mkdir(parents=True, exist_ok=True)
-        report_filename = f"instagram_report_{report_data.generation_time.strftime('%Y%m%d_%H%M%S')}.html"
+        report_filename = f"{report_data.generation_time.strftime('%d-%m-%Y')}.html"
         report_path = output_dir / report_filename
 
         with report_path.open("w", encoding="utf-8") as f:

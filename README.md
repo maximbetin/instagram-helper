@@ -9,6 +9,7 @@ stylized HTML report with global date sorting and corresponding links.
 - **Date Filtering**: Retrieves posts published within a specified number of days.
 - **HTML Report Generation**: Creates a clean, responsive HTML report of all fetched posts, sorted
   chronologically.
+- **GUI Interface**: User-friendly Tkinter-based interface with real-time monitoring and easy configuration.
 - **CLI Interface**: Provides a command-line interface for flexible execution and customization.
 - **WSL2 Integration**: Optimized for Windows Subsystem for Linux 2, with support for launching a
   local browser instance.
@@ -80,7 +81,31 @@ To get started with the Instagram Helper, follow these steps:
 
 ## Usage
 
-### Basic Command
+### GUI Interface (Recommended)
+
+The Instagram Helper now includes a user-friendly GUI interface that makes it easy to:
+
+- **Monitor scraping progress in real-time** with live logs
+- **Customize Instagram accounts** - add, remove, or modify the list on the fly
+- **Adjust settings** like max post age, posts per account, and timeout values
+- **Start/stop scraping** with simple button controls
+- **View progress** with a visual progress bar and status updates
+
+To launch the GUI:
+
+```bash
+python gui_app.py
+# or
+python run_gui.py
+```
+
+**Note**: The GUI requires Tkinter, which is usually included with Python. If you encounter issues:
+
+- **Ubuntu/Debian**: `sudo apt-get install python3-tk`
+- **CentOS/RHEL**: `sudo yum install tkinter`
+- **macOS**: Usually included with Python
+
+### Command-Line Interface
 
 To run the scraper with default settings, use the following command:
 

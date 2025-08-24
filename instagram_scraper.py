@@ -58,7 +58,7 @@ class InstagramScraper:
         if not self._navigate_to_url(account_url, "account page"):
             return []
 
-        post_urls = self._get_post_urls(account)
+        post_urls = self._get_post_urls(account, cutoff_date)
         if not post_urls:
             return []
 
@@ -69,15 +69,12 @@ class InstagramScraper:
             post_data = self._extract_post_data(post_url, account, cutoff_date)
             if post_data:
                 posts.append(post_data)
-            elif post_data is None and posts:
-                logger.info(f"@{account}: Reached posts older than cutoff. Stopping.")
-                break
 
-        logger.info(f"@{account}: Found {len(posts)} new posts.")
+        logger.info(f"@{account}: Found {len(post_urls)} posts processed, {len(posts)} recent posts found.")
         return posts
 
-    def _get_post_urls(self, account: str) -> list[str]:
-        """Fetches all unique post URLs from the account's page."""
+    def _get_post_urls(self, account: str, cutoff_date: datetime) -> list[str]:
+        """Fetches post URLs from the account's page, stopping when cutoff date is reached."""
         logger.debug(f"@{account}: Searching for post URLs...")
         try:
             links = self.page.query_selector_all(POST_LINK_SELECTOR)
@@ -87,18 +84,55 @@ class InstagramScraper:
 
             seen_urls = set()
             post_urls = []
+            
             for link in links:
+                if len(post_urls) >= self.settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
+                    break
+                    
                 href = link.get_attribute("href")
                 if href and (normalized_url := self._normalize_post_url(href)):
                     if normalized_url not in seen_urls:
+                        # Check the date of this post before adding it
+                        post_date = self._get_post_date_from_url(normalized_url)
+                        if post_date and post_date < cutoff_date:
+                            logger.info(f"@{account}: Reached posts older than cutoff. Stopping URL collection.")
+                            break
+                        
                         post_urls.append(normalized_url)
                         seen_urls.add(normalized_url)
 
-            logger.info(f"@{account}: Found {len(post_urls)} unique post URLs.")
-            return post_urls[: self.settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT]
+            logger.info(f"@{account}: Found {len(post_urls)} recent post URLs.")
+            return post_urls
         except Exception as e:
             logger.error(f"@{account}: Failed to query for post URLs: {e}")
             return []
+
+    def _get_post_date_from_url(self, post_url: str) -> datetime | None:
+        """Quickly extracts the post date without full navigation."""
+        try:
+            # Navigate to the post
+            if not self._navigate_to_url(post_url, "post date check"):
+                return None
+            
+            # Get the date
+            post_date = self._get_post_date()
+            
+            # Go back to the account page - extract account name from post URL
+            if "/p/" in post_url:
+                account_part = post_url.split("/p/")[0]
+            elif "/reel/" in post_url:
+                account_part = post_url.split("/reel/")[0]
+            else:
+                return post_date  # Can't determine account, just return the date
+                
+            account_name = account_part.split("/")[-1]
+            account_url = f"{self.settings.INSTAGRAM_URL}{account_name}/"
+            self._navigate_to_url(account_url, "account page return")
+            
+            return post_date
+        except Exception as e:
+            logger.debug(f"Failed to get date for {post_url}: {e}")
+            return None
 
     def _extract_post_data(
         self, post_url: str, account: str, cutoff_date: datetime

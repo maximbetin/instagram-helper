@@ -227,6 +227,16 @@ class Settings:
         if self.BROWSER_USER_DATA_DIR is None:
             raise ValueError("BROWSER_USER_DATA_DIR environment variable is not set.")
 
+    def update_instagram_settings(self, max_posts: int, timeout: int) -> None:
+        """Update Instagram settings dynamically.
+
+        Args:
+            max_posts: New maximum posts per account value
+            timeout: New post load timeout value in milliseconds
+        """
+        object.__setattr__(self, "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", max_posts)
+        object.__setattr__(self, "INSTAGRAM_POST_LOAD_TIMEOUT", timeout)
+
 
 # Create a single, immutable instance of the settings
 settings = Settings()

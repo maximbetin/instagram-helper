@@ -33,7 +33,9 @@ def test_setup_logging_basic_configuration() -> None:
         logger = setup_logging(name="test_logger")
         assert logger.name == "test_logger"
         assert logger.level == logging.INFO
-        assert not logger.propagate
+        # Named loggers now propagate to parent loggers to ensure file logging works
+        # This was changed to fix the issue where log files were not being written
+        assert logger.propagate
         assert len(logger.handlers) == 1  # Should only have console handler
 
 
