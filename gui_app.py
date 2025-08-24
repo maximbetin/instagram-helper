@@ -1,17 +1,18 @@
 """Instagram Helper GUI Application."""
 
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox, filedialog
-import threading
-import queue
 import logging
+import queue
+import threading
+import tkinter as tk
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from tkinter import messagebox, scrolledtext, ttk
+from typing import Any
 
-from config import settings
-from playwright.sync_api import sync_playwright, Browser, Page
+from playwright.sync_api import Browser, Page, sync_playwright
+
 from browser_manager import setup_browser
+from config import settings
 from instagram_scraper import InstagramScraper
 from report_generator import ReportData, generate_html_report
 
@@ -19,11 +20,11 @@ from report_generator import ReportData, generate_html_report
 class LogHandler(logging.Handler):
     """Custom log handler that sends log messages to a queue for GUI display."""
 
-    def __init__(self, queue: queue.Queue):
+    def __init__(self, queue: queue.Queue) -> None:
         super().__init__()
         self.queue = queue
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         msg = self.format(record)
         self.queue.put(msg)
 
@@ -31,18 +32,18 @@ class LogHandler(logging.Handler):
 class InstagramHelperGUI:
     """Main GUI application for Instagram Helper."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("Instagram Helper")
         self.root.geometry("1000x700")
         self.root.minsize(800, 600)
 
         # Initialize variables
-        self.log_queue = queue.Queue()
-        self.scraping_thread: Optional[threading.Thread] = None
+        self.log_queue: queue.Queue = queue.Queue()
+        self.scraping_thread: threading.Thread | None = None
         self.stop_scraping = threading.Event()
-        self.playwright: Optional[sync_playwright] = None
-        self.browser: Optional[Browser] = None
+        self.playwright: Any | None = None
+        self.browser: Browser | None = None
 
         # Setup logging
         self.setup_logging()
@@ -54,13 +55,10 @@ class InstagramHelperGUI:
         # Start log polling
         self.poll_logs()
 
-        # Test logging to ensure both GUI and file logging work
-        self.test_logging()
-
         # Load initial accounts
         self.load_accounts_from_config()
 
-    def setup_logging(self):
+    def setup_logging(self) -> None:
         """Setup logging to capture messages for GUI display."""
         # Create a logger for the application
         self.logger = logging.getLogger("instagram_helper_gui")
@@ -68,16 +66,18 @@ class InstagramHelperGUI:
 
         # Add our custom handler
         log_handler = LogHandler(self.log_queue)
-        log_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        log_handler.setFormatter(formatter)
         self.logger.addHandler(log_handler)
 
-                # Capture messages from specific loggers we care about, but don't interfere with root logger
-        # This ensures file logging continues to work
+        # Capture messages from specific loggers we care about
         target_loggers = [
             "instagram_scraper",
             "browser_manager",
             "report_generator",
-            "utils"
+            "utils",
         ]
 
         for logger_name in target_loggers:
@@ -86,69 +86,93 @@ class InstagramHelperGUI:
             # This preserves file logging while adding GUI display
             logger.addHandler(log_handler)
 
-    def test_logging(self):
-        """Test that logging is working properly for both GUI and file output."""
-        # Test GUI logging
-        self.logger.info("GUI logging test - this should appear in the GUI")
-
-        # Test that other loggers still work
-        test_logger = logging.getLogger("instagram_scraper")
-        test_logger.info("Instagram scraper logging test - this should appear in both GUI and log files")
-
-        # Test file logging specifically
-        file_test_logger = logging.getLogger("file_test")
-        if not file_test_logger.handlers:
-            # Set up file logging for this test logger
-            from utils import setup_logging
-            file_test_logger = setup_logging("file_test", settings.LOG_DIR)
-            file_test_logger.info("File logging test - this should appear in log files")
-
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         """Create all GUI widgets."""
-                # Main frame
+        # Main frame
         self.main_frame = ttk.Frame(self.root, padding="10")
 
         # Control frame
-        self.control_frame = ttk.LabelFrame(self.main_frame, text="Controls", padding="10")
+        self.control_frame = ttk.LabelFrame(
+            self.main_frame, text="Controls", padding="10"
+        )
 
         # Start/Stop buttons
-        self.start_button = ttk.Button(self.control_frame, text="Start Scraping", command=self.start_scraping)
-        self.stop_button = ttk.Button(self.control_frame, text="Stop Scraping", command=self.stop_scraping_process, state="disabled")
+        self.start_button = ttk.Button(
+            self.control_frame, text="Start Scraping", command=self.start_scraping
+        )
+        self.stop_button = ttk.Button(
+            self.control_frame,
+            text="Stop Scraping",
+            command=self.stop_scraping_process,
+            state="disabled",
+        )
 
         # Settings frame
-        self.settings_frame = ttk.LabelFrame(self.main_frame, text="Settings", padding="10")
+        self.settings_frame = ttk.LabelFrame(
+            self.main_frame, text="Settings", padding="10"
+        )
 
         # Max post age
-        ttk.Label(self.settings_frame, text="Max Post Age (days):").grid(row=0, column=0, sticky="w", padx=(0, 5))
+        ttk.Label(self.settings_frame, text="Max Post Age (days):").grid(
+            row=0, column=0, sticky="w", padx=(0, 5)
+        )
         self.max_age_var = tk.StringVar(value="7")
-        self.max_age_entry = ttk.Entry(self.settings_frame, textvariable=self.max_age_var, width=10)
+        self.max_age_entry = ttk.Entry(
+            self.settings_frame, textvariable=self.max_age_var, width=10
+        )
         self.max_age_entry.grid(row=0, column=1, sticky="w", padx=(0, 10))
 
         # Max posts per account
-        ttk.Label(self.settings_frame, text="Max Posts per Account:").grid(row=0, column=2, sticky="w", padx=(0, 5))
-        self.max_posts_var = tk.StringVar(value=str(settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT))
-        self.max_posts_entry = ttk.Entry(self.settings_frame, textvariable=self.max_posts_var, width=10)
-        self.max_posts_entry.grid(row=0, column=3, sticky="w", padx=(0, 10))
+        ttk.Label(self.settings_frame, text="Max Posts per Account:").grid(
+            row=0, column=2, sticky="w", padx=(0, 5)
+        )
+        self.max_posts_var = tk.StringVar(
+            value=str(settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT)
+        )
+        self.max_posts_entry = ttk.Entry(
+            self.settings_frame, textvariable=self.max_posts_var, width=10
+        )
+        self.max_posts_entry.grid(row=0, column=2, sticky="w", padx=(0, 10))
 
         # Timeout
-        ttk.Label(self.settings_frame, text="Post Load Timeout (ms):").grid(row=0, column=4, sticky="w", padx=(0, 5))
+        ttk.Label(self.settings_frame, text="Post Load Timeout (ms):").grid(
+            row=0, column=4, sticky="w", padx=(0, 5)
+        )
         self.timeout_var = tk.StringVar(value=str(settings.INSTAGRAM_POST_LOAD_TIMEOUT))
-        self.timeout_entry = ttk.Entry(self.settings_frame, textvariable=self.timeout_var, width=10)
+        self.timeout_entry = ttk.Entry(
+            self.settings_frame, textvariable=self.timeout_var, width=10
+        )
         self.timeout_entry.grid(row=0, column=5, sticky="w")
 
         # Accounts frame
-        self.accounts_frame = ttk.LabelFrame(self.main_frame, text="Instagram Accounts", padding="10")
+        self.accounts_frame = ttk.LabelFrame(
+            self.main_frame, text="Instagram Accounts", padding="10"
+        )
 
         # Account list
-        self.account_listbox = tk.Listbox(self.accounts_frame, height=8, selectmode=tk.EXTENDED)
-        self.account_scrollbar = ttk.Scrollbar(self.accounts_frame, orient="vertical", command=self.account_listbox.yview)
+        self.account_listbox = tk.Listbox(
+            self.accounts_frame, height=8, selectmode=tk.EXTENDED
+        )
+        self.account_scrollbar = ttk.Scrollbar(
+            self.accounts_frame, orient="vertical", command=self.account_listbox.yview
+        )
         self.account_listbox.configure(yscrollcommand=self.account_scrollbar.set)
 
         # Account control buttons
         self.account_buttons_frame = ttk.Frame(self.accounts_frame)
-        self.add_account_button = ttk.Button(self.account_buttons_frame, text="Add Account", command=self.add_account)
-        self.remove_account_button = ttk.Button(self.account_buttons_frame, text="Remove Selected", command=self.remove_account)
-        self.load_accounts_button = ttk.Button(self.account_buttons_frame, text="Load from Config", command=self.load_accounts_from_config)
+        self.add_account_button = ttk.Button(
+            self.account_buttons_frame, text="Add Account", command=self.add_account
+        )
+        self.remove_account_button = ttk.Button(
+            self.account_buttons_frame,
+            text="Remove Selected",
+            command=self.remove_account,
+        )
+        self.load_accounts_button = ttk.Button(
+            self.account_buttons_frame,
+            text="Load from Config",
+            command=self.load_accounts_from_config,
+        )
 
         # Logs frame
         self.logs_frame = ttk.LabelFrame(self.main_frame, text="Logs", padding="10")
@@ -157,34 +181,41 @@ class InstagramHelperGUI:
         self.log_text = scrolledtext.ScrolledText(self.logs_frame, height=15, width=80)
 
         # Clear logs button
-        self.clear_logs_button = ttk.Button(self.logs_frame, text="Clear Logs", command=self.clear_logs)
+        self.clear_logs_button = ttk.Button(
+            self.logs_frame, text="Clear Logs", command=self.clear_logs
+        )
 
         # Progress frame
-        self.progress_frame = ttk.LabelFrame(self.main_frame, text="Progress", padding="10")
+        self.progress_frame = ttk.LabelFrame(
+            self.main_frame, text="Progress", padding="10"
+        )
 
         # Progress bar
         self.progress_var = tk.DoubleVar()
-        self.progress_bar = ttk.Progressbar(self.progress_frame, variable=self.progress_var, maximum=100)
+        self.progress_bar = ttk.Progressbar(
+            self.progress_frame, variable=self.progress_var, maximum=100
+        )
 
         # Status label
         self.status_var = tk.StringVar(value="Ready")
         self.status_label = ttk.Label(self.progress_frame, textvariable=self.status_var)
 
-        # Load initial accounts
-        self.load_accounts_from_config()
-
-    def setup_layout(self):
+    def setup_layout(self) -> None:
         """Setup the layout of all widgets."""
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Title
         self.main_frame.grid_rowconfigure(0, weight=0)
-        title_label = ttk.Label(self.main_frame, text="Instagram Helper", font=("Arial", 16, "bold"))
+        title_label = ttk.Label(
+            self.main_frame, text="Instagram Helper", font=("Arial", 16, "bold")
+        )
         title_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))
 
         # Control frame
         self.main_frame.grid_rowconfigure(1, weight=0)
-        self.control_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        self.control_frame.grid(
+            row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+        )
         self.control_frame.grid_columnconfigure(1, weight=1)
 
         self.start_button.grid(row=0, column=0, padx=(0, 10))
@@ -192,11 +223,15 @@ class InstagramHelperGUI:
 
         # Settings frame
         self.main_frame.grid_rowconfigure(2, weight=0)
-        self.settings_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        self.settings_frame.grid(
+            row=2, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+        )
 
         # Accounts frame
         self.main_frame.grid_rowconfigure(3, weight=0)
-        self.accounts_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        self.accounts_frame.grid(
+            row=3, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+        )
         self.accounts_frame.grid_columnconfigure(0, weight=1)
 
         self.account_listbox.grid(row=0, column=0, sticky="ew", padx=(0, 5))
@@ -224,13 +259,13 @@ class InstagramHelperGUI:
         self.progress_bar.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         self.status_label.grid(row=1, column=0, sticky="w")
 
-    def load_accounts_from_config(self):
+    def load_accounts_from_config(self) -> None:
         """Load accounts from the configuration file."""
         self.account_listbox.delete(0, tk.END)
         for account in settings.INSTAGRAM_ACCOUNTS:
             self.account_listbox.insert(tk.END, account)
 
-    def add_account(self):
+    def add_account(self) -> None:
         """Add a new account to the list."""
         dialog = AccountDialog(self.root, "Add Instagram Account")
         if dialog.result:
@@ -238,7 +273,7 @@ class InstagramHelperGUI:
             if account and account not in self.get_accounts():
                 self.account_listbox.insert(tk.END, account)
 
-    def remove_account(self):
+    def remove_account(self) -> None:
         """Remove selected accounts from the list."""
         selection = self.account_listbox.curselection()
         if selection:
@@ -250,7 +285,7 @@ class InstagramHelperGUI:
         """Get the current list of accounts."""
         return list(self.account_listbox.get(0, tk.END))
 
-    def get_settings(self) -> dict:
+    def get_settings(self) -> dict[str, int] | None:
         """Get current settings from the GUI."""
         try:
             max_age = int(self.max_age_var.get())
@@ -263,17 +298,19 @@ class InstagramHelperGUI:
             return {
                 "max_age_days": max_age,
                 "max_posts_per_account": max_posts,
-                "timeout_ms": timeout
+                "timeout_ms": timeout,
             }
         except ValueError as e:
             messagebox.showerror("Invalid Settings", f"Please check your settings: {e}")
             return None
 
-    def start_scraping(self):
+    def start_scraping(self) -> None:
         """Start the scraping process in a separate thread."""
         accounts = self.get_accounts()
         if not accounts:
-            messagebox.showwarning("No Accounts", "Please add at least one Instagram account.")
+            messagebox.showwarning(
+                "No Accounts", "Please add at least one Instagram account."
+            )
             return
 
         settings_dict = self.get_settings()
@@ -290,18 +327,18 @@ class InstagramHelperGUI:
 
         # Start scraping thread
         self.scraping_thread = threading.Thread(
-            target=self.scraping_worker,
-            args=(accounts, settings_dict),
-            daemon=True
+            target=self.scraping_worker, args=(accounts, settings_dict), daemon=True
         )
         self.scraping_thread.start()
 
-    def stop_scraping_process(self):
+    def stop_scraping_process(self) -> None:
         """Stop the scraping process."""
         self.stop_scraping.set()
         self.status_var.set("Stopping...")
 
-    def scraping_worker(self, accounts: list[str], settings_dict: dict):
+    def scraping_worker(
+        self, accounts: list[str], settings_dict: dict[str, int]
+    ) -> None:
         """Worker thread for scraping."""
         try:
             self.logger.info("Starting Instagram scraping process...")
@@ -312,8 +349,7 @@ class InstagramHelperGUI:
 
             # Update settings with GUI values
             settings.update_instagram_settings(
-                settings_dict["max_posts_per_account"],
-                settings_dict["timeout_ms"]
+                settings_dict["max_posts_per_account"], settings_dict["timeout_ms"]
             )
 
             # Initialize browser
@@ -337,12 +373,16 @@ class InstagramHelperGUI:
                     self.logger.info("Scraping stopped by user")
                     break
 
-                self.logger.info(f"Processing account {i+1}/{total_accounts}: @{account}")
+                self.logger.info(
+                    f"Processing account {i + 1}/{total_accounts}: @{account}"
+                )
 
                 # Update progress
                 progress = (i / total_accounts) * 100
                 self.root.after(0, lambda p=progress: self.progress_var.set(p))
-                self.root.after(0, lambda s=f"Processing @{account}...": self.status_var.set(s))
+                self.root.after(
+                    0, lambda s=f"Processing @{account}...": self.status_var.set(s)
+                )
 
                 # Scrape posts
                 posts = scraper.process_account(account, cutoff_date)
@@ -356,7 +396,8 @@ class InstagramHelperGUI:
                 self.root.after(0, lambda: self.status_var.set("Generating report..."))
 
                 report_data = ReportData(posts=all_posts, cutoff_date=cutoff_date)
-                output_path = Path(settings.OUTPUT_DIR) / f"{datetime.now().strftime('%d-%m-%Y')}.html"
+                date_str = datetime.now().strftime("%d-%m-%Y")
+                output_path = Path(settings.OUTPUT_DIR) / f"{date_str}.html"
                 generate_html_report(report_data, output_path, settings.TEMPLATE_PATH)
 
                 self.logger.info(f"Report generated: {output_path}")
@@ -366,11 +407,17 @@ class InstagramHelperGUI:
                 self.root.after(0, lambda: self.status_var.set("Stopped"))
             else:
                 self.root.after(0, lambda: self.progress_var.set(100))
-                self.root.after(0, lambda: self.status_var.set(f"Complete - {len(all_posts)} posts found"))
+                self.root.after(
+                    0,
+                    lambda: self.status_var.set(
+                        f"Complete - {len(all_posts)} posts found"
+                    ),
+                )
 
         except Exception as e:
-            self.logger.error(f"Error during scraping: {e}")
-            self.root.after(0, lambda: self.status_var.set(f"Error: {e}"))
+            error_msg = str(e)
+            self.logger.error(f"Error during scraping: {error_msg}")
+            self.root.after(0, lambda: self.status_var.set(f"Error: {error_msg}"))
         finally:
             # Cleanup
             if self.browser:
@@ -382,7 +429,7 @@ class InstagramHelperGUI:
             self.root.after(0, lambda: self.start_button.config(state="normal"))
             self.root.after(0, lambda: self.stop_button.config(state="disabled"))
 
-    def poll_logs(self):
+    def poll_logs(self) -> None:
         """Poll the log queue and update the log display."""
         try:
             while True:
@@ -400,11 +447,11 @@ class InstagramHelperGUI:
         context = browser.contexts[0] if browser.contexts else browser.new_context()
         return context.pages[0] if context.pages else context.new_page()
 
-    def clear_logs(self):
+    def clear_logs(self) -> None:
         """Clear the log display."""
         self.log_text.delete(1.0, tk.END)
 
-    def run(self):
+    def run(self) -> None:
         """Start the GUI application."""
         self.root.mainloop()
 
@@ -412,8 +459,8 @@ class InstagramHelperGUI:
 class AccountDialog:
     """Simple dialog for adding Instagram accounts."""
 
-    def __init__(self, parent, title):
-        self.result = None
+    def __init__(self, parent: tk.Tk, title: str) -> None:
+        self.result: str | None = None
 
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
@@ -423,7 +470,9 @@ class AccountDialog:
         self.dialog.grab_set()
 
         # Center the dialog
-        self.dialog.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 50))
+        x = parent.winfo_rootx() + 50
+        y = parent.winfo_rooty() + 50
+        self.dialog.geometry(f"+{x}+{y}")
 
         # Create widgets
         ttk.Label(self.dialog, text="Enter Instagram account name:").pack(pady=(20, 5))
@@ -436,8 +485,12 @@ class AccountDialog:
         button_frame = ttk.Frame(self.dialog)
         button_frame.pack()
 
-        ttk.Button(button_frame, text="Add", command=self.ok_clicked).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(button_frame, text="Cancel", command=self.cancel_clicked).pack(side=tk.LEFT)
+        ttk.Button(button_frame, text="Add", command=self.ok_clicked).pack(
+            side=tk.LEFT, padx=(0, 5)
+        )
+        ttk.Button(button_frame, text="Cancel", command=self.cancel_clicked).pack(
+            side=tk.LEFT
+        )
 
         # Bind Enter key
         self.entry.bind("<Return>", lambda e: self.ok_clicked())
@@ -445,21 +498,16 @@ class AccountDialog:
         # Wait for dialog to close
         self.dialog.wait_window()
 
-    def ok_clicked(self):
+    def ok_clicked(self) -> None:
         """Handle OK button click."""
         self.result = self.entry.get()
         self.dialog.destroy()
 
-    def cancel_clicked(self):
+    def cancel_clicked(self) -> None:
         """Handle Cancel button click."""
         self.dialog.destroy()
 
 
-def main():
-    """Main entry point for the GUI application."""
+if __name__ == "__main__":
     app = InstagramHelperGUI()
     app.run()
-
-
-if __name__ == "__main__":
-    main()

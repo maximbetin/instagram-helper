@@ -137,95 +137,49 @@ class Settings:
         Raises:
             ValueError: If a required environment variable is missing or invalid.
         """
-        # Load string-based paths from environment variables
-        browser_path_str = os.getenv("BROWSER_PATH")
-        user_data_dir_str = os.getenv("BROWSER_USER_DATA_DIR")
 
-        # Dynamically override defaults from environment variables
-        # This is necessary because frozen dataclasses don't allow direct mutation.
-        object.__setattr__(
-            self, "BROWSER_PATH", Path(browser_path_str) if browser_path_str else None
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_USER_DATA_DIR",
-            Path(user_data_dir_str) if user_data_dir_str else None,
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_PROFILE_DIR",
-            os.getenv("BROWSER_PROFILE_DIR", self.BROWSER_PROFILE_DIR),
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_DEBUG_PORT",
-            int(os.getenv("BROWSER_DEBUG_PORT", str(self.BROWSER_DEBUG_PORT))),
-        )
+        def _set_from_env(
+            attr_name: str, env_var: str, converter: type = str, required: bool = False
+        ) -> None:
+            """Helper to set attribute from environment variable."""
+            value = os.getenv(env_var)
+            if value is not None:
+                if converter is not str:
+                    try:
+                        value = converter(value)
+                    except (ValueError, TypeError) as err:
+                        if required:
+                            raise ValueError(
+                                f"Invalid value for {env_var}: {value}"
+                            ) from err
+                        return
+                object.__setattr__(self, attr_name, value)
+            elif required:
+                raise ValueError(f"{env_var} environment variable is not set.")
 
-        # We need to re-set the output and log directories here because their
-        # defaults depend on environment variables that should be loaded first.
-        object.__setattr__(
-            self, "OUTPUT_DIR", Path(os.getenv("OUTPUT_DIR", self.BASE_DIR))
+        # Load browser-related settings
+        _set_from_env("BROWSER_PATH", "BROWSER_PATH", Path, required=True)
+        _set_from_env(
+            "BROWSER_USER_DATA_DIR", "BROWSER_USER_DATA_DIR", Path, required=True
         )
-        object.__setattr__(self, "LOG_DIR", Path(os.getenv("LOG_DIR", self.BASE_DIR)))
-        object.__setattr__(
-            self, "TEMPLATE_PATH", os.getenv("TEMPLATE_PATH", self.TEMPLATE_PATH)
-        )
+        _set_from_env("BROWSER_PROFILE_DIR", "BROWSER_PROFILE_DIR")
+        _set_from_env("BROWSER_DEBUG_PORT", "BROWSER_DEBUG_PORT", int)
+        _set_from_env("BROWSER_START_URL", "BROWSER_START_URL")
+        _set_from_env("BROWSER_LOAD_DELAY", "BROWSER_LOAD_DELAY", int)
+        _set_from_env("BROWSER_CONNECT_SCHEME", "BROWSER_CONNECT_SCHEME")
+        _set_from_env("BROWSER_REMOTE_HOST", "BROWSER_REMOTE_HOST")
 
-        # Apply additional browser-related overrides
-        object.__setattr__(
-            self,
-            "BROWSER_START_URL",
-            os.getenv("BROWSER_START_URL", self.BROWSER_START_URL),
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_LOAD_DELAY",
-            int(os.getenv("BROWSER_LOAD_DELAY", str(self.BROWSER_LOAD_DELAY))),
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_CONNECT_SCHEME",
-            os.getenv("BROWSER_CONNECT_SCHEME", self.BROWSER_CONNECT_SCHEME),
-        )
-        object.__setattr__(
-            self,
-            "BROWSER_REMOTE_HOST",
-            os.getenv("BROWSER_REMOTE_HOST", self.BROWSER_REMOTE_HOST),
-        )
+        # Load path and template settings
+        _set_from_env("OUTPUT_DIR", "OUTPUT_DIR", Path)
+        _set_from_env("LOG_DIR", "LOG_DIR", Path)
+        _set_from_env("TEMPLATE_PATH", "TEMPLATE_PATH")
 
-        # Optional: allow overriding Instagram base URL
-        object.__setattr__(
-            self, "INSTAGRAM_URL", os.getenv("INSTAGRAM_URL", self.INSTAGRAM_URL)
+        # Load Instagram-related settings
+        _set_from_env("INSTAGRAM_URL", "INSTAGRAM_URL")
+        _set_from_env(
+            "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", int
         )
-
-        # Instagram-related overrides
-        object.__setattr__(
-            self,
-            "INSTAGRAM_MAX_POSTS_PER_ACCOUNT",
-            int(
-                os.getenv(
-                    "INSTAGRAM_MAX_POSTS_PER_ACCOUNT",
-                    str(self.INSTAGRAM_MAX_POSTS_PER_ACCOUNT),
-                )
-            ),
-        )
-        object.__setattr__(
-            self,
-            "INSTAGRAM_POST_LOAD_TIMEOUT",
-            int(
-                os.getenv(
-                    "INSTAGRAM_POST_LOAD_TIMEOUT",
-                    str(self.INSTAGRAM_POST_LOAD_TIMEOUT),
-                )
-            ),
-        )
-
-        # Validate that required paths are set
-        if self.BROWSER_PATH is None:
-            raise ValueError("BROWSER_PATH environment variable is not set.")
-        if self.BROWSER_USER_DATA_DIR is None:
-            raise ValueError("BROWSER_USER_DATA_DIR environment variable is not set.")
+        _set_from_env("INSTAGRAM_POST_LOAD_TIMEOUT", "INSTAGRAM_POST_LOAD_TIMEOUT", int)
 
     def update_instagram_settings(self, max_posts: int, timeout: int) -> None:
         """Update Instagram settings dynamically.

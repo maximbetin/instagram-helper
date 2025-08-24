@@ -19,7 +19,10 @@ def get_user_agent() -> str:
     return (
         ua.random
         if ua
-        else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        else (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        )
     )
 
 
@@ -47,15 +50,9 @@ def setup_logging(
     logger = logging.getLogger(name)
     logger.setLevel(LOG_LEVEL)
 
-    # Don't clear existing handlers if this is a root-level logger
-    # This prevents interference with existing logging setup
-    if name in ["", "root"]:
-        logger.propagate = False
-    else:
-        # For named loggers, we can be more aggressive about handler management
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        logger.propagate = True  # Allow propagation to parent loggers
+    # Clear existing handlers to avoid duplicates
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
     # Console Handler
     console_handler = logging.StreamHandler()
@@ -73,11 +70,6 @@ def setup_logging(
                 logging.Formatter(LOG_FORMAT_FILE, datefmt=LOG_DATE_FORMAT)
             )
             logger.addHandler(file_handler)
-
-            # Also ensure the root logger has file logging
-            root_logger = logging.getLogger()
-            if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
-                root_logger.addHandler(file_handler)
 
         except OSError as e:
             logger.error(f"Failed to set up file logging in {log_dir}: {e}")

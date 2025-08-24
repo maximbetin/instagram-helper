@@ -6,7 +6,7 @@ import subprocess
 import time
 from typing import TYPE_CHECKING
 
-from playwright.sync_api import Browser, Error, Playwright
+from playwright.sync_api import Browser, Playwright
 
 from config import settings
 from utils import setup_logging
@@ -114,7 +114,7 @@ def _launch_playwright_chromium(
                 f"--remote-debugging-port={app_settings.BROWSER_DEBUG_PORT}",
             ],
         )
-    except (Error, Exception) as e:
+    except Exception as e:
         logger.critical(f"Failed to launch Playwright Chromium: {e}")
         raise
 
@@ -124,7 +124,8 @@ def setup_browser(playwright: Playwright) -> Browser:
 
     This function follows a specific strategy to establish a browser connection:
     1. Attempts to launch a local browser instance (e.g., Brave) if configured.
-    2. If local launch fails, falls back to launching a Playwright-managed Chromium instance.
+    2. If local launch fails, falls back to launching a Playwright-managed
+       Chromium instance.
     3. Provides clear error messages for connection issues.
 
     Returns:

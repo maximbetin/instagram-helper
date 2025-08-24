@@ -2,12 +2,13 @@
 """Instagram Helper - Simple GUI Launcher"""
 
 import sys
-import os
 
-def main():
+from gui_app import InstagramHelperGUI
+
+
+def main() -> None:
     """Launch the Instagram Helper GUI application."""
     try:
-        from gui_app import InstagramHelperGUI
         print("Launching Instagram Helper GUI...")
         app = InstagramHelperGUI()
         app.run()
@@ -19,6 +20,7 @@ def main():
     except Exception as e:
         print(f"Error starting GUI: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

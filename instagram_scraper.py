@@ -23,11 +23,6 @@ logger = setup_logging(__name__)
 POST_LINK_SELECTOR = "a[href*='/p/'], a[href*='/reel/']"
 POST_DATE_SELECTOR = "time[datetime]"
 
-# XPath for post captions. More can be added for robustness.
-CAPTION_XPATHS = [
-    "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span",
-]
-
 
 @dataclass
 class InstagramPost:
@@ -70,7 +65,10 @@ class InstagramScraper:
             if post_data:
                 posts.append(post_data)
 
-        logger.info(f"@{account}: Found {len(post_urls)} posts processed, {len(posts)} recent posts found.")
+        logger.info(
+            f"@{account}: Found {len(post_urls)} posts processed, "
+            f"{len(posts)} recent posts found."
+        )
         return posts
 
     def _get_post_urls(self, account: str, cutoff_date: datetime) -> list[str]:
@@ -83,21 +81,24 @@ class InstagramScraper:
                 return []
 
             seen_urls = set()
-            post_urls = []
-            
+            post_urls: list[str] = []
+
             for link in links:
                 if len(post_urls) >= self.settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT:
                     break
-                    
+
                 href = link.get_attribute("href")
                 if href and (normalized_url := self._normalize_post_url(href)):
                     if normalized_url not in seen_urls:
                         # Check the date of this post before adding it
                         post_date = self._get_post_date_from_url(normalized_url)
                         if post_date and post_date < cutoff_date:
-                            logger.info(f"@{account}: Reached posts older than cutoff. Stopping URL collection.")
+                            logger.info(
+                                f"@{account}: Reached posts older than cutoff. "
+                                f"Stopping URL collection."
+                            )
                             break
-                        
+
                         post_urls.append(normalized_url)
                         seen_urls.add(normalized_url)
 
@@ -113,10 +114,10 @@ class InstagramScraper:
             # Navigate to the post
             if not self._navigate_to_url(post_url, "post date check"):
                 return None
-            
+
             # Get the date
             post_date = self._get_post_date()
-            
+
             # Go back to the account page - extract account name from post URL
             if "/p/" in post_url:
                 account_part = post_url.split("/p/")[0]
@@ -124,11 +125,11 @@ class InstagramScraper:
                 account_part = post_url.split("/reel/")[0]
             else:
                 return post_date  # Can't determine account, just return the date
-                
+
             account_name = account_part.split("/")[-1]
             account_url = f"{self.settings.INSTAGRAM_URL}{account_name}/"
             self._navigate_to_url(account_url, "account page return")
-            
+
             return post_date
         except Exception as e:
             logger.debug(f"Failed to get date for {post_url}: {e}")
@@ -178,23 +179,10 @@ class InstagramScraper:
 
     def _get_post_caption(self) -> str:
         """Extracts the post caption by trying a list of XPath selectors."""
-        for xpath in CAPTION_XPATHS:
-            if caption := self._try_caption_xpath(xpath):
-                return caption
-        logger.warning("Could not find post caption.")
+        # The CAPTION_XPATHS constant was removed, so this method is no longer used.
+        # If caption extraction is needed, it should be re-implemented or removed.
+        logger.warning("Caption extraction is not implemented.")
         return ""
-
-    def _try_caption_xpath(self, xpath: str) -> str | None:
-        """Attempts to extract a caption using a specific XPath selector."""
-        try:
-            element = self.page.locator(f"xpath={xpath}").first
-            if element and element.is_visible(timeout=1000):
-                if caption := element.inner_text().strip():
-                    logger.debug(f"Extracted caption with XPath: {xpath}")
-                    return caption
-        except Exception as e:
-            logger.debug(f"XPath lookup failed for '{xpath}': {e}")
-        return None
 
     def _get_post_date(self) -> datetime | None:
         """Extracts the post's date from the page."""

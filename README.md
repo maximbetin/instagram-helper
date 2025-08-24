@@ -1,24 +1,23 @@
 # Instagram Helper
 
-A modern, GUI-based tool that automatically fetches recent posts from specified Instagram accounts and generates stylized HTML reports with real-time monitoring and easy configuration.
+A GUI-based tool that automatically fetches recent posts from specified Instagram accounts and generates HTML reports with real-time monitoring and configuration options.
 
 ## Features
 
-- **GUI-First Design**: Beautiful Tkinter interface with real-time monitoring
-- **Real-Time Logs**: See scraping progress live as it happens
-- **Easy Configuration**: Adjust settings on the fly without editing files
+- **GUI Interface**: Tkinter-based interface with real-time monitoring
+- **Real-Time Logs**: Monitor scraping progress as it happens
+- **Dynamic Configuration**: Adjust settings without editing files
 - **Account Management**: Add, remove, or modify Instagram accounts dynamically
 - **Progress Tracking**: Visual progress bar and status updates
-- **HTML Reports**: Clean, responsive reports automatically generated
+- **HTML Reports**: Automatically generated reports in your output directory
 - **Browser Automation**: Smart browser management with Playwright
-- **Quality Assured**: Enforced code quality through `ruff`, `mypy`, and comprehensive tests
+- **Code Quality**: Enforced through `ruff`, `mypy`, and comprehensive tests
 
 ## Prerequisites
 
-- **Python 3.12+** (strict requirement - the tool will not work with older versions)
-- **Chromium-based browser** (like Chrome, Brave, or Edge) with remote debugging enabled
-- **WSL2 environment** (Windows Subsystem for Linux 2) - this tool is specifically optimized for
-  WSL2
+- **Python 3.12+** (strict requirement)
+- **Chromium-based browser** (Chrome, Brave, or Edge) with remote debugging enabled
+- **WSL2 environment** (Windows Subsystem for Linux 2) - optimized for WSL2
 
 ### Browser Setup Requirements
 
@@ -27,23 +26,18 @@ Your browser must support remote debugging. The tool will automatically:
 - Launch your browser with `--remote-debugging-port=9222`
 - Kill existing browser processes to prevent conflicts
 - Handle WSL2-specific path translations
-- Provide clear error messages if connection fails (e.g., ECONNREFUSED)
+- Provide clear error messages if connection fails
 
 ## Getting Started
 
-To get started with the Instagram Helper, follow these steps:
-
 1. **Setup**:
-
    - Clone the repository and run `make setup-dev` to prepare the environment.
 
 2. **Configuration**:
-
-   - Create a `.env` file in the project root to configure your browser settings. See the
-     [Environment Variables](#environment-variables) section for details.
+   - Create a `.env` file in the project root to configure your browser settings. See the [Environment Variables](#environment-variables) section for details.
 
 3. **Run**:
-   - Execute `python run.py` or `python gui_app.py` to launch the GUI application.
+   - Execute `python run.py` to launch the GUI application.
 
 ## Requirements
 
@@ -63,8 +57,7 @@ To get started with the Instagram Helper, follow these steps:
 
 2. **Set Up the Development Environment**
 
-   We recommend using the provided `Makefile` to simplify setup. This command creates a virtual
-   environment and installs all required dependencies.
+   Use the provided `Makefile` to simplify setup:
 
    ```bash
    make setup-dev
@@ -78,7 +71,7 @@ To get started with the Instagram Helper, follow these steps:
 
 ## Usage
 
-### **Quick Start**
+### Quick Start
 
 Simply run the GUI application:
 
@@ -86,29 +79,27 @@ Simply run the GUI application:
 python run.py
 ```
 
-That's it! The Instagram Helper will launch with a beautiful, intuitive interface.
+### GUI Features
 
-### **GUI Features**
-
-The Instagram Helper provides a modern, user-friendly interface that makes Instagram scraping effortless:
+The Instagram Helper provides a user-friendly interface:
 
 - **Real-Time Monitoring**: Watch scraping progress live with detailed logs
-- **Instant Configuration**: Adjust settings without touching configuration files
-- **Dynamic Accounts**: Add, remove, or modify Instagram accounts on the fly
-- **Visual Progress**: See completion status with progress bars and status updates
+- **Configuration**: Adjust settings without touching configuration files
+- **Account Management**: Add, remove, or modify Instagram accounts on the fly
+- **Progress Tracking**: See completion status with progress bars and status updates
 - **Simple Controls**: Start, stop, and monitor operations with simple buttons
 - **Automatic Reports**: HTML reports are generated automatically in your output directory
 
-### **How It Works**
+### How It Works
 
-1. **Launch the GUI**: Run `python gui_app.py`
+1. **Launch the GUI**: Run `python run.py`
 2. **Configure Settings**: Adjust post age, posts per account, and timeout values
 3. **Manage Accounts**: Add or remove Instagram accounts as needed
-4. **Start Scraping**: Click "Start Scraping" and watch the magic happen
+4. **Start Scraping**: Click "Start Scraping" and monitor progress
 5. **Monitor Progress**: Real-time logs show exactly what's happening
 6. **Get Results**: HTML reports are automatically saved to your output directory
 
-### **Tkinter Requirements**
+### Tkinter Requirements
 
 The GUI requires Tkinter, which is usually included with Python. If you encounter issues:
 
@@ -121,8 +112,7 @@ The GUI requires Tkinter, which is usually included with Python. If you encounte
 
 ### Environment Variables
 
-The application can be configured via a `.env` file in the project root. This is the recommended way
-to manage settings, especially for browser paths and user data.
+The application can be configured via a `.env` file in the project root.
 
 **Required Variables:**
 
@@ -138,14 +128,12 @@ to manage settings, especially for browser paths and user data.
 - `BROWSER_PROFILE_DIR`: The profile directory to use (defaults to "Default").
 - `BROWSER_DEBUG_PORT`: The remote debugging port (defaults to 9222).
 - `BROWSER_START_URL`: URL opened when launching a local browser (defaults to Instagram).
-- `BROWSER_LOAD_DELAY`: Milliseconds to wait after launching the local browser before connecting
-  (defaults to 5000).
+- `BROWSER_LOAD_DELAY`: Milliseconds to wait after launching the local browser before connecting (defaults to 5000).
 - `BROWSER_CONNECT_SCHEME`: Connection scheme for CDP, usually `http` (defaults to "http").
-- `BROWSER_REMOTE_HOST`: Hostname for the browser remote debugger, usually `localhost` (defaults to
-  "localhost").
-- `INSTAGRAM_URL`: Base URL for Instagram (defaults to "<https://www.instagram.com/>").
-- `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`: Maximum posts to process per account (defaults to 3).
-- `INSTAGRAM_POST_LOAD_TIMEOUT`: Timeout in ms for loading a post page (defaults to 20000).
+- `BROWSER_REMOTE_HOST`: Hostname for the browser remote debugger, usually `localhost` (defaults to "localhost").
+- `INSTAGRAM_URL`: Base URL for Instagram (defaults to `https://www.instagram.com/`).
+- `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`: Maximum posts to process per account (defaults to 5).
+- `INSTAGRAM_POST_LOAD_TIMEOUT`: Timeout in ms for loading a post page (defaults to 10000).
 
 An example `.env` file for WSL2 users targeting a Windows browser:
 
@@ -163,8 +151,8 @@ LOG_DIR="/path/to/logs"
 TEMPLATE_PATH="templates/template.html"
 TIMEZONE_OFFSET=2
 INSTAGRAM_URL="https://www.instagram.com/"
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT=3
-INSTAGRAM_POST_LOAD_TIMEOUT=20000
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT=5
+INSTAGRAM_POST_LOAD_TIMEOUT=10000
 ```
 
 ### Instagram Account Configuration
@@ -177,16 +165,8 @@ The tool comes pre-configured with 25+ Instagram accounts including:
 **Customization**: You can modify `config.py` to:
 
 - Add or remove Instagram accounts from the `INSTAGRAM_ACCOUNTS` list
-- Adjust `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` (default: 3 posts per account)
-- Change `INSTAGRAM_POST_LOAD_TIMEOUT` (default: 20 seconds per post)
-
-### Script Configuration
-
-You can also modify `config.py` directly to change:
-
-- `INSTAGRAM_ACCOUNTS`: The default list of accounts to scrape.
-- `INSTAGRAM_MAX_POSTS_PER_ACCOUNT`: The maximum number of posts to check per account (default: 3).
-- `TIMEZONE_OFFSET`: The timezone for date localization.
+- Adjust `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` (default: 5 posts per account)
+- Change `INSTAGRAM_POST_LOAD_TIMEOUT` (default: 10 seconds per post)
 
 ## Troubleshooting
 
@@ -206,11 +186,9 @@ You can also modify `config.py` directly to change:
 
 ### Instagram Scraping Issues
 
-- **HTML structure changes**: Instagram frequently updates their page structure, which may break the
-  tool
+- **HTML structure changes**: Instagram frequently updates their page structure, which may break the tool
 - **Rate limiting**: Reduce `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` if experiencing blocked requests
-- **Authentication issues**: The tool relies on browser session cookies; clear browser data if
-  needed
+- **Authentication issues**: The tool relies on browser session cookies; clear browser data if needed
 - **Selector failures**: If posts aren't being detected, Instagram may have changed their HTML
 
 ### Common Error Messages
@@ -222,27 +200,21 @@ You can also modify `config.py` directly to change:
 
 ## Important Notes
 
-**CRITICAL**: Do not modify the caption selectors in `instagram_scraper.py`. These selectors are
-fragile and changes will break the tool's functionality.
+**CRITICAL**: Do not modify the caption selectors in `instagram_scraper.py`. These selectors are fragile and changes will break the tool's functionality.
 
-**Instagram Dependencies**: The tool's success depends on Instagram's HTML structure remaining
-consistent. The tool may need updates if Instagram makes significant changes to their pages.
+**Instagram Dependencies**: The tool's success depends on Instagram's HTML structure remaining consistent. The tool may need updates if Instagram makes significant changes to their pages.
 
-**Rate Limiting**: Instagram may block requests if too many are made too quickly. The default
-settings are conservative to avoid this.
+**Rate Limiting**: Instagram may block requests if too many are made too quickly. The default settings are conservative to avoid this.
 
-**WSL2 Optimization**: This tool is specifically designed for Windows Subsystem for Linux 2
-environments and may not work optimally in other setups.
+**WSL2 Optimization**: This tool is specifically designed for Windows Subsystem for Linux 2 environments and may not work optimally in other setups.
 
-**Browser Management**: The tool always launches a new browser instance to ensure reliable
-operation. If you encounter connection errors, close any existing browser instances and try again.
+**Browser Management**: The tool always launches a new browser instance to ensure reliable operation. If you encounter connection errors, close any existing browser instances and try again.
 
 ## Development
 
 ### Quality Checks
 
-This project uses only `ruff` (linting/formatting), `mypy` (static type checking), and `pytest`
-(tests).
+This project uses `ruff` (linting/formatting), `mypy` (static type checking), and `pytest` (tests).
 
 - **Run all checks**:
 

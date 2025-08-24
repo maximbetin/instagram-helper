@@ -39,23 +39,7 @@ class ReportData:
 
     @property
     def template_data(self) -> dict[str, str | int | list[InstagramPost]]:
-        # Compute max_post_age in whole days for the template
-        generation_time_normalized = self.generation_time
-        try:
-            if (
-                self.generation_time.tzinfo is None
-                and self.cutoff_date.tzinfo is not None
-            ):
-                generation_time_normalized = self.generation_time.replace(
-                    tzinfo=self.cutoff_date.tzinfo
-                )
-            max_post_age = max(
-                0,
-                (generation_time_normalized.date() - self.cutoff_date.date()).days,
-            )
-        except Exception:
-            max_post_age = 0
-
+        """Compute template data with proper timezone handling."""
         return {
             "posts": self.sorted_posts,
             "total_posts": self.total_posts,
@@ -64,10 +48,27 @@ class ReportData:
                 f"{self.cutoff_date.strftime('%d-%m-%Y')} - "
                 f"{self.generation_time.strftime('%d-%m-%Y')}"
             ),
-            # Match keys expected by the default HTML template
             "total_accounts": self.accounts_count,
-            "max_post_age": max_post_age,
+            "max_post_age": self._calculate_max_post_age(),
         }
+
+    def _calculate_max_post_age(self) -> int:
+        """Calculate the maximum post age in whole days."""
+        try:
+            generation_time_normalized = self.generation_time
+            if (
+                self.generation_time.tzinfo is None
+                and self.cutoff_date.tzinfo is not None
+            ):
+                generation_time_normalized = self.generation_time.replace(
+                    tzinfo=self.cutoff_date.tzinfo
+                )
+            return max(
+                0,
+                (generation_time_normalized.date() - self.cutoff_date.date()).days,
+            )
+        except Exception:
+            return 0
 
 
 def generate_html_report(
