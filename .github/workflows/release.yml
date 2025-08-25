@@ -70,7 +70,7 @@ jobs:
       - name: Run linting and formatting checks
         run: |
           echo "Running Ruff linting..."
-          ruff check .
+          ruff check . --fix
           echo "Running MyPy type checking..."
           mypy .
 

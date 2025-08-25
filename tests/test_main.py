@@ -145,7 +145,6 @@ def test_generate_html_report_file_write_error(
 
     # Use a path that will definitely cause a write error
     # Try to write to a system directory that requires elevated permissions
-    import os
     import platform
 
     if platform.system() == "Windows":
@@ -156,9 +155,7 @@ def test_generate_html_report_file_write_error(
         output_file = Path("/usr/bin/report.html")
 
     # This should cause a permission error when trying to write
-    result = generate_html_report(
-        report_data, output_file, str(template_path)
-    )
+    result = generate_html_report(report_data, output_file, str(template_path))
 
     assert result is None
 
