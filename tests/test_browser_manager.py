@@ -40,8 +40,8 @@ def test_setup_browser_local_browser_success(
         patch("browser_manager.settings") as mock_settings,
         patch("browser_manager._launch_local_browser", return_value=mock_browser),
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
 
         result = setup_browser(mock_playwright)
 
@@ -57,8 +57,8 @@ def test_setup_browser_fallback_to_playwright(
         patch("browser_manager._launch_local_browser", return_value=None),
         patch("browser_manager._launch_playwright_chromium", return_value=mock_browser),
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
 
         result = setup_browser(mock_playwright)
 
@@ -75,8 +75,8 @@ def test_setup_browser_all_attempts_fail(mock_playwright: MagicMock) -> None:
             side_effect=Exception("Browser launch failed"),
         ),
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
 
         with pytest.raises(ConnectionError, match="Could not launch any browser"):
             setup_browser(mock_playwright)
@@ -95,8 +95,8 @@ def test_launch_local_browser_success(
         # Mock the browser path to exist
         mock_browser_path = MagicMock()
         mock_browser_path.exists.return_value = True
-        mock_settings.BROWSER_PATH = mock_browser_path
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = mock_browser_path
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
         mock_settings.BROWSER_DEBUG_PORT = 9222
         mock_settings.BROWSER_START_URL = "https://example.com"
         mock_settings.BROWSER_LOAD_DELAY = 5000
@@ -121,7 +121,7 @@ def test_launch_local_browser_success(
 def test_launch_local_browser_no_browser_path(mock_playwright: MagicMock) -> None:
     """Test local browser launch when no browser path is configured."""
     with patch("browser_manager.settings") as mock_settings:
-        mock_settings.BROWSER_PATH = None
+        mock_settings.BROWSER_PATH_LOADED = None
 
         from browser_manager import _launch_local_browser
 
@@ -133,8 +133,8 @@ def test_launch_local_browser_no_browser_path(mock_playwright: MagicMock) -> Non
 def test_launch_local_browser_path_not_exists(mock_playwright: MagicMock) -> None:
     """Test local browser launch when browser path doesn't exist."""
     with patch("browser_manager.settings") as mock_settings:
-        mock_settings.BROWSER_PATH = Path("/nonexistent/browser")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/nonexistent/browser")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
 
         from browser_manager import _launch_local_browser
 
@@ -152,8 +152,8 @@ def test_launch_local_browser_connection_refused(mock_playwright: MagicMock) -> 
         patch("time.sleep"),
         patch.object(mock_playwright, "chromium") as mock_chromium,
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
         mock_settings.BROWSER_DEBUG_PORT = 9222
         mock_settings.BROWSER_START_URL = "https://example.com"
         mock_settings.BROWSER_LOAD_DELAY = 5000
@@ -181,8 +181,8 @@ def test_launch_local_browser_other_connection_error(
         patch("time.sleep"),
         patch.object(mock_playwright, "chromium") as mock_chromium,
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
         mock_settings.BROWSER_DEBUG_PORT = 9222
         mock_settings.BROWSER_START_URL = "https://example.com"
         mock_settings.BROWSER_LOAD_DELAY = 5000
@@ -206,8 +206,8 @@ def test_launch_local_browser_subprocess_error(mock_playwright: MagicMock) -> No
         patch("browser_manager._kill_existing_browser_processes"),
         patch("subprocess.Popen", side_effect=Exception("Subprocess error")),
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
 
         from browser_manager import _launch_local_browser
 
@@ -250,7 +250,7 @@ def test_kill_existing_browser_processes_brave_linux() -> None:
         patch("browser_manager.settings") as mock_settings,
         patch("subprocess.run") as mock_run,
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/brave")
 
         # Import after mocking
         import browser_manager
@@ -271,7 +271,7 @@ def test_kill_existing_browser_processes_not_brave() -> None:
         patch("browser_manager.settings") as mock_settings,
         patch("subprocess.run") as mock_run,
     ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/chrome")
+        mock_settings.BROWSER_PATH_LOADED = Path("/usr/bin/chrome")
 
         # Import after mocking
         import browser_manager
@@ -287,7 +287,7 @@ def test_kill_existing_browser_processes_no_browser_path() -> None:
         patch("browser_manager.settings") as mock_settings,
         patch("subprocess.run") as mock_run,
     ):
-        mock_settings.BROWSER_PATH = None
+        mock_settings.BROWSER_PATH_LOADED = None
 
         # Import after mocking
         import browser_manager
@@ -306,7 +306,7 @@ def test_kill_existing_browser_processes_taskkill_not_found() -> None:
             "subprocess.run", side_effect=FileNotFoundError("taskkill.exe not found")
         ),
     ):
-        mock_settings.BROWSER_PATH = Path(
+        mock_settings.BROWSER_PATH_LOADED = Path(
             "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
         )
 
@@ -324,7 +324,7 @@ def test_kill_existing_browser_processes_other_error() -> None:
         patch("browser_manager.os.name", "nt"),  # Windows
         patch("subprocess.run", side_effect=Exception("Other error")),
     ):
-        mock_settings.BROWSER_PATH = Path(
+        mock_settings.BROWSER_PATH_LOADED = Path(
             "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
         )
 
@@ -348,8 +348,8 @@ def test_browser_launch_arguments(
         # Mock the browser path to exist
         mock_browser_path = MagicMock()
         mock_browser_path.exists.return_value = True
-        mock_settings.BROWSER_PATH = mock_browser_path
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
+        mock_settings.BROWSER_PATH_LOADED = mock_browser_path
+        mock_settings.BROWSER_USER_DATA_DIR_LOADED = Path("/tmp/user-data")
         mock_settings.BROWSER_DEBUG_PORT = 9222
         mock_settings.BROWSER_START_URL = "https://example.com"
         mock_settings.BROWSER_LOAD_DELAY = 5000
@@ -372,11 +372,13 @@ def test_browser_launch_arguments(
         mock_popen.assert_called_once()
         call_args = mock_popen.call_args[0][0]
 
-        assert str(mock_settings.BROWSER_PATH) in call_args
+        assert str(mock_settings.BROWSER_PATH_LOADED) in call_args
         assert (
             f"--remote-debugging-port={mock_settings.BROWSER_DEBUG_PORT}" in call_args
         )
-        assert f"--user-data-dir={mock_settings.BROWSER_USER_DATA_DIR}" in call_args
+        assert (
+            f"--user-data-dir={mock_settings.BROWSER_USER_DATA_DIR_LOADED}" in call_args
+        )
         assert mock_settings.BROWSER_START_URL in call_args
 
 

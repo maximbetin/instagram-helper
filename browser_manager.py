@@ -103,10 +103,10 @@ def _kill_existing_browser_processes() -> None:
     This detection allows the tool to use appropriate process management
     strategies for each environment.
     """
-    if not settings.BROWSER_PATH:
+    if not settings.BROWSER_PATH_LOADED:
         return
 
-    browser_name = settings.BROWSER_PATH.name.lower()
+    browser_name = settings.BROWSER_PATH_LOADED.name.lower()
 
     # Handle different operating systems and WSL2 scenarios
     if "brave" in browser_name:
@@ -117,8 +117,8 @@ def _kill_existing_browser_processes() -> None:
                 os.name == "posix"
                 and "microsoft" in os.uname().release.lower()
                 and (
-                    "win" in str(settings.BROWSER_PATH).lower()
-                    or ".exe" in str(settings.BROWSER_PATH).lower()
+                    "win" in str(settings.BROWSER_PATH_LOADED).lower()
+                    or ".exe" in str(settings.BROWSER_PATH_LOADED).lower()
                 )
             )
 
@@ -159,7 +159,10 @@ def _launch_local_browser(
     playwright: Playwright, app_settings: Settings
 ) -> Browser | None:
     """Launches a local browser with remote debugging enabled."""
-    if not app_settings.BROWSER_PATH or not app_settings.BROWSER_PATH.exists():
+    if (
+        not app_settings.BROWSER_PATH_LOADED
+        or not app_settings.BROWSER_PATH_LOADED.exists()
+    ):
         logger.debug("Browser path not configured or not found.")
         return None
 
@@ -171,16 +174,16 @@ def _launch_local_browser(
         os.name == "posix"
         and "microsoft" in os.uname().release.lower()
         and (
-            "win" in str(app_settings.BROWSER_PATH).lower()
-            or ".exe" in str(app_settings.BROWSER_PATH).lower()
+            "win" in str(app_settings.BROWSER_PATH_LOADED).lower()
+            or ".exe" in str(app_settings.BROWSER_PATH_LOADED).lower()
         )
     )
 
     # Add platform-specific arguments
     browser_args = [
-        str(app_settings.BROWSER_PATH),
+        str(app_settings.BROWSER_PATH_LOADED),
         f"--remote-debugging-port={app_settings.BROWSER_DEBUG_PORT}",
-        f"--user-data-dir={app_settings.BROWSER_USER_DATA_DIR}",
+        f"--user-data-dir={app_settings.BROWSER_USER_DATA_DIR_LOADED}",
         f"--profile-directory={app_settings.BROWSER_PROFILE_DIR}",
         "--no-first-run",
         "--no-default-browser-check",

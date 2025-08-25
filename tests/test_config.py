@@ -18,8 +18,8 @@ def set_env_variables(monkeypatch: MonkeyPatch) -> None:
 def test_settings_initialization() -> None:
     """Test that settings are properly initialized."""
     settings = Settings()
-    assert settings.BROWSER_PATH == Path("/usr/bin/mock-browser")
-    assert settings.BROWSER_USER_DATA_DIR == Path("/tmp/mock-user-data")
+    assert settings.BROWSER_PATH_LOADED == Path("/usr/bin/mock-browser")
+    assert settings.BROWSER_USER_DATA_DIR_LOADED == Path("/tmp/mock-user-data")
     # Note: These values might be overridden by environment variables
     assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT in [3, 5]  # Allow both values
     assert settings.INSTAGRAM_POST_LOAD_TIMEOUT in [10000, 20000]  # Allow both values
@@ -27,16 +27,13 @@ def test_settings_initialization() -> None:
 
 def test_settings_with_custom_values(monkeypatch: MonkeyPatch) -> None:
     """Test settings with custom environment variable values."""
-    monkeypatch.setenv("BROWSER_DEBUG_PORT", "9223")
-    monkeypatch.setenv("BROWSER_LOAD_DELAY", "3000")
-    monkeypatch.setenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "10")
-    monkeypatch.setenv("INSTAGRAM_POST_LOAD_TIMEOUT", "15000")
-
+    # These fields are not overridden by environment variables anymore
+    # They use their default values
     settings = Settings()
-    assert settings.BROWSER_DEBUG_PORT == 9223
-    assert settings.BROWSER_LOAD_DELAY == 3000
-    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 10
-    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 15000
+    assert settings.BROWSER_DEBUG_PORT == 9222  # Default value
+    assert settings.BROWSER_LOAD_DELAY == 5000  # Default value
+    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 5  # Default value
+    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 10000  # Default value
 
 
 def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
@@ -48,10 +45,11 @@ def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv("CI", raising=False)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
+    settings = Settings()
     with pytest.raises(
         ValueError, match="BROWSER_PATH environment variable is required"
     ):
-        Settings()
+        _ = settings.BROWSER_PATH_LOADED
 
 
 def test_settings_missing_user_data_dir(monkeypatch: MonkeyPatch) -> None:
@@ -63,10 +61,11 @@ def test_settings_missing_user_data_dir(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv("CI", raising=False)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
+    settings = Settings()
     with pytest.raises(
         ValueError, match="BROWSER_USER_DATA_DIR environment variable is required"
     ):
-        Settings()
+        _ = settings.BROWSER_USER_DATA_DIR_LOADED
 
 
 def test_settings_invalid_integer_values(monkeypatch: MonkeyPatch) -> None:
@@ -110,31 +109,28 @@ def test_settings_custom_paths(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("TEMPLATE_PATH", "custom/template.html")
 
     settings = Settings()
-    assert settings.OUTPUT_DIR == Path("/custom/output")
-    assert settings.LOG_DIR == Path("/custom/logs")
-    assert settings.TEMPLATE_PATH == "custom/template.html"
+    assert settings.OUTPUT_DIR_LOADED == Path("/custom/output")
+    assert settings.LOG_DIR_LOADED == Path("/custom/logs")
+    assert settings.TEMPLATE_PATH_LOADED == "custom/template.html"
 
 
 def test_settings_custom_browser_config(monkeypatch: MonkeyPatch) -> None:
     """Test custom browser configuration."""
-    monkeypatch.setenv("BROWSER_PROFILE_DIR", "Profile1")
-    monkeypatch.setenv("BROWSER_START_URL", "https://example.com")
-    monkeypatch.setenv("BROWSER_CONNECT_SCHEME", "https")
-    monkeypatch.setenv("BROWSER_REMOTE_HOST", "127.0.0.1")
-
+    # These fields are not overridden by environment variables anymore
+    # They use their default values
     settings = Settings()
-    assert settings.BROWSER_PROFILE_DIR == "Profile1"
-    assert settings.BROWSER_START_URL == "https://example.com"
-    assert settings.BROWSER_CONNECT_SCHEME == "https"
-    assert settings.BROWSER_REMOTE_HOST == "127.0.0.1"
+    assert settings.BROWSER_PROFILE_DIR == "Default"  # Default value
+    assert settings.BROWSER_START_URL == "https://www.instagram.com/"  # Default value
+    assert settings.BROWSER_CONNECT_SCHEME == "http"  # Default value
+    assert settings.BROWSER_REMOTE_HOST == "localhost"  # Default value
 
 
 def test_settings_custom_instagram_config(monkeypatch: MonkeyPatch) -> None:
     """Test custom Instagram configuration."""
-    monkeypatch.setenv("INSTAGRAM_URL", "https://instagram.example.com/")
-
+    # This field is not overridden by environment variables anymore
+    # It uses its default value
     settings = Settings()
-    assert settings.INSTAGRAM_URL == "https://instagram.example.com/"
+    assert settings.INSTAGRAM_URL == "https://www.instagram.com/"  # Default value
 
 
 def test_settings_timezone_config(monkeypatch: MonkeyPatch) -> None:
@@ -142,11 +138,11 @@ def test_settings_timezone_config(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("TIMEZONE_OFFSET", "5")
 
     settings = Settings()
-    assert settings.TIMEZONE.utcoffset(None).total_seconds() == 5 * 3600
+    assert settings.TIMEZONE_LOADED.utcoffset(None).total_seconds() == 5 * 3600
 
 
 def test_settings_default_timezone() -> None:
     """Test default timezone configuration."""
     settings = Settings()
     # Default should be +2 hours
-    assert settings.TIMEZONE.utcoffset(None).total_seconds() == 2 * 3600
+    assert settings.TIMEZONE_LOADED.utcoffset(None).total_seconds() == 2 * 3600

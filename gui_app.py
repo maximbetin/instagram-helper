@@ -465,8 +465,10 @@ class InstagramHelperGUI:
 
                 report_data = ReportData(posts=all_posts, cutoff_date=cutoff_date)
                 date_str = datetime.now(UTC).strftime("%d-%m-%Y")
-                output_path = Path(settings.OUTPUT_DIR) / f"{date_str}.html"
-                generate_html_report(report_data, output_path, settings.TEMPLATE_PATH)
+                output_path = Path(settings.OUTPUT_DIR_LOADED) / f"{date_str}.html"
+                generate_html_report(
+                    report_data, output_path, settings.TEMPLATE_PATH_LOADED
+                )
 
                 self.logger.info(f"Report generated: {output_path}")
 

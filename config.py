@@ -122,20 +122,12 @@ class Settings:
     BASE_DIR: ClassVar[Path] = Path(__file__).resolve().parent
 
     # --- Path Configuration ---
-    OUTPUT_DIR: Path = field(
-        default_factory=lambda: Path(os.getenv("OUTPUT_DIR", Settings.BASE_DIR))
-    )
-    LOG_DIR: Path = field(
-        default_factory=lambda: Path(os.getenv("LOG_DIR", Settings.BASE_DIR))
-    )
+    OUTPUT_DIR: Path = field(default_factory=lambda: Settings.BASE_DIR)
+    LOG_DIR: Path = field(default_factory=lambda: Settings.BASE_DIR)
     TEMPLATE_PATH: str = "templates/template.html"
 
     # --- Timezone Configuration ---
-    TIMEZONE: timezone = field(
-        default_factory=lambda: timezone(
-            timedelta(hours=int(os.getenv("TIMEZONE_OFFSET", "2")))
-        )
-    )
+    TIMEZONE: timezone = field(default_factory=lambda: timezone(timedelta(hours=2)))
 
     # --- Browser Configuration ---
     BROWSER_PATH: Path | None = field(default=None)
@@ -153,16 +145,70 @@ class Settings:
     INSTAGRAM_POST_LOAD_TIMEOUT: int = 10000
     INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 5
 
+    # --- Property getters for lazy loading ---
+    @property
+    def BROWSER_PATH_LOADED(self) -> Path:
+        """Get BROWSER_PATH, loading from environment if needed."""
+        self._ensure_settings_loaded()
+        if self.BROWSER_PATH is None:
+            raise ValueError("BROWSER_PATH environment variable is required")
+        return self.BROWSER_PATH
+
+    @property
+    def BROWSER_USER_DATA_DIR_LOADED(self) -> Path:
+        """Get BROWSER_USER_DATA_DIR, loading from environment if needed."""
+        self._ensure_settings_loaded()
+        if self.BROWSER_USER_DATA_DIR is None:
+            raise ValueError("BROWSER_USER_DATA_DIR environment variable is required")
+        return self.BROWSER_USER_DATA_DIR
+
+    @property
+    def OUTPUT_DIR_LOADED(self) -> Path:
+        """Get OUTPUT_DIR, loading from environment if needed."""
+        self._ensure_settings_loaded()
+        return self.OUTPUT_DIR
+
+    @property
+    def LOG_DIR_LOADED(self) -> Path:
+        """Get LOG_DIR, loading from environment if needed."""
+        self._ensure_settings_loaded()
+        return self.LOG_DIR
+
+    @property
+    def TEMPLATE_PATH_LOADED(self) -> str:
+        """Get TEMPLATE_PATH, loading from environment if needed."""
+        self._ensure_settings_loaded()
+        return self.TEMPLATE_PATH
+
+    @property
+    def TIMEZONE_LOADED(self) -> timezone:
+        """Get TIMEZONE, loading from environment if needed."""
+        self._ensure_settings_loaded()
+        return self.TIMEZONE
+
     def __post_init__(self) -> None:
         """Performs validation after the object has been initialized."""
-        # Load browser-related settings
-        self._load_browser_settings()
+        # Don't load environment variables during import - do it lazily when needed
+        # This prevents PyInstaller build issues and allows the module to be imported
+        # without requiring environment variables to be set
+        pass
 
-        # Load path and template settings
+    def _ensure_settings_loaded(self) -> None:
+        """Ensure essential settings are loaded from environment variables.
+
+        This method is called lazily when essential settings are accessed, preventing
+        import-time errors during PyInstaller builds.
+        """
+        # Only load once
+        if hasattr(self, "_settings_loaded"):
+            return
+
+        # Load only essential settings that are required for operation
+        self._load_browser_settings()
         self._load_path_settings()
 
-        # Load Instagram-related settings
-        self._load_instagram_settings()
+        # Mark as loaded
+        object.__setattr__(self, "_settings_loaded", True)
 
     def _load_browser_settings(self) -> None:
         """Load browser-related settings from environment.
@@ -233,6 +279,13 @@ class Settings:
 
         if template_path := os.getenv("TEMPLATE_PATH"):
             object.__setattr__(self, "TEMPLATE_PATH", template_path)
+
+        if timezone_offset := os.getenv("TIMEZONE_OFFSET"):
+            try:
+                hours = int(timezone_offset)
+                object.__setattr__(self, "TIMEZONE", timezone(timedelta(hours=hours)))
+            except ValueError:
+                pass
 
     def _load_instagram_settings(self) -> None:
         """Load Instagram-related settings from environment."""
