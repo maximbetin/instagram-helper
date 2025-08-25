@@ -34,7 +34,64 @@ class InstagramPost:
 
 
 class InstagramScraper:
-    """Encapsulates all logic for scraping posts from Instagram accounts."""
+    """Encapsulates all logic for scraping posts from Instagram accounts.
+
+    SCRAPING STRATEGY OVERVIEW:
+
+    This scraper implements a multi-stage approach to extract Instagram posts:
+
+    1. ACCOUNT NAVIGATION: Navigate to the account's main page to access their posts
+    2. POST URL EXTRACTION: Collect post URLs using CSS selectors (more reliable than XPath for links)
+    3. INDIVIDUAL POST PROCESSING: Visit each post to extract caption and date information
+    4. DATE FILTERING: Filter posts based on age to respect user preferences
+    5. GRACEFUL DEGRADATION: Continue processing even if individual posts fail
+
+    CRITICAL IMPLEMENTATION DETAILS:
+
+    - NAVIGATION PATTERN: The scraper navigates between account pages and individual posts,
+      returning to the account page after each post to maintain context. This approach
+      is more reliable than trying to extract all data from the account page directly.
+
+    - SELECTOR STRATEGY:
+      * POST LINKS: Uses CSS selectors (a[href*='/p/'], a[href*='/reel/']) which are
+        more stable than XPath for link extraction
+      * POST DATES: Uses CSS selector (time[datetime]) for date extraction
+      * POST CAPTIONS: Uses hardcoded XPath due to Instagram's fragile HTML structure
+
+    - TIMEOUT HANDLING: Each navigation operation has a configurable timeout to prevent
+      the scraper from hanging indefinitely on slow-loading pages.
+
+    - RATE LIMITING CONSIDERATIONS: The scraper includes intentional delays (3 seconds)
+      after each navigation to avoid triggering Instagram's rate limiting mechanisms.
+
+    - ERROR RECOVERY: If a post fails to process, the scraper logs the error and
+      continues with the next post, ensuring partial results are still obtained.
+
+    INSTAGRAM-SPECIFIC CHALLENGES:
+
+    - HTML STRUCTURE VOLATILITY: Instagram frequently changes their DOM structure,
+      requiring careful selector management and fallback strategies.
+
+    - LAZY LOADING: Instagram uses lazy loading for content, requiring explicit
+      waits and delays to ensure content is fully loaded before extraction.
+
+    - SESSION DEPENDENCY: The scraper relies on browser session cookies for
+      authentication, making it vulnerable to session expiration.
+
+    - CAPTION EXTRACTION: Caption text is deeply nested in Instagram's DOM,
+      requiring precise XPath selectors that must be updated when Instagram changes
+      their structure.
+
+    PERFORMANCE CONSIDERATIONS:
+
+    - POST LIMITING: Respects INSTAGRAM_MAX_POSTS_PER_ACCOUNT to prevent excessive
+      processing and potential rate limiting.
+
+    - DATE FILTERING: Early date filtering prevents unnecessary processing of old posts.
+
+    - MEMORY MANAGEMENT: Post data is collected incrementally and doesn't accumulate
+      large amounts of data in memory.
+    """
 
     def __init__(self, page: Page, app_settings: Settings):
         """Initializes the scraper with a Playwright page and settings."""
@@ -163,7 +220,47 @@ class InstagramScraper:
         )
 
     def _navigate_to_url(self, url: str, operation: str) -> bool:
-        """Navigates to a URL."""
+        """Navigates to a URL.
+
+        CRITICAL IMPLEMENTATION DETAILS:
+
+        This method implements Instagram-specific navigation patterns that are
+        crucial for reliable scraping:
+
+        1. TIMEOUT HANDLING: Uses configurable timeout to prevent indefinite
+           waits on slow-loading Instagram pages. This is essential because
+           Instagram can be slow to respond, especially during peak usage.
+
+        2. LAZY LOADING DELAY: The 3-second delay after navigation is critical
+           for Instagram's lazy loading behavior. Instagram loads content
+           incrementally, and this delay ensures the page is fully rendered
+           before attempting to extract data.
+
+        3. DOM READY WAIT: Uses 'domcontentloaded' instead of 'load' to
+           balance between waiting for content and avoiding excessive delays.
+           This ensures the DOM is ready for interaction without waiting for
+           all images and external resources.
+
+        4. ERROR RECOVERY: Navigation failures are logged but don't crash
+           the scraping process. This allows the scraper to continue with
+           other posts even if individual pages fail to load.
+
+        5. OPERATION CONTEXT: The operation parameter provides context for
+           error messages, making debugging easier when navigation fails.
+
+        INSTAGRAM-SPECIFIC CONSIDERATIONS:
+
+        - Instagram uses heavy JavaScript and lazy loading
+        - Page content may not be immediately available after navigation
+        - Network conditions can significantly affect load times
+        - Some pages may fail to load due to Instagram's anti-bot measures
+
+        PERFORMANCE IMPLICATIONS:
+
+        - Each navigation adds 3+ seconds to the scraping time
+        - Timeout settings affect reliability vs. speed trade-offs
+        - Multiple failed navigations can significantly slow down the process
+        """
         try:
             self.page.goto(
                 url,
@@ -177,9 +274,35 @@ class InstagramScraper:
             return False
 
     def _get_post_caption(self) -> str:
-        """Extracts the post caption using the specific XPath."""
+        """Extracts the post caption using the specific XPath.
+
+        CRITICAL IMPLEMENTATION DETAIL:
+
+        This method uses a hardcoded XPath selector instead of CSS selectors or
+        more flexible approaches. This design decision was made because:
+
+        1. INSTAGRAM FRAGILITY: Instagram's HTML structure changes frequently,
+           making CSS selectors and relative paths unreliable over time.
+
+        2. SPECIFICITY: The exact XPath targets the specific caption element
+           in Instagram's current DOM structure, reducing false positives.
+
+        3. MAINTENANCE: When Instagram changes their structure, only this
+           one XPath needs updating, making maintenance predictable.
+
+        4. RELIABILITY: Hardcoded XPath provides consistent behavior across
+           different Instagram page variations and updates.
+
+        WARNING: Do NOT modify this XPath selector without thorough testing.
+        Instagram's HTML structure is extremely fragile, and changes will break
+        caption extraction functionality. If Instagram updates their structure,
+        this XPath must be updated to match the new DOM layout.
+
+        The current XPath targets the caption text within Instagram's post structure:
+        /html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span
+        """
         try:
-            # Use the exact XPath provided
+            # Use the exact XPath provided - DO NOT MODIFY without testing
             xpath = "/html/body/div[1]/div/div/div[2]/div/div/div[1]/div[1]/div[1]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[1]/div/div[2]/div/span/div/span"
             element = self.page.query_selector(f"xpath={xpath}")
 

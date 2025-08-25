@@ -1,4 +1,60 @@
-"""Browser management functionality."""
+"""Browser management and integration functionality.
+
+BROWSER INTEGRATION STRATEGY:
+
+This module implements a sophisticated browser management system that handles
+cross-platform compatibility, WSL2 integration, and fallback strategies. The
+design addresses several critical challenges:
+
+1. CROSS-PLATFORM COMPATIBILITY: Supports Windows, Linux, and macOS with
+   appropriate process management and path handling for each platform.
+
+2. WSL2 INTEGRATION: Windows Subsystem for Linux 2 presents unique challenges
+   because it runs a Linux kernel but often needs to launch Windows applications.
+   This requires special detection and handling logic.
+
+3. REMOTE DEBUGGING: The tool requires browser remote debugging capabilities
+   to control the browser programmatically via the Chrome DevTools Protocol.
+
+4. PROCESS MANAGEMENT: Existing browser instances must be terminated to
+   prevent port conflicts and ensure clean debugging sessions.
+
+5. FALLBACK STRATEGIES: Multiple fallback approaches ensure the tool works
+   even when the preferred browser setup fails.
+
+ARCHITECTURE OVERVIEW:
+
+The browser management follows a layered approach:
+
+1. LOCAL BROWSER DETECTION: Attempts to connect to existing browser instances
+2. LOCAL BROWSER LAUNCH: Launches new browser instances with debugging enabled
+3. PLAYWRIGHT FALLBACK: Uses Playwright as a last resort for browser automation
+
+WSL2 DETECTION LOGIC:
+
+WSL2 environments are detected using multiple criteria:
+- os.name == "posix": Confirms Linux shell environment
+- "microsoft" in os.uname().release.lower(): Identifies WSL2 kernel
+- Windows browser path indicators: Checks for .exe extensions or Windows paths
+
+This detection enables appropriate process management and browser launching
+strategies for each environment.
+
+CRITICAL IMPLEMENTATION DETAILS:
+
+- PROCESS KILLING: Different strategies for Windows (taskkill.exe) vs Linux (pkill)
+- PATH TRANSLATION: WSL2 requires special handling for Windows paths
+- PORT CONFLICTS: Only one browser can use port 9222 for remote debugging
+- SESSION MANAGEMENT: Browser user data directories preserve login sessions
+- ERROR HANDLING: Graceful degradation when browser operations fail
+
+PERFORMANCE CONSIDERATIONS:
+
+- CONNECTION POOLING: Reuses browser connections when possible
+- TIMEOUT HANDLING: Prevents indefinite waits for browser operations
+- RESOURCE CLEANUP: Ensures browser processes are properly terminated
+- MEMORY MANAGEMENT: Avoids memory leaks from abandoned browser instances
+"""
 
 from __future__ import annotations
 
@@ -19,7 +75,34 @@ logger = setup_logging(__name__)
 
 
 def _kill_existing_browser_processes() -> None:
-    """Attempts to kill existing browser processes to prevent conflicts."""
+    """Kills existing browser processes to prevent conflicts.
+
+    IMPLEMENTATION DETAILS:
+
+    This function handles browser process management across different environments,
+    with special handling for WSL2 (Windows Subsystem for Linux 2). The complexity
+    is necessary because:
+
+    1. CROSS-PLATFORM COMPATIBILITY: Different operating systems use different
+    process management commands (taskkill.exe vs pkill).
+
+    2. WSL2 INTEGRATION: WSL2 runs a Linux kernel but often needs to manage
+    Windows processes, requiring special detection and handling.
+
+    3. PORT CONFLICTS: Only one browser can use port 9222 for remote debugging,
+    so existing processes must be terminated before launching new ones.
+
+    4. SESSION CONFLICTS: Existing browser instances may have different
+    debugging configurations that could interfere with the tool.
+
+    WSL2 DETECTION LOGIC:
+    - os.name == "posix": Confirms we're in a Linux shell
+    - "microsoft" in os.uname().release.lower(): Identifies WSL2 kernel
+    - Windows browser path: Checks if browser path contains Windows indicators
+
+    This detection allows the tool to use appropriate process management
+    strategies for each environment.
+    """
     if not settings.BROWSER_PATH:
         return
 
@@ -29,6 +112,7 @@ def _kill_existing_browser_processes() -> None:
     if "brave" in browser_name:
         try:
             # Check if we're in WSL2 (Linux shell but Windows browser path)
+            # This detection is crucial for proper process management
             is_wsl2 = (
                 os.name == "posix"
                 and "microsoft" in os.uname().release.lower()

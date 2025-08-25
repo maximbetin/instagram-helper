@@ -30,7 +30,44 @@ class LogHandler(logging.Handler):
 
 
 class InstagramHelperGUI:
-    """Main GUI application for Instagram Helper."""
+    """Main GUI application for Instagram Helper.
+
+    ARCHITECTURE OVERVIEW:
+
+    This GUI application uses a multi-threaded architecture to maintain responsiveness
+    during long-running scraping operations. The design follows these principles:
+
+    1. MAIN THREAD (GUI): Handles all user interactions, GUI updates, and event processing
+    2. WORKER THREAD: Executes the scraping logic without blocking the GUI
+    3. THREAD-SAFE COMMUNICATION: Uses queues and event flags for inter-thread communication
+    4. GUI UPDATE SCHEDULING: All GUI updates are scheduled on the main thread using root.after()
+
+    CRITICAL IMPLEMENTATION DETAILS:
+
+    - THREADING MODEL: The scraping runs in a daemon thread to ensure it terminates
+      when the main application exits, preventing zombie processes.
+
+    - GUI UPDATE PATTERN: All GUI updates from the worker thread are scheduled using
+      root.after(0, callback, args) to ensure they execute on the main thread.
+      This prevents threading issues and maintains GUI responsiveness.
+
+    - STATE MANAGEMENT: The application uses threading.Event objects for thread-safe
+      communication between the main thread and worker thread.
+
+    - RESOURCE CLEANUP: Browser and Playwright resources are properly cleaned up
+      in the finally block to prevent resource leaks.
+
+    - ERROR HANDLING: Exceptions in the worker thread are caught and communicated
+      back to the main thread for user display.
+
+    THREAD SAFETY CONSIDERATIONS:
+
+    - Never directly update GUI elements from worker threads
+    - Use root.after() to schedule all GUI updates
+    - Use thread-safe data structures (Queue, Event) for communication
+    - Always check stop_scraping.is_set() before long operations
+    - Clean up resources in finally blocks to ensure cleanup happens
+    """
 
     def __init__(self) -> None:
         self.root = tk.Tk()
@@ -226,7 +263,29 @@ class InstagramHelperGUI:
         self.progress_frame.grid_columnconfigure(0, weight=1)
 
     def load_initial_accounts(self) -> None:
-        """Load initial accounts from the text area."""
+        """Load initial accounts from the text area.
+
+        IMPLEMENTATION DESIGN:
+
+        This method loads the default accounts from configuration into the text area.
+        The implementation is designed to avoid trailing blank lines that could
+        confuse users about whether they should have empty lines at the end.
+
+        DESIGN DECISION - Text Area vs Listbox:
+
+        The GUI uses a simple text area instead of a listbox with add/remove buttons
+        for the following reasons:
+
+        1. SIMPLICITY: Eliminates complex dialog logic and button management
+        2. BULK OPERATIONS: Users can paste multiple accounts at once
+        3. NO FILE DEPENDENCIES: Removes need for external text files
+        4. IMMEDIATE FEEDBACK: Changes are visible instantly without saving
+        5. USER EXPERIENCE: More intuitive for users familiar with text editing
+
+        The text area approach trades some programmatic control for user simplicity
+        and eliminates the need for complex state management between the GUI and
+        external files.
+        """
         self.account_text.delete(1.0, tk.END)
         for i, account in enumerate(settings.INSTAGRAM_ACCOUNTS):
             if i > 0:
@@ -234,7 +293,26 @@ class InstagramHelperGUI:
             self.account_text.insert(tk.END, account)
 
     def get_accounts(self) -> list[str]:
-        """Get the current list of accounts from the text area."""
+        """Get the current list of accounts from the text area.
+
+        IMPLEMENTATION DETAILS:
+
+        This method parses the text area content to extract Instagram account names.
+        The parsing logic handles several edge cases:
+
+        1. EMPTY LINES: Lines containing only whitespace are automatically filtered out
+        2. WHITESPACE: Leading/trailing whitespace is stripped from each account
+        3. LINE BREAKS: Each line becomes a separate account entry
+        4. VALIDATION: Empty strings are excluded from the final list
+
+        The method uses a list comprehension with filtering to ensure only valid
+        account names are returned. This approach is more robust than trying to
+        maintain a separate list of accounts, as it always reflects the current
+        text area content.
+
+        Returns:
+            A list of non-empty, stripped account names from the text area.
+        """
         return [
             line.strip()
             for line in self.account_text.get(1.0, tk.END).splitlines()
@@ -295,7 +373,40 @@ class InstagramHelperGUI:
     def scraping_worker(
         self, accounts: list[str], settings_dict: dict[str, int]
     ) -> None:
-        """Worker thread for scraping."""
+        """Worker thread for scraping.
+        
+        CRITICAL IMPLEMENTATION DETAILS:
+        
+        This method runs in a separate thread to prevent GUI freezing during
+        long-running scraping operations. The threading implementation follows
+        these critical patterns:
+        
+        1. GUI UPDATE SCHEDULING: All GUI updates use root.after(0, callback, args)
+           to ensure they execute on the main thread. Never update GUI elements
+           directly from this worker thread.
+           
+        2. RESOURCE MANAGEMENT: Browser and Playwright resources are properly
+           cleaned up in the finally block to prevent resource leaks and ensure
+           proper cleanup even when errors occur.
+           
+        3. THREAD SAFETY: The stop_scraping Event object provides thread-safe
+           communication between the main thread and this worker thread.
+           
+        4. PROGRESS TRACKING: Progress updates are sent to the main thread
+           for real-time user feedback without blocking the scraping process.
+           
+        5. ERROR HANDLING: Exceptions are caught and communicated back to the
+           main thread for user display, ensuring the application remains
+           responsive even when scraping fails.
+        
+        THREADING PATTERNS:
+        
+        - Use root.after(0, callback, args) for all GUI updates
+        - Check stop_scraping.is_set() before long operations
+        - Clean up resources in finally blocks
+        - Communicate errors back to main thread
+        - Never directly access GUI elements from worker thread
+        """
         try:
             self.logger.info("Starting Instagram scraping process...")
 

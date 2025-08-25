@@ -40,10 +40,13 @@ def test_settings_with_custom_values(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
-    """Test that Settings raises an error when required variables are missing."""
+    """Test that Settings raises an error when required variables are missing in non-testing environments."""
     # Clear the environment variables that might be set by .env file
     monkeypatch.delenv("BROWSER_PATH", raising=False)
     monkeypatch.delenv("BROWSER_USER_DATA_DIR", raising=False)
+    # Clear CI environment to simulate non-testing environment
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     with pytest.raises(
         ValueError, match="BROWSER_PATH environment variable is required"
@@ -52,10 +55,13 @@ def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_settings_missing_user_data_dir(monkeypatch: MonkeyPatch) -> None:
-    """Test that Settings raises an error when user data dir is missing."""
+    """Test that Settings raises an error when user data dir is missing in non-testing environments."""
     # Set BROWSER_PATH but clear BROWSER_USER_DATA_DIR
     monkeypatch.setenv("BROWSER_PATH", "/usr/bin/browser")
     monkeypatch.delenv("BROWSER_USER_DATA_DIR", raising=False)
+    # Clear CI environment to simulate non-testing environment
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     with pytest.raises(
         ValueError, match="BROWSER_USER_DATA_DIR environment variable is required"
