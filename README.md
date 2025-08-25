@@ -70,29 +70,8 @@ source venv/bin/activate
 ```
 
 ```bash
-# Create configuration file
-cp .env.example .env  # if available, or create manually
-
-# Edit .env file with your browser paths
-nano .env
-```
-
-**Example .env configuration for WSL2 users**:
-
-```env
-# Browser Configuration
-BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-BROWSER_USER_DATA_DIR="C:\Users\YourUsername\AppData\Local\BraveSoftware\Brave-Browser\User Data"
-BROWSER_PROFILE_DIR="Default"
-BROWSER_DEBUG_PORT=9222
-
-# Instagram Configuration
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT=5
-INSTAGRAM_POST_LOAD_TIMEOUT=10000
-
-# Output Configuration
-OUTPUT_DIR="/mnt/c/Users/YourUsername/Documents/Instagram-Reports"
-LOG_DIR="/mnt/c/Users/YourUsername/Documents/Instagram-Logs"
+# Configuration is now hardcoded - no setup needed!
+# The application uses predefined settings optimized for WSL2 environments.
 ```
 
 ```bash
@@ -255,119 +234,53 @@ The Instagram Helper provides a simple interface with these main sections:
 
 ## Configuration
 
-### Environment Variables Overview
+### Hardcoded Configuration
 
-The application uses environment variables for configuration, loaded from a `.env` file in the project root. This approach provides:
+The application now uses **hardcoded configuration values** optimized for WSL2 environments. This approach provides:
 
-- **Flexibility**: Easy configuration changes without code modifications
-- **Environment Isolation**: Different settings for development, testing, and production
-- **Security**: Sensitive paths and settings kept separate from code
-- **Portability**: Configuration can be shared across different systems
+- **Zero Setup**: No environment variables or configuration files needed
+- **Immediate Use**: Application works out of the box
+- **Reliability**: No configuration errors or missing variables
+- **PyInstaller Compatible**: Perfect for building standalone executables
 
-### Environment Variables
+### Current Configuration
 
-#### Required Variables
+The application is pre-configured with these optimized settings:
 
-These variables must be set for the application to function:
+#### Browser Configuration
+- **Browser Path**: `/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe`
+- **User Data Directory**: `C:\Users\Maxim\AppData\Local\BraveSoftware\Brave-Browser\User Data`
+- **Profile Directory**: `Default`
+- **Debug Port**: `9222`
+- **Load Delay**: `5000ms`
+- **Start URL**: `https://www.instagram.com/`
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `BROWSER_PATH` | Absolute path to browser executable | `"/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"` |
-| `BROWSER_USER_DATA_DIR` | Path to browser user data directory | `"C:\Users\YourUsername\AppData\Local\BraveSoftware\Brave-Browser\User Data"` |
+#### Instagram Configuration
+- **Max Posts Per Account**: `3`
+- **Post Load Timeout**: `20000ms`
+- **Base URL**: `https://www.instagram.com/`
 
-#### Browser Configuration (Optional)
+#### Output Configuration
+- **Output Directory**: `/mnt/c/Users/Maxim/Desktop/ig_helper`
+- **Log Directory**: `/mnt/c/Users/Maxim/Desktop/ig_helper`
+- **Template Path**: `templates/template.html`
 
-| Variable | Description | Default | Recommended |
-|----------|-------------|---------|-------------|
-| `BROWSER_PROFILE_DIR` | Browser profile directory to use | `"Default"` | `"Default"` or custom profile name |
-| `BROWSER_DEBUG_PORT` | Remote debugging port | `9222` | `9222` (avoid conflicts) |
-| `BROWSER_START_URL` | URL opened when launching browser | `"https://www.instagram.com/"` | Instagram or blank page |
-| `BROWSER_LOAD_DELAY` | Milliseconds to wait after browser launch | `5000` | `3000-10000` based on system speed |
-| `BROWSER_CONNECT_SCHEME` | Connection scheme for CDP | `"http"` | `"http"` (standard) |
-| `BROWSER_REMOTE_HOST` | Hostname for remote debugger | `"localhost"` | `"localhost"` (WSL2) or `"127.0.0.1"` |
+#### Timezone Configuration
+- **Timezone Offset**: `+2 hours` (Central European Time)
 
-#### Instagram Configuration (Optional)
+### Customizing Configuration
 
-| Variable | Description | Default | Recommended Range |
-|----------|-------------|---------|-------------------|
-| `INSTAGRAM_URL` | Base URL for Instagram | `"https://www.instagram.com/"` | Keep default |
-| `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` | Maximum posts per account | `5` | `1-50` (higher = slower) |
-| `INSTAGRAM_POST_LOAD_TIMEOUT` | Page load timeout in milliseconds | `10000` | `5000-30000` based on network |
+To modify these settings, edit the `config.py` file directly:
 
-#### Output Configuration (Optional)
+```python
+# Example: Change max posts per account
+INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 10
 
-| Variable | Description | Default | Recommended |
-|----------|-------------|---------|-------------|
-| `OUTPUT_DIR` | Directory for HTML reports | Project root | Dedicated reports directory |
-| `LOG_DIR` | Directory for log files | Project root | Dedicated logs directory |
-| `TEMPLATE_PATH` | Path to HTML template | `"templates/template.html"` | Keep default |
-
-#### Timezone Configuration (Optional)
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `TIMEZONE_OFFSET` | Hour offset from UTC | `2` | `-5` (EST), `0` (UTC), `+1` (CET) |
-
-### Configuration Examples
-
-#### WSL2 Windows Browser Configuration
-
-```env
-# Browser Configuration for WSL2 with Windows Brave
-BROWSER_PATH="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-BROWSER_USER_DATA_DIR="C:\Users\YourUsername\AppData\Local\BraveSoftware\Brave-Browser\User Data"
-BROWSER_PROFILE_DIR="Default"
-BROWSER_DEBUG_PORT=9222
-BROWSER_START_URL="https://www.instagram.com/"
-BROWSER_LOAD_DELAY=5000
-BROWSER_CONNECT_SCHEME="http"
-BROWSER_REMOTE_HOST="localhost"
-
-# Instagram Configuration
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT=10
-INSTAGRAM_POST_LOAD_TIMEOUT=15000
-
-# Output Configuration
-OUTPUT_DIR="/mnt/c/Users/YourUsername/Documents/Instagram-Reports"
-LOG_DIR="/mnt/c/Users/YourUsername/Documents/Instagram-Logs"
-TIMEZONE_OFFSET=2
+# Example: Change output directory
+OUTPUT_DIR: Path = field(
+    default_factory=lambda: Path("/mnt/c/Users/YourUsername/Desktop/ig_reports")
+)
 ```
-
-#### Native Linux Configuration
-
-```env
-# Browser Configuration for Native Linux
-BROWSER_PATH="/usr/bin/brave-browser"
-BROWSER_USER_DATA_DIR="/home/username/.config/BraveSoftware/Brave-Browser"
-BROWSER_PROFILE_DIR="Default"
-BROWSER_DEBUG_PORT=9222
-BROWSER_START_URL="https://www.instagram.com/"
-BROWSER_LOAD_DELAY=3000
-BROWSER_CONNECT_SCHEME="http"
-BROWSER_REMOTE_HOST="localhost"
-
-# Instagram Configuration
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT=5
-INSTAGRAM_POST_LOAD_TIMEOUT=10000
-
-# Output Configuration
-OUTPUT_DIR="/home/username/Documents/Instagram-Reports"
-LOG_DIR="/home/username/Documents/Instagram-Logs"
-TIMEZONE_OFFSET=0
-```
-
-#### macOS Configuration
-
-```env
-# Browser Configuration for macOS
-BROWSER_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
-BROWSER_USER_DATA_DIR="/Users/username/Library/Application Support/BraveSoftware/Brave-Browser"
-BROWSER_PROFILE_DIR="Default"
-BROWSER_DEBUG_PORT=9222
-BROWSER_START_URL="https://www.instagram.com/"
-BROWSER_LOAD_DELAY=3000
-BROWSER_CONNECT_SCHEME="http"
-BROWSER_REMOTE_HOST="localhost"
 
 # Instagram Configuration
 INSTAGRAM_MAX_POSTS_PER_ACCOUNT=5
@@ -509,6 +422,44 @@ return [line.strip() for line in self.account_text.get(1.0, tk.END).splitlines()
 - **Try-catch blocks**: Around all Instagram-specific operations
 - **Fallback values**: Default values when environment variables are missing
 - **User feedback**: Clear error messages and status updates in the GUI
+
+## Building Executables
+
+### PyInstaller Build
+
+The application can be built into standalone executables using PyInstaller:
+
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# Build executable
+pyinstaller --onefile --windowed run.py --name instagram-helper
+
+# The executable will be created in the dist/ directory
+```
+
+### Build Options
+
+- **`--onefile`**: Creates a single executable file
+- **`--windowed`**: Runs without console window (Windows)
+- **`--name`**: Sets the output filename
+
+### Deployment
+
+The built executable:
+- **No Python installation required** on target machines
+- **No environment variables needed** - all configuration is hardcoded
+- **Self-contained** - includes all dependencies
+- **Cross-platform** - build on Linux for Linux, Windows for Windows
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow automatically:
+- Runs tests on Ubuntu and Windows
+- Builds executables using PyInstaller
+- Creates releases with downloadable executables
+- Tags releases with version numbers
 
 ## Development
 
