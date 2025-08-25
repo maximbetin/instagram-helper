@@ -71,6 +71,7 @@ Issues = "https://github.com/maximbetin/instagram-helper/issues"
 # Specify Python modules to include (not traditional packages)
 packages = []
 py-modules = [
+    "run",                  # Main entry point
     "instagram_scraper",    # Main scraping functionality
     "utils",                # Utility functions and logging
     "gui_app",              # GUI application
