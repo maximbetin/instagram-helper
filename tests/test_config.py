@@ -18,26 +18,30 @@ def set_env_variables(monkeypatch: MonkeyPatch) -> None:
 def test_settings_initialization() -> None:
     """Test that settings are properly initialized."""
     settings = Settings()
-    assert settings.BROWSER_PATH_LOADED == Path("/usr/bin/mock-browser")
-    assert settings.BROWSER_USER_DATA_DIR_LOADED == Path("/tmp/mock-user-data")
-    # Note: These values might be overridden by environment variables
-    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT in [3, 5]  # Allow both values
-    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT in [10000, 20000]  # Allow both values
+    # Settings now use hardcoded values
+    assert settings.BROWSER_PATH == Path(
+        "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+    )
+    assert settings.BROWSER_USER_DATA_DIR == Path(
+        "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
+    )
+    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 3
+    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 20000
 
 
 def test_settings_with_custom_values(monkeypatch: MonkeyPatch) -> None:
-    """Test settings with custom environment variable values."""
+    """Test settings with hardcoded values."""
     # These fields are not overridden by environment variables anymore
-    # They use their default values
+    # They use their hardcoded values
     settings = Settings()
-    assert settings.BROWSER_DEBUG_PORT == 9222  # Default value
-    assert settings.BROWSER_LOAD_DELAY == 5000  # Default value
-    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 5  # Default value
-    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 10000  # Default value
+    assert settings.BROWSER_DEBUG_PORT == 9222  # Hardcoded value
+    assert settings.BROWSER_LOAD_DELAY == 5000  # Hardcoded value
+    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 3  # Hardcoded value
+    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 20000  # Hardcoded value
 
 
 def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
-    """Test that Settings raises an error when required variables are missing in non-testing environments."""
+    """Test that Settings works without environment variables."""
     # Clear the environment variables that might be set by .env file
     monkeypatch.delenv("BROWSER_PATH", raising=False)
     monkeypatch.delenv("BROWSER_USER_DATA_DIR", raising=False)
@@ -46,72 +50,60 @@ def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     settings = Settings()
-    with pytest.raises(
-        ValueError, match="BROWSER_PATH environment variable is required"
-    ):
-        _ = settings.BROWSER_PATH_LOADED
+    # Settings should work without environment variables
+    assert settings.BROWSER_PATH is not None
+    assert settings.BROWSER_USER_DATA_DIR is not None
 
 
 def test_settings_missing_user_data_dir(monkeypatch: MonkeyPatch) -> None:
-    """Test that Settings raises an error when user data dir is missing in non-testing environments."""
-    # Set BROWSER_PATH but clear BROWSER_USER_DATA_DIR
-    monkeypatch.setenv("BROWSER_PATH", "/usr/bin/browser")
+    """Test that Settings works without environment variables."""
+    # Clear the environment variables that might be set by .env file
+    monkeypatch.delenv("BROWSER_PATH", raising=False)
     monkeypatch.delenv("BROWSER_USER_DATA_DIR", raising=False)
     # Clear CI environment to simulate non-testing environment
     monkeypatch.delenv("CI", raising=False)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     settings = Settings()
-    with pytest.raises(
-        ValueError, match="BROWSER_USER_DATA_DIR environment variable is required"
-    ):
-        _ = settings.BROWSER_USER_DATA_DIR_LOADED
+    # Settings should work without environment variables
+    assert settings.BROWSER_PATH is not None
+    assert settings.BROWSER_USER_DATA_DIR is not None
 
 
 def test_settings_invalid_integer_values(monkeypatch: MonkeyPatch) -> None:
-    """Test that invalid integer values are handled gracefully."""
-    monkeypatch.setenv("BROWSER_DEBUG_PORT", "invalid")
-    monkeypatch.setenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "not_a_number")
+    """Test that integer values use hardcoded defaults."""
+    # Clear any environment variables
+    monkeypatch.delenv("BROWSER_DEBUG_PORT", raising=False)
+    monkeypatch.delenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT", raising=False)
 
-    # Should not raise errors for non-required fields
     settings = Settings()
-    assert settings.BROWSER_DEBUG_PORT == 9222  # Default value
-    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 5  # Default value
+    # Settings now use hardcoded values regardless of environment
+    assert settings.BROWSER_DEBUG_PORT == 9222  # Hardcoded value
+    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 3  # Hardcoded value
 
 
 def test_settings_invalid_required_integer_values(monkeypatch: MonkeyPatch) -> None:
-    """Test that invalid required integer values raise errors."""
-    monkeypatch.setenv("BROWSER_PATH", "/usr/bin/browser")
-    monkeypatch.setenv("BROWSER_USER_DATA_DIR", "/tmp/user-data")
-    monkeypatch.setenv("BROWSER_DEBUG_PORT", "invalid")
+    """Test that integer values use hardcoded defaults."""
+    # Clear any environment variables
+    monkeypatch.delenv("BROWSER_DEBUG_PORT", raising=False)
 
-    # Should not raise errors for non-required integer fields
     settings = Settings()
-    assert settings.BROWSER_DEBUG_PORT == 9222  # Default value
-
-
-def test_update_instagram_settings() -> None:
-    """Test that Instagram settings can be updated dynamically."""
-    settings = Settings()
-
-    # Update settings
-    settings.update_instagram_settings(15, 20000)
-
-    # Verify changes
-    assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 15
-    assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 20000
+    # Settings now use hardcoded values regardless of environment
+    assert settings.BROWSER_DEBUG_PORT == 9222  # Hardcoded value
 
 
 def test_settings_custom_paths(monkeypatch: MonkeyPatch) -> None:
-    """Test custom output and log directory paths."""
-    monkeypatch.setenv("OUTPUT_DIR", "/custom/output")
-    monkeypatch.setenv("LOG_DIR", "/custom/logs")
+    """Test that path settings use hardcoded values."""
+    # Clear any environment variables
+    monkeypatch.delenv("OUTPUT_DIR", raising=False)
+    monkeypatch.delenv("LOG_DIR", raising=False)
     monkeypatch.setenv("TEMPLATE_PATH", "custom/template.html")
 
     settings = Settings()
-    assert settings.OUTPUT_DIR_LOADED == Path("/custom/output")
-    assert settings.LOG_DIR_LOADED == Path("/custom/logs")
-    assert settings.TEMPLATE_PATH_LOADED == "custom/template.html"
+    # Settings now use hardcoded values regardless of environment
+    assert settings.OUTPUT_DIR == Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
+    assert settings.LOG_DIR == Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
+    assert settings.TEMPLATE_PATH == "templates/template.html"
 
 
 def test_settings_custom_browser_config(monkeypatch: MonkeyPatch) -> None:
@@ -135,14 +127,16 @@ def test_settings_custom_instagram_config(monkeypatch: MonkeyPatch) -> None:
 
 def test_settings_timezone_config(monkeypatch: MonkeyPatch) -> None:
     """Test timezone configuration."""
-    monkeypatch.setenv("TIMEZONE_OFFSET", "5")
+    # Clear any environment variables
+    monkeypatch.delenv("TIMEZONE_OFFSET", raising=False)
 
     settings = Settings()
-    assert settings.TIMEZONE_LOADED.utcoffset(None).total_seconds() == 5 * 3600
+    # Settings now use hardcoded values regardless of environment
+    assert settings.TIMEZONE.utcoffset(None).total_seconds() == 2 * 3600
 
 
 def test_settings_default_timezone() -> None:
     """Test default timezone configuration."""
     settings = Settings()
-    # Default should be +2 hours
-    assert settings.TIMEZONE_LOADED.utcoffset(None).total_seconds() == 2 * 3600
+    # Default should be +2 hours (hardcoded)
+    assert settings.TIMEZONE.utcoffset(None).total_seconds() == 2 * 3600
