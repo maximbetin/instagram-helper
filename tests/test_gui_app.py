@@ -2,15 +2,11 @@
 
 import logging
 import queue
-import threading
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-import tkinter as tk
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from gui_app import InstagramHelperGUI, LogHandler, AccountDialog
+from gui_app import AccountDialog, InstagramHelperGUI, LogHandler
 
 
 class TestLogHandler:
@@ -35,7 +31,7 @@ class TestLogHandler:
         mock_record.getName.return_value = "test_logger"
 
         # Mock the formatter
-        with patch.object(handler, 'formatter') as mock_formatter:
+        with patch.object(handler, "formatter") as mock_formatter:
             mock_formatter.format.return_value = "Formatted log message"
             handler.emit(mock_record)
 
@@ -49,11 +45,12 @@ class TestInstagramHelperGUI:
     @pytest.fixture
     def mock_tkinter(self) -> None:
         """Mock tkinter components."""
-        with patch('gui_app.tk') as mock_tk, \
-             patch('gui_app.ttk') as mock_ttk, \
-             patch('gui_app.messagebox') as mock_messagebox, \
-             patch('gui_app.scrolledtext') as mock_scrolledtext:
-
+        with (
+            patch("gui_app.tk") as mock_tk,
+            patch("gui_app.ttk") as mock_ttk,
+            patch("gui_app.messagebox") as mock_messagebox,
+            patch("gui_app.scrolledtext") as mock_scrolledtext,
+        ):
             # Mock Tk root
             mock_root = MagicMock()
             mock_tk.Tk.return_value = mock_root
@@ -72,23 +69,24 @@ class TestInstagramHelperGUI:
             mock_scrolledtext.ScrolledText.return_value = MagicMock()
 
             yield {
-                'tk': mock_tk,
-                'ttk': mock_ttk,
-                'messagebox': mock_messagebox,
-                'scrolledtext': mock_scrolledtext,
-                'root': mock_root,
-                'frame': mock_frame
+                "tk": mock_tk,
+                "ttk": mock_ttk,
+                "messagebox": mock_messagebox,
+                "scrolledtext": mock_scrolledtext,
+                "root": mock_root,
+                "frame": mock_frame,
             }
 
     @pytest.fixture
     def mock_dependencies(self) -> None:
         """Mock external dependencies."""
-        with patch('gui_app.setup_browser') as mock_setup_browser, \
-             patch('gui_app.InstagramScraper') as mock_scraper_class, \
-             patch('gui_app.generate_html_report') as mock_generate_report, \
-             patch('gui_app.settings') as mock_settings, \
-             patch('gui_app.sync_playwright') as mock_sync_playwright:
-
+        with (
+            patch("gui_app.setup_browser") as mock_setup_browser,
+            patch("gui_app.InstagramScraper") as mock_scraper_class,
+            patch("gui_app.generate_html_report") as mock_generate_report,
+            patch("gui_app.settings") as mock_settings,
+            patch("gui_app.sync_playwright") as mock_sync_playwright,
+        ):
             # Mock settings
             mock_settings.INSTAGRAM_ACCOUNTS = ["test_account1", "test_account2"]
             mock_settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 5
@@ -111,30 +109,30 @@ class TestInstagramHelperGUI:
             mock_sync_playwright.return_value = mock_playwright_instance
 
             yield {
-                'setup_browser': mock_setup_browser,
-                'scraper_class': mock_scraper_class,
-                'scraper': mock_scraper,
-                'generate_report': mock_generate_report,
-                'settings': mock_settings,
-                'browser': mock_browser,
-                'page': mock_page,
-                'sync_playwright': mock_sync_playwright,
-                'playwright_instance': mock_playwright_instance
+                "setup_browser": mock_setup_browser,
+                "scraper_class": mock_scraper_class,
+                "scraper": mock_scraper,
+                "generate_report": mock_generate_report,
+                "settings": mock_settings,
+                "browser": mock_browser,
+                "page": mock_page,
+                "sync_playwright": mock_sync_playwright,
+                "playwright_instance": mock_playwright_instance,
             }
 
     def test_gui_initialization(self, mock_tkinter, mock_dependencies) -> None:
         """Test GUI application initialization."""
-        with patch('gui_app.logging.getLogger') as mock_get_logger:
+        with patch("gui_app.logging.getLogger") as mock_get_logger:
             mock_logger = MagicMock()
             mock_get_logger.return_value = mock_logger
 
             app = InstagramHelperGUI()
 
             # Verify Tkinter setup
-            mock_tkinter['tk'].Tk.assert_called_once()
-            mock_tkinter['root'].title.assert_called_once_with("Instagram Helper")
-            mock_tkinter['root'].geometry.assert_called_once_with("1400x700")
-            mock_tkinter['root'].minsize.assert_called_once_with(1200, 600)
+            mock_tkinter["tk"].Tk.assert_called_once()
+            mock_tkinter["root"].title.assert_called_once_with("Instagram Helper")
+            mock_tkinter["root"].geometry.assert_called_once_with("1400x700")
+            mock_tkinter["root"].minsize.assert_called_once_with(1200, 600)
 
             # Verify variables initialization
             assert app.log_queue is not None
@@ -148,15 +146,17 @@ class TestInstagramHelperGUI:
 
     def test_setup_logging(self, mock_tkinter, mock_dependencies) -> None:
         """Test logging setup."""
-        with patch('gui_app.logging.getLogger') as mock_get_logger, \
-             patch('gui_app.LogHandler') as mock_handler_class:
-
+        with (
+            patch("gui_app.logging.getLogger") as mock_get_logger,
+            patch("gui_app.LogHandler") as mock_handler_class,
+        ):
             mock_logger = MagicMock()
             mock_get_logger.return_value = mock_logger
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
 
-            app = InstagramHelperGUI()
+            # Create the app to trigger setup_logging
+            InstagramHelperGUI()
 
             # Verify logger configuration
             mock_logger.setLevel.assert_called_with(logging.INFO)
@@ -167,7 +167,7 @@ class TestInstagramHelperGUI:
 
     def test_load_accounts_from_config(self, mock_tkinter, mock_dependencies) -> None:
         """Test loading accounts from configuration."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the account listbox
@@ -183,9 +183,10 @@ class TestInstagramHelperGUI:
 
     def test_add_account(self, mock_tkinter, mock_dependencies) -> None:
         """Test adding a new account."""
-        with patch('gui_app.logging.getLogger'), \
-             patch('gui_app.AccountDialog') as mock_dialog_class:
-
+        with (
+            patch("gui_app.logging.getLogger"),
+            patch("gui_app.AccountDialog") as mock_dialog_class,
+        ):
             mock_dialog = MagicMock()
             mock_dialog.result = "new_account"
             mock_dialog_class.return_value = mock_dialog
@@ -207,9 +208,10 @@ class TestInstagramHelperGUI:
 
     def test_add_account_empty(self, mock_tkinter, mock_dependencies) -> None:
         """Test adding an empty account (should do nothing)."""
-        with patch('gui_app.logging.getLogger'), \
-             patch('gui_app.AccountDialog') as mock_dialog_class:
-
+        with (
+            patch("gui_app.logging.getLogger"),
+            patch("gui_app.AccountDialog") as mock_dialog_class,
+        ):
             mock_dialog = MagicMock()
             mock_dialog.result = ""
             mock_dialog_class.return_value = mock_dialog
@@ -227,9 +229,10 @@ class TestInstagramHelperGUI:
 
     def test_add_account_duplicate(self, mock_tkinter, mock_dependencies) -> None:
         """Test adding a duplicate account (should do nothing)."""
-        with patch('gui_app.logging.getLogger'), \
-             patch('gui_app.AccountDialog') as mock_dialog_class:
-
+        with (
+            patch("gui_app.logging.getLogger"),
+            patch("gui_app.AccountDialog") as mock_dialog_class,
+        ):
             mock_dialog = MagicMock()
             mock_dialog.result = "existing_account"
             mock_dialog_class.return_value = mock_dialog
@@ -248,7 +251,7 @@ class TestInstagramHelperGUI:
 
     def test_remove_account(self, mock_tkinter, mock_dependencies) -> None:
         """Test removing an account."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the account listbox
@@ -263,7 +266,7 @@ class TestInstagramHelperGUI:
 
     def test_remove_account_no_selection(self, mock_tkinter, mock_dependencies) -> None:
         """Test removing account with no selection (should do nothing)."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the account listbox
@@ -278,7 +281,7 @@ class TestInstagramHelperGUI:
 
     def test_get_accounts(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting accounts list."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the account listbox
@@ -294,7 +297,7 @@ class TestInstagramHelperGUI:
 
     def test_get_settings_valid(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting valid settings from GUI."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the GUI variables
@@ -312,14 +315,15 @@ class TestInstagramHelperGUI:
             assert result == {
                 "max_age_days": 30,
                 "max_posts_per_account": 5,
-                "timeout_ms": 10000
+                "timeout_ms": 10000,
             }
 
     def test_get_settings_invalid(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting invalid settings from GUI."""
-        with patch('gui_app.logging.getLogger'), \
-             patch('gui_app.messagebox.showerror') as mock_showerror:
-
+        with (
+            patch("gui_app.logging.getLogger"),
+            patch("gui_app.messagebox.showerror") as mock_showerror,
+        ):
             app = InstagramHelperGUI()
 
             # Mock the GUI variables with invalid values
@@ -339,9 +343,10 @@ class TestInstagramHelperGUI:
 
     def test_start_scraping(self, mock_tkinter, mock_dependencies) -> None:
         """Test starting the scraping process."""
-        with patch('gui_app.logging.getLogger'), \
-             patch('gui_app.threading.Thread') as mock_thread_class:
-
+        with (
+            patch("gui_app.logging.getLogger"),
+            patch("gui_app.threading.Thread") as mock_thread_class,
+        ):
             mock_thread = MagicMock()
             mock_thread_class.return_value = mock_thread
 
@@ -349,11 +354,13 @@ class TestInstagramHelperGUI:
 
             # Mock the required methods and attributes
             app.get_accounts = MagicMock(return_value=["test_account"])
-            app.get_settings = MagicMock(return_value={
-                "max_age_days": 30,
-                "max_posts_per_account": 5,
-                "timeout_ms": 10000
-            })
+            app.get_settings = MagicMock(
+                return_value={
+                    "max_age_days": 30,
+                    "max_posts_per_account": 5,
+                    "timeout_ms": 10000,
+                }
+            )
             app.start_button = MagicMock()
             app.stop_button = MagicMock()
             app.progress_var = MagicMock()
@@ -373,9 +380,10 @@ class TestInstagramHelperGUI:
 
     def test_start_scraping_no_accounts(self, mock_tkinter, mock_dependencies) -> None:
         """Test starting scraping with no accounts."""
-        with patch('gui_app.logging.getLogger'), \
-             patch('gui_app.messagebox.showwarning') as mock_showwarning:
-
+        with (
+            patch("gui_app.logging.getLogger"),
+            patch("gui_app.messagebox.showwarning") as mock_showwarning,
+        ):
             app = InstagramHelperGUI()
 
             # Mock the get_accounts method to return empty list
@@ -391,7 +399,7 @@ class TestInstagramHelperGUI:
 
     def test_start_scraping_no_settings(self, mock_tkinter, mock_dependencies) -> None:
         """Test starting scraping with invalid settings."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the required methods
@@ -406,7 +414,7 @@ class TestInstagramHelperGUI:
 
     def test_stop_scraping_process(self, mock_tkinter, mock_dependencies) -> None:
         """Test stopping the scraping process."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the status variable
@@ -421,7 +429,7 @@ class TestInstagramHelperGUI:
 
     def test_poll_logs(self, mock_tkinter, mock_dependencies) -> None:
         """Test log polling functionality."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the log text widget and root
@@ -430,7 +438,11 @@ class TestInstagramHelperGUI:
 
             # Mock the queue with some messages
             app.log_queue = MagicMock()
-            app.log_queue.get_nowait.side_effect = ["Log message 1", "Log message 2", queue.Empty()]
+            app.log_queue.get_nowait.side_effect = [
+                "Log message 1",
+                "Log message 2",
+                queue.Empty(),
+            ]
 
             # Call the method
             app.poll_logs()
@@ -445,7 +457,7 @@ class TestInstagramHelperGUI:
 
     def test_poll_logs_empty_queue(self, mock_tkinter, mock_dependencies) -> None:
         """Test log polling with empty queue."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the log text widget and root
@@ -467,7 +479,7 @@ class TestInstagramHelperGUI:
 
     def test_clear_logs(self, mock_tkinter, mock_dependencies) -> None:
         """Test clearing log display."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the log text widget
@@ -481,7 +493,7 @@ class TestInstagramHelperGUI:
 
     def test_get_browser_page(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting browser page."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the browser
@@ -498,9 +510,11 @@ class TestInstagramHelperGUI:
             # Verify result
             assert result == mock_page
 
-    def test_get_browser_page_new_context(self, mock_tkinter, mock_dependencies) -> None:
+    def test_get_browser_page_new_context(
+        self, mock_tkinter, mock_dependencies
+    ) -> None:
         """Test getting browser page when no contexts exist."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the browser with no contexts
@@ -521,7 +535,7 @@ class TestInstagramHelperGUI:
 
     def test_get_browser_page_new_page(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting browser page when no pages exist."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the browser
@@ -542,7 +556,7 @@ class TestInstagramHelperGUI:
 
     def test_run(self, mock_tkinter, mock_dependencies) -> None:
         """Test running the GUI application."""
-        with patch('gui_app.logging.getLogger'):
+        with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
             # Mock the root window
@@ -561,9 +575,7 @@ class TestAccountDialog:
     @pytest.fixture
     def mock_tkinter(self) -> None:
         """Mock tkinter components."""
-        with patch('gui_app.tk') as mock_tk, \
-             patch('gui_app.ttk') as mock_ttk:
-
+        with patch("gui_app.tk") as mock_tk, patch("gui_app.ttk") as mock_ttk:
             # Mock Toplevel
             mock_dialog = MagicMock()
             mock_tk.Toplevel.return_value = mock_dialog
@@ -574,24 +586,21 @@ class TestAccountDialog:
             mock_ttk.Frame.return_value = MagicMock()
             mock_ttk.Button.return_value = MagicMock()
 
-            yield {
-                'tk': mock_tk,
-                'ttk': mock_ttk,
-                'dialog': mock_dialog
-            }
+            yield {"tk": mock_tk, "ttk": mock_ttk, "dialog": mock_dialog}
 
     def test_dialog_initialization(self, mock_tkinter) -> None:
         """Test dialog initialization."""
         mock_parent = MagicMock()
 
-        dialog = AccountDialog(mock_parent, "Test Dialog")
+        # Create the dialog to trigger initialization
+        AccountDialog(mock_parent, "Test Dialog")
 
         # Verify dialog was created
-        mock_tkinter['tk'].Toplevel.assert_called_once_with(mock_parent)
-        mock_tkinter['dialog'].title.assert_called_once_with("Test Dialog")
-        mock_tkinter['dialog'].geometry.assert_called()
-        mock_tkinter['dialog'].transient.assert_called_once_with(mock_parent)
-        mock_tkinter['dialog'].grab_set.assert_called_once()
+        mock_tkinter["tk"].Toplevel.assert_called_once_with(mock_parent)
+        mock_tkinter["dialog"].title.assert_called_once_with("Test Dialog")
+        mock_tkinter["dialog"].geometry.assert_called()
+        mock_tkinter["dialog"].transient.assert_called_once_with(mock_parent)
+        mock_tkinter["dialog"].grab_set.assert_called_once()
 
     def test_ok_clicked(self, mock_tkinter) -> None:
         """Test OK button click."""
@@ -608,7 +617,7 @@ class TestAccountDialog:
 
         # Verify result was set and dialog destroyed
         assert dialog.result == "test_account"
-        mock_tkinter['dialog'].destroy.assert_called_once()
+        mock_tkinter["dialog"].destroy.assert_called_once()
 
     def test_cancel_clicked(self, mock_tkinter) -> None:
         """Test Cancel button click."""
@@ -620,4 +629,4 @@ class TestAccountDialog:
         dialog.cancel_clicked()
 
         # Verify dialog was destroyed
-        mock_tkinter['dialog'].destroy.assert_called_once()
+        mock_tkinter["dialog"].destroy.assert_called_once()

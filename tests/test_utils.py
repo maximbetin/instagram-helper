@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -175,19 +175,17 @@ def test_setup_logging_file_handler_directory_creation(tmp_path: Path) -> None:
     assert len(file_handlers) == 1
 
 
-def test_get_user_agent_with_fake_useragent() -> None:
-    """Test user agent generation with fake_useragent available."""
-    # Mock fake_useragent to work
-    with patch('utils.ua') as mock_ua:
-        mock_ua.random = "Mozilla/5.0 (Test Browser)"
-        result = get_user_agent()
-        assert result == "Mozilla/5.0 (Test Browser)"
+def test_get_user_agent_returns_chromium() -> None:
+    """Test that user agent returns a reliable Chromium User-Agent."""
+    result = get_user_agent()
+    assert "Chrome" in result
+    assert "Windows NT 10.0; Win64; x64" in result
+    assert "AppleWebKit" in result
 
 
-def test_get_user_agent_fallback() -> None:
-    """Test user agent fallback when fake_useragent fails."""
-    # Mock fake_useragent to fail
-    with patch('utils.ua', None):
-        result = get_user_agent()
-        assert "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" in result
-        assert "Chrome" in result
+def test_get_user_agent_always_returns_chromium() -> None:
+    """Test that user agent always returns a reliable Chromium User-Agent."""
+    result = get_user_agent()
+    assert "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" in result
+    assert "Chrome" in result
+    assert "AppleWebKit" in result

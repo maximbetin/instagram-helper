@@ -13,6 +13,83 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _load_instagram_accounts() -> list[str]:
+    """Load Instagram accounts from a separate file or use defaults."""
+    accounts_file = Path(__file__).parent / "instagram_accounts.txt"
+
+    if accounts_file.exists():
+        try:
+            with open(accounts_file, encoding="utf-8") as f:
+                accounts = [
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.startswith("#")
+                ]
+            return accounts
+        except Exception:
+            pass
+
+    # Fallback to default accounts
+    return [
+        "agendagijon",
+        "allandestars",
+        "asociacionelviescu",
+        "asturias_en_vena",
+        "asturiasacoge",
+        "asturiesculturaenrede",
+        "aytocastrillon",
+        "aytoviedo",
+        "ayuntamientocabranes",
+        "ayuntamientodegozon",
+        "bandinalagarrapiella",
+        "bibliotecasdegijonxixon",
+        "biodevas",
+        "centroniemeyer",
+        "centros_sociales_oviedo",
+        "chigreculturallatadezinc",
+        "cia.proyectopiloto",
+        "cinesfoncalada",
+        "clubsemperludens",
+        "conectaoviedo",
+        "conocerasturias",
+        "conseyu_cmx",
+        "crjasturias",
+        "cuentosdemaleta",
+        "cultura.gijon",
+        "cultura.grau",
+        "culturacolunga",
+        "culturallanes",
+        "deportesayov",
+        "exprime.gijon",
+        "ferialibroxixon",
+        "gijon",
+        "gonggalaxyclub",
+        "gteatrolospintores",
+        "juventudgijon",
+        "juventudoviedo",
+        "kbunsgijon",
+        "kuivi_almacenes",
+        "laboralcinemateca",
+        "laboralciudadcultura",
+        "lacompaniadelalba",
+        "lasalvaje.oviedo",
+        "meidinerzclub",
+        "mierescultura",
+        "museosgijonxixon",
+        "museudelpuebludasturies",
+        "nortes.me",
+        "oviedo_secrets",
+        "oviedo.turismo",
+        "paramo_bar",
+        "patioh_laboral",
+        "prestosofest",
+        "prial_asociacion",
+        "traslapuertatiteres",
+        "trivilorioyeimpro",
+        "youropia_asociacion",
+    ]
+
+
 @dataclass(frozen=True, kw_only=True)
 class Settings:
     """Manages all application settings, loading them from environment variables.
@@ -64,122 +141,87 @@ class Settings:
     BROWSER_REMOTE_HOST: str = "localhost"
 
     # --- Instagram Scraper Configuration ---
-    INSTAGRAM_ACCOUNTS: list[str] = field(
-        default_factory=lambda: [
-            "agendagijon",
-            "allandestars",
-            "asociacionelviescu",
-            "asturias_en_vena",
-            "asturiasacoge",
-            "asturiesculturaenrede",
-            "aytocastrillon",
-            "aytoviedo",
-            "ayuntamientocabranes",
-            "ayuntamientodegozon",
-            "bandinalagarrapiella",
-            "bibliotecasdegijonxixon",
-            "biodevas",
-            "centroniemeyer",
-            "centros_sociales_oviedo",
-            "chigreculturallatadezinc",
-            "cia.proyectopiloto",
-            "cinesfoncalada",
-            "clubsemperludens",
-            "conectaoviedo",
-            "conocerasturias",
-            "conseyu_cmx",
-            "crjasturias",
-            "cuentosdemaleta",
-            "cultura.gijon",
-            "cultura.grau",
-            "culturacolunga",
-            "culturallanes",
-            "deportesayov",
-            "exprime.gijon",
-            "ferialibroxixon",
-            "gijon",
-            "gonggalaxyclub",
-            "gteatrolospintores",
-            "juventudgijon",
-            "juventudoviedo",
-            "kbunsgijon",
-            "kuivi_almacenes",
-            "laboralcinemateca",
-            "laboralciudadcultura",
-            "lacompaniadelalba",
-            "lasalvaje.oviedo",
-            "meidinerzclub",
-            "mierescultura",
-            "museosgijonxixon",
-            "museudelpuebludasturies",
-            "nortes.me",
-            "oviedo_secrets",
-            "oviedo.turismo",
-            "paramo_bar",
-            "patioh_laboral",
-            "prestosofest",
-            "prial_asociacion",
-            "traslapuertatiteres",
-            "trivilorioyeimpro",
-            "youropia_asociacion",
-        ]
-    )
+    INSTAGRAM_ACCOUNTS: list[str] = field(default_factory=_load_instagram_accounts)
     INSTAGRAM_URL: str = "https://www.instagram.com/"
     INSTAGRAM_POST_LOAD_TIMEOUT: int = 10000
     INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 5
 
     def __post_init__(self) -> None:
-        """Performs validation after the object has been initialized.
-
-        This method checks for required environment variables and ensures that
-        critical paths are correctly configured.
-
-        Raises:
-            ValueError: If a required environment variable is missing or invalid.
-        """
-
-        def _set_from_env(
-            attr_name: str, env_var: str, converter: type = str, required: bool = False
-        ) -> None:
-            """Helper to set attribute from environment variable."""
-            value = os.getenv(env_var)
-            if value is not None:
-                if converter is not str:
-                    try:
-                        value = converter(value)
-                    except (ValueError, TypeError) as err:
-                        if required:
-                            raise ValueError(
-                                f"Invalid value for {env_var}: {value}"
-                            ) from err
-                        return
-                object.__setattr__(self, attr_name, value)
-            elif required:
-                raise ValueError(f"{env_var} environment variable is not set.")
-
+        """Performs validation after the object has been initialized."""
         # Load browser-related settings
-        _set_from_env("BROWSER_PATH", "BROWSER_PATH", Path, required=True)
-        _set_from_env(
-            "BROWSER_USER_DATA_DIR", "BROWSER_USER_DATA_DIR", Path, required=True
-        )
-        _set_from_env("BROWSER_PROFILE_DIR", "BROWSER_PROFILE_DIR")
-        _set_from_env("BROWSER_DEBUG_PORT", "BROWSER_DEBUG_PORT", int)
-        _set_from_env("BROWSER_START_URL", "BROWSER_START_URL")
-        _set_from_env("BROWSER_LOAD_DELAY", "BROWSER_LOAD_DELAY", int)
-        _set_from_env("BROWSER_CONNECT_SCHEME", "BROWSER_CONNECT_SCHEME")
-        _set_from_env("BROWSER_REMOTE_HOST", "BROWSER_REMOTE_HOST")
+        self._load_browser_settings()
 
         # Load path and template settings
-        _set_from_env("OUTPUT_DIR", "OUTPUT_DIR", Path)
-        _set_from_env("LOG_DIR", "LOG_DIR", Path)
-        _set_from_env("TEMPLATE_PATH", "TEMPLATE_PATH")
+        self._load_path_settings()
 
         # Load Instagram-related settings
-        _set_from_env("INSTAGRAM_URL", "INSTAGRAM_URL")
-        _set_from_env(
-            "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", int
-        )
-        _set_from_env("INSTAGRAM_POST_LOAD_TIMEOUT", "INSTAGRAM_POST_LOAD_TIMEOUT", int)
+        self._load_instagram_settings()
+
+    def _load_browser_settings(self) -> None:
+        """Load browser-related settings from environment."""
+        if browser_path := os.getenv("BROWSER_PATH"):
+            object.__setattr__(self, "BROWSER_PATH", Path(browser_path))
+        else:
+            raise ValueError("BROWSER_PATH environment variable is required")
+
+        if browser_user_data := os.getenv("BROWSER_USER_DATA_DIR"):
+            object.__setattr__(self, "BROWSER_USER_DATA_DIR", Path(browser_user_data))
+        else:
+            raise ValueError("BROWSER_USER_DATA_DIR environment variable is required")
+
+        if profile_dir := os.getenv("BROWSER_PROFILE_DIR"):
+            object.__setattr__(self, "BROWSER_PROFILE_DIR", profile_dir)
+
+        if debug_port := os.getenv("BROWSER_DEBUG_PORT"):
+            try:
+                object.__setattr__(self, "BROWSER_DEBUG_PORT", int(debug_port))
+            except ValueError:
+                pass
+
+        if start_url := os.getenv("BROWSER_START_URL"):
+            object.__setattr__(self, "BROWSER_START_URL", start_url)
+
+        if load_delay := os.getenv("BROWSER_LOAD_DELAY"):
+            try:
+                object.__setattr__(self, "BROWSER_LOAD_DELAY", int(load_delay))
+            except ValueError:
+                pass
+
+        if connect_scheme := os.getenv("BROWSER_CONNECT_SCHEME"):
+            object.__setattr__(self, "BROWSER_CONNECT_SCHEME", connect_scheme)
+
+        if remote_host := os.getenv("BROWSER_REMOTE_HOST"):
+            object.__setattr__(self, "BROWSER_REMOTE_HOST", remote_host)
+
+    def _load_path_settings(self) -> None:
+        """Load path and template settings from environment."""
+        if output_dir := os.getenv("OUTPUT_DIR"):
+            object.__setattr__(self, "OUTPUT_DIR", Path(output_dir))
+
+        if log_dir := os.getenv("LOG_DIR"):
+            object.__setattr__(self, "LOG_DIR", Path(log_dir))
+
+        if template_path := os.getenv("TEMPLATE_PATH"):
+            object.__setattr__(self, "TEMPLATE_PATH", template_path)
+
+    def _load_instagram_settings(self) -> None:
+        """Load Instagram-related settings from environment."""
+        if instagram_url := os.getenv("INSTAGRAM_URL"):
+            object.__setattr__(self, "INSTAGRAM_URL", instagram_url)
+
+        if max_posts := os.getenv("INSTAGRAM_MAX_POSTS_PER_ACCOUNT"):
+            try:
+                object.__setattr__(
+                    self, "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", int(max_posts)
+                )
+            except ValueError:
+                pass
+
+        if timeout := os.getenv("INSTAGRAM_POST_LOAD_TIMEOUT"):
+            try:
+                object.__setattr__(self, "INSTAGRAM_POST_LOAD_TIMEOUT", int(timeout))
+            except ValueError:
+                pass
 
     def update_instagram_settings(self, max_posts: int, timeout: int) -> None:
         """Update Instagram settings dynamically.

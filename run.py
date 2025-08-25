@@ -9,13 +9,11 @@ from gui_app import InstagramHelperGUI
 def main() -> None:
     """Launch the Instagram Helper GUI application."""
     try:
-        print("Launching Instagram Helper GUI...")
         app = InstagramHelperGUI()
         app.run()
     except ImportError as e:
         print(f"Error importing required modules: {e}")
-        print("Please ensure all dependencies are installed:")
-        print("  pip install -e .")
+        print("Please ensure all dependencies are installed: pip install -e .")
         sys.exit(1)
     except Exception as e:
         print(f"Error starting GUI: {e}")

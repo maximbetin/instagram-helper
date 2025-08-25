@@ -4,7 +4,7 @@ import logging
 import queue
 import threading
 import tkinter as tk
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tkinter import messagebox, scrolledtext, ttk
 from typing import Any
@@ -43,7 +43,6 @@ class InstagramHelperGUI:
         self.scraping_thread: threading.Thread | None = None
         self.stop_scraping = threading.Event()
         self.playwright: Any | None = None
-        self.playwright_instance: Any | None = None
         self.browser: Browser | None = None
 
         # Setup logging
@@ -61,7 +60,6 @@ class InstagramHelperGUI:
 
     def setup_logging(self) -> None:
         """Setup logging to capture messages for GUI display."""
-        # Create a logger for the application
         self.logger = logging.getLogger("instagram_helper_gui")
         self.logger.setLevel(logging.INFO)
 
@@ -83,8 +81,6 @@ class InstagramHelperGUI:
 
         for logger_name in target_loggers:
             logger = logging.getLogger(logger_name)
-            # Add our handler without clearing existing ones
-            # This preserves file logging while adding GUI display
             logger.addHandler(log_handler)
 
     def create_widgets(self) -> None:
@@ -205,70 +201,44 @@ class InstagramHelperGUI:
         """Setup the layout of all widgets."""
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Configure main frame columns for better horizontal distribution
-        self.main_frame.grid_columnconfigure(0, weight=1)
-
         # Title
-        self.main_frame.grid_rowconfigure(0, weight=0)
         title_label = ttk.Label(
             self.main_frame, text="Instagram Helper", font=("Arial", 16, "bold")
         )
-        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))
+        title_label.grid(row=0, column=0, pady=(0, 10))
 
         # Control frame
-        self.main_frame.grid_rowconfigure(1, weight=0)
-        self.control_frame.grid(
-            row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10)
-        )
-        self.control_frame.grid_columnconfigure(1, weight=1)
-
+        self.control_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         self.start_button.grid(row=0, column=0, padx=(0, 10))
         self.stop_button.grid(row=0, column=1)
 
         # Settings frame
-        self.main_frame.grid_rowconfigure(2, weight=0)
-        self.settings_frame.grid(
-            row=2, column=0, columnspan=2, sticky="ew", pady=(0, 10)
-        )
-        # Configure settings frame columns for better spacing
-        self.settings_frame.grid_columnconfigure(0, weight=0)
-        self.settings_frame.grid_columnconfigure(1, weight=0)
-        self.settings_frame.grid_columnconfigure(2, weight=0)
-        self.settings_frame.grid_columnconfigure(3, weight=0)
-        self.settings_frame.grid_columnconfigure(4, weight=0)
-        self.settings_frame.grid_columnconfigure(5, weight=0)
+        self.settings_frame.grid(row=2, column=0, sticky="ew", pady=(0, 10))
 
         # Accounts frame
-        self.main_frame.grid_rowconfigure(3, weight=0)
-        self.accounts_frame.grid(
-            row=3, column=0, columnspan=2, sticky="ew", pady=(0, 10)
-        )
-        self.accounts_frame.grid_columnconfigure(0, weight=1)
-
+        self.accounts_frame.grid(row=3, column=0, sticky="ew", pady=(0, 10))
         self.account_listbox.grid(row=0, column=0, sticky="ew", padx=(0, 5))
         self.account_scrollbar.grid(row=0, column=1, sticky="ns")
-
-        self.account_buttons_frame.grid(row=1, column=0, columnspan=2, pady=(10, 0))
+        self.account_buttons_frame.grid(row=1, column=0, pady=(10, 0))
         self.add_account_button.grid(row=0, column=0, padx=(0, 5))
         self.remove_account_button.grid(row=0, column=1, padx=(0, 5))
         self.load_accounts_button.grid(row=0, column=2)
 
         # Logs frame
-        self.main_frame.grid_rowconfigure(4, weight=1)
-        self.logs_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
-        self.logs_frame.grid_columnconfigure(0, weight=1)
-        self.logs_frame.grid_rowconfigure(0, weight=1)
-
+        self.logs_frame.grid(row=4, column=0, sticky="nsew", pady=(0, 10))
         self.log_text.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
         self.clear_logs_button.grid(row=1, column=0, pady=(10, 0))
 
         # Progress frame
-        self.main_frame.grid_rowconfigure(5, weight=0)
-        self.progress_frame.grid(row=5, column=0, columnspan=2, sticky="ew")
-        self.progress_frame.grid_columnconfigure(0, weight=1)
-
+        self.progress_frame.grid(row=5, column=0, sticky="ew")
         self.progress_bar.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         self.status_label.grid(row=1, column=0, sticky="w")
+
+        # Configure grid weights
+        self.main_frame.grid_columnconfigure(0, weight=1)
+        self.main_frame.grid_rowconfigure(4, weight=1)
+        self.logs_frame.grid_columnconfigure(0, weight=1)
+        self.logs_frame.grid_rowconfigure(0, weight=1)
 
     def load_accounts_from_config(self) -> None:
         """Load accounts from the configuration file."""
@@ -354,9 +324,8 @@ class InstagramHelperGUI:
         try:
             self.logger.info("Starting Instagram scraping process...")
 
-            # Calculate cutoff date (make it timezone-aware)
-            from datetime import timezone
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings_dict["max_age_days"])  # noqa: UP017
+            # Calculate cutoff date with timezone info
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings_dict["max_age_days"])
             self.logger.info(f"Cutoff date: {cutoff_date}")
 
             # Update settings with GUI values
@@ -365,9 +334,9 @@ class InstagramHelperGUI:
             )
 
             # Initialize browser
-            self.playwright = sync_playwright()
-            self.playwright_instance = self.playwright.start()
-            self.browser = setup_browser(self.playwright_instance)
+            self.playwright_context = sync_playwright()
+            playwright_instance = self.playwright_context.start()
+            self.browser = setup_browser(playwright_instance)
             page = self._get_browser_page(self.browser)
 
             if not page:
@@ -392,10 +361,8 @@ class InstagramHelperGUI:
 
                 # Update progress
                 progress = (i / total_accounts) * 100
-                self.root.after(0, lambda p=progress: self._update_progress(p))  # type: ignore[misc]
-                self.root.after(
-                    0, lambda a=account: self._update_status(f"Processing @{a}...")  # type: ignore[misc]
-                )
+                self.root.after(0, self._update_progress, progress)
+                self.root.after(0, self._update_status, f"Processing @{account}...")
 
                 # Scrape posts
                 posts = scraper.process_account(account, cutoff_date)
@@ -406,10 +373,10 @@ class InstagramHelperGUI:
             # Generate report
             if all_posts and not self.stop_scraping.is_set():
                 self.logger.info("Generating HTML report...")
-                self.root.after(0, lambda: self._update_status("Generating report..."))
+                self.root.after(0, self._update_status, "Generating report...")
 
                 report_data = ReportData(posts=all_posts, cutoff_date=cutoff_date)
-                date_str = datetime.now().strftime("%d-%m-%Y")
+                date_str = datetime.now(timezone.utc).strftime("%d-%m-%Y")
                 output_path = Path(settings.OUTPUT_DIR) / f"{date_str}.html"
                 generate_html_report(report_data, output_path, settings.TEMPLATE_PATH)
 
@@ -417,30 +384,29 @@ class InstagramHelperGUI:
 
             # Update final status
             if self.stop_scraping.is_set():
-                self.root.after(0, lambda: self._update_status("Stopped"))
+                self.root.after(0, self._update_status, "Stopped")
             else:
-                self.root.after(0, lambda: self._update_progress(100))
+                self.root.after(0, self._update_progress, 100)
                 self.root.after(
                     0,
-                    lambda: self._update_status(
-                        f"Complete - {len(all_posts)} posts found"
-                    ),
+                    self._update_status,
+                    f"Complete - {len(all_posts)} posts found",
                 )
 
         except Exception as e:
             error_msg = str(e)
             self.logger.error(f"Error during scraping: {error_msg}")
-            self.root.after(0, lambda: self._update_status(f"Error: {error_msg}"))
+            self.root.after(0, self._update_status, f"Error: {error_msg}")
         finally:
             # Cleanup
             if self.browser:
                 self.browser.close()
-            if hasattr(self, 'playwright_instance') and self.playwright_instance:
-                self.playwright_instance.stop()
+            if hasattr(self, "playwright_context") and self.playwright_context:
+                self.playwright_context.stop()
 
             # Re-enable start button, disable stop button
-            self.root.after(0, lambda: self.start_button.config(state="normal"))
-            self.root.after(0, lambda: self.stop_button.config(state="disabled"))
+            self.root.after(0, self.start_button.config, "normal")
+            self.root.after(0, self.stop_button.config, "disabled")
 
     def poll_logs(self) -> None:
         """Poll the log queue and update the log display."""

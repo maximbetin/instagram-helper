@@ -58,7 +58,7 @@ test = [
 
 # GUI entry point - makes the tool available as a Python module
 [project.scripts]
-instagram-helper = "gui_app:main"
+instagram-helper = "run:main"
 
 # Project URLs for documentation and source
 [project.urls]

@@ -2,7 +2,6 @@
 
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,20 +17,20 @@ def sample_posts() -> list[InstagramPost]:
             url="https://instagram.com/p/1/",
             account="account1",
             caption="Post 1",
-            date_posted=datetime.now(UTC) - timedelta(hours=1)
+            date_posted=datetime.now(UTC) - timedelta(hours=1),
         ),
         InstagramPost(
             url="https://instagram.com/p/2/",
             account="account2",
             caption="Post 2",
-            date_posted=datetime.now(UTC) - timedelta(hours=2)
+            date_posted=datetime.now(UTC) - timedelta(hours=2),
         ),
         InstagramPost(
             url="https://instagram.com/p/3/",
             account="account1",  # Same account as first post
             caption="Post 3",
-            date_posted=datetime.now(UTC) - timedelta(hours=3)
-        )
+            date_posted=datetime.now(UTC) - timedelta(hours=3),
+        ),
     ]
 
 
@@ -49,8 +48,14 @@ def test_report_data_properties(report_data: ReportData) -> None:
     assert report_data.accounts_count == 2  # Only 2 unique accounts
     assert len(report_data.sorted_posts) == 3
     # Posts should be sorted by date (newest first)
-    assert report_data.sorted_posts[0].date_posted > report_data.sorted_posts[1].date_posted
-    assert report_data.sorted_posts[1].date_posted > report_data.sorted_posts[2].date_posted
+    assert (
+        report_data.sorted_posts[0].date_posted
+        > report_data.sorted_posts[1].date_posted
+    )
+    assert (
+        report_data.sorted_posts[1].date_posted
+        > report_data.sorted_posts[2].date_posted
+    )
 
 
 def test_report_data_template_data(report_data: ReportData) -> None:
@@ -73,9 +78,7 @@ def test_report_data_timezone_handling() -> None:
     generation_time = datetime.now()  # Naive datetime
 
     report_data = ReportData(
-        posts=[],
-        cutoff_date=cutoff_date,
-        generation_time=generation_time
+        posts=[], cutoff_date=cutoff_date, generation_time=generation_time
     )
 
     template_data = report_data.template_data
@@ -87,7 +90,7 @@ def test_generate_html_report_no_posts() -> None:
     """Test HTML report generation with no posts."""
     report_data = ReportData(posts=[], cutoff_date=datetime.now(UTC))
 
-    result = generate_html_report(report_data, Path("/tmp"), "templates/template.html")
+    result = generate_html_report(report_data, Path("/tmp/report.html"), "templates/template.html")
 
     assert result is None
 
@@ -113,7 +116,7 @@ def test_generate_html_report_success(tmp_path: Path, report_data: ReportData) -
         </html>
     """)
 
-    result = generate_html_report(report_data, tmp_path, str(template_path))
+    result = generate_html_report(report_data, tmp_path / "report.html", str(template_path))
 
     assert result is not None
     assert result.exists()
@@ -127,7 +130,9 @@ def test_generate_html_report_success(tmp_path: Path, report_data: ReportData) -
     assert "account2" in content
 
 
-def test_generate_html_report_file_write_error(tmp_path: Path, report_data: ReportData) -> None:
+def test_generate_html_report_file_write_error(
+    tmp_path: Path, report_data: ReportData
+) -> None:
     """Test HTML report generation with file write errors."""
     template_dir = tmp_path / "templates"
     template_dir.mkdir()
@@ -139,7 +144,7 @@ def test_generate_html_report_file_write_error(tmp_path: Path, report_data: Repo
     output_dir.mkdir()
     output_dir.chmod(0o444)  # Read-only
 
-    result = generate_html_report(report_data, output_dir, str(template_path))
+    result = generate_html_report(report_data, output_dir / "report.html", str(template_path))
 
     assert result is None
 
@@ -147,7 +152,9 @@ def test_generate_html_report_file_write_error(tmp_path: Path, report_data: Repo
     output_dir.chmod(0o755)
 
 
-def test_generate_html_report_directory_creation(tmp_path: Path, report_data: ReportData) -> None:
+def test_generate_html_report_directory_creation(
+    tmp_path: Path, report_data: ReportData
+) -> None:
     """Test HTML report generation with directory creation."""
     template_dir = tmp_path / "templates"
     template_dir.mkdir()
@@ -157,7 +164,7 @@ def test_generate_html_report_directory_creation(tmp_path: Path, report_data: Re
     # Use non-existent output directory
     output_dir = tmp_path / "new_output"
 
-    result = generate_html_report(report_data, output_dir, str(template_path))
+    result = generate_html_report(report_data, output_dir / "report.html", str(template_path))
 
     assert result is not None
     assert output_dir.exists()
@@ -181,7 +188,7 @@ def test_report_data_single_post() -> None:
         url="https://instagram.com/p/1/",
         account="single_account",
         caption="Single post",
-        date_posted=datetime.now(UTC)
+        date_posted=datetime.now(UTC),
     )
 
     cutoff_date = datetime.now(UTC) - timedelta(days=1)
@@ -199,9 +206,7 @@ def test_report_data_custom_generation_time() -> None:
     custom_time = datetime(2024, 1, 1, 12, 0, 0)
 
     report_data = ReportData(
-        posts=[],
-        cutoff_date=cutoff_date,
-        generation_time=custom_time
+        posts=[], cutoff_date=cutoff_date, generation_time=custom_time
     )
 
     template_data = report_data.template_data
@@ -211,16 +216,13 @@ def test_report_data_custom_generation_time() -> None:
 def test_report_data_timezone_aware_dates() -> None:
     """Test ReportData with timezone-aware dates."""
     # Create timezone-aware dates
-    utc_tz = timezone.utc
     est_tz = timezone(timedelta(hours=-5))
 
     cutoff_date = datetime.now(UTC) - timedelta(days=1)
     generation_time = datetime.now(est_tz)
 
     report_data = ReportData(
-        posts=[],
-        cutoff_date=cutoff_date,
-        generation_time=generation_time
+        posts=[], cutoff_date=cutoff_date, generation_time=generation_time
     )
 
     template_data = report_data.template_data

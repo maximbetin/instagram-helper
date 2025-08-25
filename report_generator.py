@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,7 +23,7 @@ class ReportData:
 
     posts: list[InstagramPost]
     cutoff_date: datetime
-    generation_time: datetime = field(default_factory=datetime.now)
+    generation_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def total_posts(self) -> int:
@@ -39,7 +39,7 @@ class ReportData:
 
     @property
     def template_data(self) -> dict[str, str | int | list[InstagramPost]]:
-        """Compute template data with proper timezone handling."""
+        """Compute template data."""
         return {
             "posts": self.sorted_posts,
             "total_posts": self.total_posts,
@@ -55,24 +55,16 @@ class ReportData:
     def _calculate_max_post_age(self) -> int:
         """Calculate the maximum post age in whole days."""
         try:
-            generation_time_normalized = self.generation_time
-            if (
-                self.generation_time.tzinfo is None
-                and self.cutoff_date.tzinfo is not None
-            ):
-                generation_time_normalized = self.generation_time.replace(
-                    tzinfo=self.cutoff_date.tzinfo
-                )
             return max(
                 0,
-                (generation_time_normalized.date() - self.cutoff_date.date()).days,
+                (self.generation_time.date() - self.cutoff_date.date()).days,
             )
         except Exception:
             return 0
 
 
 def generate_html_report(
-    report_data: ReportData, output_dir: Path, template_path: str
+    report_data: ReportData, output_path: Path, template_path: str
 ) -> Path | None:
     """Generates a stylized HTML report from a list of Instagram posts."""
     if not report_data.posts:
@@ -92,15 +84,14 @@ def generate_html_report(
         html_content = template.render(report_data.template_data)
 
         # Ensure output directory exists and save the report
+        output_dir = output_path.parent
         output_dir.mkdir(parents=True, exist_ok=True)
-        report_filename = f"{report_data.generation_time.strftime('%d-%m-%Y')}.html"
-        report_path = output_dir / report_filename
 
-        with report_path.open("w", encoding="utf-8") as f:
+        with output_path.open("w", encoding="utf-8") as f:
             f.write(html_content)
 
-        logger.info(f"Successfully generated HTML report: {report_path}")
-        return report_path
+        logger.info(f"Successfully generated HTML report: {output_path}")
+        return output_path
 
     except Exception as e:
         logger.error(f"Failed to generate HTML report: {e}", exc_info=True)

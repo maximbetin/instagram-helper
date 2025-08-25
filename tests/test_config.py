@@ -1,8 +1,6 @@
 """Tests for configuration management."""
 
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -42,18 +40,26 @@ def test_settings_with_custom_values(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_settings_missing_required_variables(monkeypatch: MonkeyPatch) -> None:
-    """Test that missing required environment variables raise errors."""
+    """Test that Settings raises an error when required variables are missing."""
+    # Clear the environment variables that might be set by .env file
     monkeypatch.delenv("BROWSER_PATH", raising=False)
+    monkeypatch.delenv("BROWSER_USER_DATA_DIR", raising=False)
 
-    with pytest.raises(ValueError, match="BROWSER_PATH environment variable is not set"):
+    with pytest.raises(
+        ValueError, match="BROWSER_PATH environment variable is required"
+    ):
         Settings()
 
 
 def test_settings_missing_user_data_dir(monkeypatch: MonkeyPatch) -> None:
-    """Test that missing user data directory raises errors."""
+    """Test that Settings raises an error when user data dir is missing."""
+    # Set BROWSER_PATH but clear BROWSER_USER_DATA_DIR
+    monkeypatch.setenv("BROWSER_PATH", "/usr/bin/browser")
     monkeypatch.delenv("BROWSER_USER_DATA_DIR", raising=False)
 
-    with pytest.raises(ValueError, match="BROWSER_USER_DATA_DIR environment variable is not set"):
+    with pytest.raises(
+        ValueError, match="BROWSER_USER_DATA_DIR environment variable is required"
+    ):
         Settings()
 
 

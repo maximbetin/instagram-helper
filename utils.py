@@ -2,36 +2,17 @@
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fake_useragent import UserAgent
-
-# --- User-Agent ---
-try:
-    ua: UserAgent | None = UserAgent(platforms="pc", browsers=["chrome", "edge"])
-except Exception:
-    ua = None
 
 
 def get_user_agent() -> str:
-    """Returns a realistic User-Agent string."""
+    """Returns a reliable Chromium User-Agent string."""
     return (
-        ua.random
-        if ua
-        else (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        )
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
-
-
-# --- Logging Configuration ---
-LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
-LOG_FORMAT_CONSOLE = "[%(levelname)s] %(message)s"
-LOG_FORMAT_FILE = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def setup_logging(
@@ -48,7 +29,11 @@ def setup_logging(
         A configured logging.Logger instance.
     """
     logger = logging.getLogger(name)
-    logger.setLevel(LOG_LEVEL)
+
+    # Get log level from environment
+    log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_str, logging.INFO)
+    logger.setLevel(log_level)
 
     # Clear existing handlers to avoid duplicates
     if logger.hasHandlers():
@@ -56,18 +41,21 @@ def setup_logging(
 
     # Console Handler
     console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter(LOG_FORMAT_CONSOLE))
+    console_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
     logger.addHandler(console_handler)
 
     # File Handler (optional)
     if log_dir:
         try:
             log_dir.mkdir(parents=True, exist_ok=True)
-            log_file = log_dir / f"{datetime.now().strftime('%d-%m-%Y')}.log"
+            log_file = log_dir / f"{datetime.now(timezone.utc).strftime('%d-%m-%Y')}.log"
 
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(
-                logging.Formatter(LOG_FORMAT_FILE, datefmt=LOG_DATE_FORMAT)
+                logging.Formatter(
+                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S",
+                )
             )
             logger.addHandler(file_handler)
 

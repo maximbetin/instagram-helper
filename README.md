@@ -35,6 +35,7 @@ Your browser must support remote debugging. The tool will automatically:
 
 2. **Configuration**:
    - Create a `.env` file in the project root to configure your browser settings. See the [Environment Variables](#environment-variables) section for details.
+   - **Optional**: Customize Instagram accounts by editing `instagram_accounts.txt` (see [Account Configuration](#instagram-account-configuration)).
 
 3. **Run**:
    - Execute `python run.py` to launch the GUI application.
@@ -157,16 +158,24 @@ INSTAGRAM_POST_LOAD_TIMEOUT=10000
 
 ### Instagram Account Configuration
 
-The tool comes pre-configured with 25+ Instagram accounts including:
+The tool comes pre-configured with **50 Instagram accounts** including:
 
 - `agendagijon`, `biodevas`, `centroniemeyer`, `aytoviedo`, `aytocastrillon`
 - `bibliotecasdegijonxixon`, `conectaoviedo`, `conocerasturias`, `cultura.gijon`
+- And many more cultural and institutional accounts
 
-**Customization**: You can modify `config.py` to:
+**Customization**: You can modify accounts in two ways:
 
-- Add or remove Instagram accounts from the `INSTAGRAM_ACCOUNTS` list
-- Adjust `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` (default: 5 posts per account)
-- Change `INSTAGRAM_POST_LOAD_TIMEOUT` (default: 10 seconds per post)
+1. **External File (Recommended)**: Edit `instagram_accounts.txt` in the project root:
+   - Add one account per line
+   - Lines starting with `#` are treated as comments
+   - No need to restart the application after changes
+
+2. **Code Configuration**: Modify `config.py` to:
+   - Adjust `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` (default: 5 posts per account)
+   - Change `INSTAGRAM_POST_LOAD_TIMEOUT` (default: 10 seconds per post)
+
+**Note**: The external `instagram_accounts.txt` file takes precedence over hardcoded accounts in the configuration.
 
 ## Troubleshooting
 
@@ -209,6 +218,8 @@ The tool comes pre-configured with 25+ Instagram accounts including:
 **WSL2 Optimization**: This tool is specifically designed for Windows Subsystem for Linux 2 environments and may not work optimally in other setups.
 
 **Browser Management**: The tool always launches a new browser instance to ensure reliable operation. If you encounter connection errors, close any existing browser instances and try again.
+
+**Account Management**: Instagram accounts are now managed through the external `instagram_accounts.txt` file, making it easier to customize without touching code.
 
 ## Development
 
