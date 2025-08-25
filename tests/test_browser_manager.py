@@ -254,6 +254,7 @@ def test_kill_existing_browser_processes_brave_linux() -> None:
 
         # Import after mocking
         import browser_manager
+
         browser_manager._kill_existing_browser_processes()
 
         mock_run.assert_called_once_with(
@@ -274,6 +275,7 @@ def test_kill_existing_browser_processes_not_brave() -> None:
 
         # Import after mocking
         import browser_manager
+
         browser_manager._kill_existing_browser_processes()
 
         mock_run.assert_not_called()
@@ -289,6 +291,7 @@ def test_kill_existing_browser_processes_no_browser_path() -> None:
 
         # Import after mocking
         import browser_manager
+
         browser_manager._kill_existing_browser_processes()
 
         mock_run.assert_not_called()
@@ -309,6 +312,7 @@ def test_kill_existing_browser_processes_taskkill_not_found() -> None:
 
         # Import after mocking
         import browser_manager
+
         # Should not raise an exception
         browser_manager._kill_existing_browser_processes()
 
@@ -326,6 +330,7 @@ def test_kill_existing_browser_processes_other_error() -> None:
 
         # Import after mocking
         import browser_manager
+
         # Should not raise an exception
         browser_manager._kill_existing_browser_processes()
 
@@ -360,6 +365,7 @@ def test_browser_launch_arguments(
 
         # Import after mocking
         import browser_manager
+
         browser_manager._launch_local_browser(mock_playwright, mock_settings)
 
         # Check that Popen was called with correct arguments
@@ -383,6 +389,7 @@ def test_playwright_chromium_launch_arguments(
 
         # Import after mocking
         import browser_manager
+
         browser_manager._launch_playwright_chromium(mock_playwright, mock_settings)
 
         mock_playwright.chromium.launch.assert_called_once_with(

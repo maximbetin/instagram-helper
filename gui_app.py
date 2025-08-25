@@ -4,7 +4,7 @@ import logging
 import queue
 import threading
 import tkinter as tk
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tkinter import messagebox, scrolledtext, ttk
 from typing import Any
@@ -56,7 +56,7 @@ class InstagramHelperGUI:
         self.poll_logs()
 
         # Load initial accounts
-        self.load_accounts_from_config()
+        self.load_initial_accounts()
 
     def setup_logging(self) -> None:
         """Setup logging to capture messages for GUI display."""
@@ -146,30 +146,17 @@ class InstagramHelperGUI:
             self.main_frame, text="Accounts", padding="10"
         )
 
-        # Account list
-        self.account_listbox = tk.Listbox(
-            self.accounts_frame, height=8, selectmode=tk.EXTENDED
+        # Account input text area
+        ttk.Label(
+            self.accounts_frame, text="Enter Instagram accounts (one per line):"
+        ).pack(anchor="w")
+        self.account_text = scrolledtext.ScrolledText(
+            self.accounts_frame, height=8, width=80
         )
-        self.account_scrollbar = ttk.Scrollbar(
-            self.accounts_frame, orient="vertical", command=self.account_listbox.yview
-        )
-        self.account_listbox.configure(yscrollcommand=self.account_scrollbar.set)
+        self.account_text.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
-        # Account control buttons
-        self.account_buttons_frame = ttk.Frame(self.accounts_frame)
-        self.add_account_button = ttk.Button(
-            self.account_buttons_frame, text="Add", command=self.add_account
-        )
-        self.remove_account_button = ttk.Button(
-            self.account_buttons_frame,
-            text="Remove",
-            command=self.remove_account,
-        )
-        self.load_accounts_button = ttk.Button(
-            self.account_buttons_frame,
-            text="Load Config",
-            command=self.load_accounts_from_config,
-        )
+        # Load initial accounts
+        self.load_initial_accounts()
 
         # Logs frame
         self.logs_frame = ttk.LabelFrame(self.main_frame, text="Logs", padding="10")
@@ -217,12 +204,7 @@ class InstagramHelperGUI:
 
         # Accounts frame
         self.accounts_frame.grid(row=3, column=0, sticky="ew", pady=(0, 10))
-        self.account_listbox.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-        self.account_scrollbar.grid(row=0, column=1, sticky="ns")
-        self.account_buttons_frame.grid(row=1, column=0, pady=(10, 0))
-        self.add_account_button.grid(row=0, column=0, padx=(0, 5))
-        self.remove_account_button.grid(row=0, column=1, padx=(0, 5))
-        self.load_accounts_button.grid(row=0, column=2)
+        self.account_text.pack(fill=tk.BOTH, expand=True, padx=(0, 5))
 
         # Logs frame
         self.logs_frame.grid(row=4, column=0, sticky="nsew", pady=(0, 10))
@@ -237,34 +219,27 @@ class InstagramHelperGUI:
         # Configure grid weights
         self.main_frame.grid_columnconfigure(0, weight=1)
         self.main_frame.grid_rowconfigure(4, weight=1)
+        self.accounts_frame.grid_columnconfigure(0, weight=1)
+        self.accounts_frame.grid_rowconfigure(0, weight=1)
         self.logs_frame.grid_columnconfigure(0, weight=1)
         self.logs_frame.grid_rowconfigure(0, weight=1)
+        self.progress_frame.grid_columnconfigure(0, weight=1)
 
-    def load_accounts_from_config(self) -> None:
-        """Load accounts from the configuration file."""
-        self.account_listbox.delete(0, tk.END)
-        for account in settings.INSTAGRAM_ACCOUNTS:
-            self.account_listbox.insert(tk.END, account)
-
-    def add_account(self) -> None:
-        """Add a new account to the list."""
-        dialog = AccountDialog(self.root, "Add Account")
-        if dialog.result:
-            account = dialog.result.strip()
-            if account and account not in self.get_accounts():
-                self.account_listbox.insert(tk.END, account)
-
-    def remove_account(self) -> None:
-        """Remove selected accounts from the list."""
-        selection = self.account_listbox.curselection()
-        if selection:
-            # Remove from end to avoid index shifting issues
-            for index in reversed(selection):
-                self.account_listbox.delete(index)
+    def load_initial_accounts(self) -> None:
+        """Load initial accounts from the text area."""
+        self.account_text.delete(1.0, tk.END)
+        for i, account in enumerate(settings.INSTAGRAM_ACCOUNTS):
+            if i > 0:
+                self.account_text.insert(tk.END, "\n")
+            self.account_text.insert(tk.END, account)
 
     def get_accounts(self) -> list[str]:
-        """Get the current list of accounts."""
-        return list(self.account_listbox.get(0, tk.END))
+        """Get the current list of accounts from the text area."""
+        return [
+            line.strip()
+            for line in self.account_text.get(1.0, tk.END).splitlines()
+            if line.strip()
+        ]
 
     def get_settings(self) -> dict[str, int] | None:
         """Get current settings from the GUI."""
@@ -325,7 +300,9 @@ class InstagramHelperGUI:
             self.logger.info("Starting Instagram scraping process...")
 
             # Calculate cutoff date with timezone info
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings_dict["max_age_days"])
+            cutoff_date = datetime.now(UTC) - timedelta(
+                days=settings_dict["max_age_days"]
+            )
             self.logger.info(f"Cutoff date: {cutoff_date}")
 
             # Update settings with GUI values
@@ -333,10 +310,10 @@ class InstagramHelperGUI:
                 settings_dict["max_posts_per_account"], settings_dict["timeout_ms"]
             )
 
-            # Initialize browser
+            # Initialize Playwright
             self.playwright_context = sync_playwright()
-            playwright_instance = self.playwright_context.start()
-            self.browser = setup_browser(playwright_instance)
+            self.playwright_instance = self.playwright_context.start()
+            self.browser = setup_browser(self.playwright_instance)
             page = self._get_browser_page(self.browser)
 
             if not page:
@@ -376,7 +353,7 @@ class InstagramHelperGUI:
                 self.root.after(0, self._update_status, "Generating report...")
 
                 report_data = ReportData(posts=all_posts, cutoff_date=cutoff_date)
-                date_str = datetime.now(timezone.utc).strftime("%d-%m-%Y")
+                date_str = datetime.now(UTC).strftime("%d-%m-%Y")
                 output_path = Path(settings.OUTPUT_DIR) / f"{date_str}.html"
                 generate_html_report(report_data, output_path, settings.TEMPLATE_PATH)
 
@@ -401,8 +378,8 @@ class InstagramHelperGUI:
             # Cleanup
             if self.browser:
                 self.browser.close()
-            if hasattr(self, "playwright_context") and self.playwright_context:
-                self.playwright_context.stop()
+            if hasattr(self, "playwright_instance") and self.playwright_instance:
+                self.playwright_instance.stop()
 
             # Re-enable start button, disable stop button
             self.root.after(0, self.start_button.config, "normal")
@@ -441,58 +418,6 @@ class InstagramHelperGUI:
     def run(self) -> None:
         """Start the GUI application."""
         self.root.mainloop()
-
-
-class AccountDialog:
-    """Simple dialog for adding Instagram accounts."""
-
-    def __init__(self, parent: tk.Tk, title: str) -> None:
-        self.result: str | None = None
-
-        # Create dialog window
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title(title)
-        self.dialog.geometry("300x120")
-        self.dialog.transient(parent)
-        self.dialog.grab_set()
-
-        # Center the dialog
-        x = parent.winfo_rootx() + 50
-        y = parent.winfo_rooty() + 50
-        self.dialog.geometry(f"+{x}+{y}")
-
-        # Create widgets
-        ttk.Label(self.dialog, text="Enter Instagram account name:").pack(pady=(20, 5))
-
-        self.entry = ttk.Entry(self.dialog, width=30)
-        self.entry.pack(pady=(0, 20))
-        self.entry.focus()
-
-        # Buttons
-        button_frame = ttk.Frame(self.dialog)
-        button_frame.pack()
-
-        ttk.Button(button_frame, text="Add", command=self.ok_clicked).pack(
-            side=tk.LEFT, padx=(0, 5)
-        )
-        ttk.Button(button_frame, text="Cancel", command=self.cancel_clicked).pack(
-            side=tk.LEFT
-        )
-
-        # Bind Enter key
-        self.entry.bind("<Return>", lambda e: self.ok_clicked())
-
-        # Wait for dialog to close
-        self.dialog.wait_window()
-
-    def ok_clicked(self) -> None:
-        """Handle OK button click."""
-        self.result = self.entry.get()
-        self.dialog.destroy()
-
-    def cancel_clicked(self) -> None:
-        """Handle Cancel button click."""
-        self.dialog.destroy()
 
 
 if __name__ == "__main__":

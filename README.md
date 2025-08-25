@@ -35,7 +35,7 @@ Your browser must support remote debugging. The tool will automatically:
 
 2. **Configuration**:
    - Create a `.env` file in the project root to configure your browser settings. See the [Environment Variables](#environment-variables) section for details.
-   - **Optional**: Customize Instagram accounts by editing `instagram_accounts.txt` (see [Account Configuration](#instagram-account-configuration)).
+   - **Optional**: Customize Instagram accounts directly in the GUI (see [Account Configuration](#instagram-account-configuration)).
 
 3. **Run**:
    - Execute `python run.py` to launch the GUI application.
@@ -164,18 +164,18 @@ The tool comes pre-configured with **50 Instagram accounts** including:
 - `bibliotecasdegijonxixon`, `conectaoviedo`, `conocerasturias`, `cultura.gijon`
 - And many more cultural and institutional accounts
 
-**Customization**: You can modify accounts in two ways:
+**Customization**: You can modify accounts directly in the GUI:
 
-1. **External File (Recommended)**: Edit `instagram_accounts.txt` in the project root:
-   - Add one account per line
-   - Lines starting with `#` are treated as comments
-   - No need to restart the application after changes
+1. **GUI Input (Recommended)**: Use the "Accounts" section in the GUI:
+   - Enter one Instagram account per line in the text area
+   - Accounts are automatically loaded when you start the application
+   - Changes take effect immediately when you start scraping
 
 2. **Code Configuration**: Modify `config.py` to:
    - Adjust `INSTAGRAM_MAX_POSTS_PER_ACCOUNT` (default: 5 posts per account)
    - Change `INSTAGRAM_POST_LOAD_TIMEOUT` (default: 10 seconds per post)
 
-**Note**: The external `instagram_accounts.txt` file takes precedence over hardcoded accounts in the configuration.
+**Note**: The GUI text area provides a simple way to manage accounts without editing external files.
 
 ## Troubleshooting
 
@@ -219,7 +219,7 @@ The tool comes pre-configured with **50 Instagram accounts** including:
 
 **Browser Management**: The tool always launches a new browser instance to ensure reliable operation. If you encounter connection errors, close any existing browser instances and try again.
 
-**Account Management**: Instagram accounts are now managed through the external `instagram_accounts.txt` file, making it easier to customize without touching code.
+**Account Management**: Instagram accounts are now managed directly through the GUI text area, making it easier to customize without editing external files.
 
 ## Development
 

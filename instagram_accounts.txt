@@ -1,5 +1,0 @@
-# Instagram accounts to scrape
-# One account per line, lines starting with # are comments
-# You can modify this file to add/remove accounts without changing the code
-
-aytoviedo

@@ -32,7 +32,10 @@ def _kill_existing_browser_processes() -> None:
             is_wsl2 = (
                 os.name == "posix"
                 and "microsoft" in os.uname().release.lower()
-                and ("win" in str(settings.BROWSER_PATH).lower() or ".exe" in str(settings.BROWSER_PATH).lower())
+                and (
+                    "win" in str(settings.BROWSER_PATH).lower()
+                    or ".exe" in str(settings.BROWSER_PATH).lower()
+                )
             )
 
             if is_wsl2 or "win" in os.name.lower():
@@ -83,7 +86,10 @@ def _launch_local_browser(
     is_wsl2 = (
         os.name == "posix"
         and "microsoft" in os.uname().release.lower()
-        and ("win" in str(app_settings.BROWSER_PATH).lower() or ".exe" in str(app_settings.BROWSER_PATH).lower())
+        and (
+            "win" in str(app_settings.BROWSER_PATH).lower()
+            or ".exe" in str(app_settings.BROWSER_PATH).lower()
+        )
     )
 
     # Add platform-specific arguments
@@ -111,7 +117,7 @@ def _launch_local_browser(
                     wsl_args,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    start_new_session=True
+                    start_new_session=True,
                 )
             except FileNotFoundError:
                 # Fallback to direct launch
@@ -119,7 +125,7 @@ def _launch_local_browser(
                     browser_args,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    start_new_session=True
+                    start_new_session=True,
                 )
         else:
             # Native Linux/macOS launch
@@ -127,7 +133,7 @@ def _launch_local_browser(
                 browser_args,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                start_new_session=True
+                start_new_session=True,
             )
 
         logger.debug(

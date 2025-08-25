@@ -260,9 +260,6 @@ def test_navigate_to_url_timeout_failure(
     assert result is False
 
 
-
-
-
 def test_navigate_to_url_exception_failure(
     mock_page: MagicMock, scraper: InstagramScraper
 ) -> None:

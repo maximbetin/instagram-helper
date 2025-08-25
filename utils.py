@@ -2,9 +2,8 @@
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 
 def get_user_agent() -> str:
@@ -48,7 +47,7 @@ def setup_logging(
     if log_dir:
         try:
             log_dir.mkdir(parents=True, exist_ok=True)
-            log_file = log_dir / f"{datetime.now(timezone.utc).strftime('%d-%m-%Y')}.log"
+            log_file = log_dir / f"{datetime.now(UTC).strftime('%d-%m-%Y')}.log"
 
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(

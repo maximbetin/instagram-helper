@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from playwright.sync_api import Page
@@ -205,10 +205,11 @@ class InstagramScraper:
             if element and (dt_attr := element.get_attribute("datetime")):
                 # Parse the UTC datetime from Instagram
                 utc_dt = datetime.fromisoformat(dt_attr.replace("Z", "+00:00"))
-                # Convert to the configured timezone
+                # Convert to the configured timezone if available
+                result_dt = utc_dt
                 if self.settings.TIMEZONE:
-                    return utc_dt.astimezone(self.settings.TIMEZONE)
-                return utc_dt
+                    result_dt = utc_dt.astimezone(self.settings.TIMEZONE)
+                return result_dt
             logger.warning("Could not find time element with datetime attribute.")
         except Exception as e:
             logger.error(f"Error parsing date from time element: {e}")

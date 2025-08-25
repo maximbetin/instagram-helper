@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from gui_app import AccountDialog, InstagramHelperGUI, LogHandler
+from gui_app import InstagramHelperGUI, LogHandler
 
 
 class TestLogHandler:
@@ -165,135 +165,40 @@ class TestInstagramHelperGUI:
             # Verify handler setup for target loggers
             assert mock_get_logger.call_count >= 5  # Main logger + 4 target loggers
 
-    def test_load_accounts_from_config(self, mock_tkinter, mock_dependencies) -> None:
-        """Test loading accounts from configuration."""
+    def test_load_initial_accounts(self, mock_tkinter, mock_dependencies) -> None:
+        """Test loading initial accounts into the text area."""
         with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
-            # Mock the account listbox
-            app.account_listbox = MagicMock()
+            # Mock the account text area
+            app.account_text = MagicMock()
 
             # Call the method
-            app.load_accounts_from_config()
+            app.load_initial_accounts()
 
-            # Verify accounts were added to listbox
-            assert app.account_listbox.insert.call_count == 2
-            app.account_listbox.insert.assert_any_call("end", "test_account1")
-            app.account_listbox.insert.assert_any_call("end", "test_account2")
-
-    def test_add_account(self, mock_tkinter, mock_dependencies) -> None:
-        """Test adding a new account."""
-        with (
-            patch("gui_app.logging.getLogger"),
-            patch("gui_app.AccountDialog") as mock_dialog_class,
-        ):
-            mock_dialog = MagicMock()
-            mock_dialog.result = "new_account"
-            mock_dialog_class.return_value = mock_dialog
-
-            app = InstagramHelperGUI()
-
-            # Mock the account listbox and get_accounts method
-            app.account_listbox = MagicMock()
-            app.get_accounts = MagicMock(return_value=["existing_account"])
-
-            # Call the method
-            app.add_account()
-
-            # Verify dialog was created
-            mock_dialog_class.assert_called_once_with(app.root, "Add Account")
-
-            # Verify account was added
-            app.account_listbox.insert.assert_called_once_with("end", "new_account")
-
-    def test_add_account_empty(self, mock_tkinter, mock_dependencies) -> None:
-        """Test adding an empty account (should do nothing)."""
-        with (
-            patch("gui_app.logging.getLogger"),
-            patch("gui_app.AccountDialog") as mock_dialog_class,
-        ):
-            mock_dialog = MagicMock()
-            mock_dialog.result = ""
-            mock_dialog_class.return_value = mock_dialog
-
-            app = InstagramHelperGUI()
-
-            # Mock the account listbox
-            app.account_listbox = MagicMock()
-
-            # Call the method
-            app.add_account()
-
-            # Verify nothing was added
-            app.account_listbox.insert.assert_not_called()
-
-    def test_add_account_duplicate(self, mock_tkinter, mock_dependencies) -> None:
-        """Test adding a duplicate account (should do nothing)."""
-        with (
-            patch("gui_app.logging.getLogger"),
-            patch("gui_app.AccountDialog") as mock_dialog_class,
-        ):
-            mock_dialog = MagicMock()
-            mock_dialog.result = "existing_account"
-            mock_dialog_class.return_value = mock_dialog
-
-            app = InstagramHelperGUI()
-
-            # Mock the account listbox and get_accounts method
-            app.account_listbox = MagicMock()
-            app.get_accounts = MagicMock(return_value=["existing_account"])
-
-            # Call the method
-            app.add_account()
-
-            # Verify nothing was added
-            app.account_listbox.insert.assert_not_called()
-
-    def test_remove_account(self, mock_tkinter, mock_dependencies) -> None:
-        """Test removing an account."""
-        with patch("gui_app.logging.getLogger"):
-            app = InstagramHelperGUI()
-
-            # Mock the account listbox
-            app.account_listbox = MagicMock()
-            app.account_listbox.curselection.return_value = [0]
-
-            # Call the method
-            app.remove_account()
-
-            # Verify account was removed
-            app.account_listbox.delete.assert_called_once_with(0)
-
-    def test_remove_account_no_selection(self, mock_tkinter, mock_dependencies) -> None:
-        """Test removing account with no selection (should do nothing)."""
-        with patch("gui_app.logging.getLogger"):
-            app = InstagramHelperGUI()
-
-            # Mock the account listbox
-            app.account_listbox = MagicMock()
-            app.account_listbox.curselection.return_value = []
-
-            # Call the method
-            app.remove_account()
-
-            # Verify nothing was deleted
-            app.account_listbox.delete.assert_not_called()
+            # Verify accounts were added to text area
+            assert app.account_text.delete.call_count == 1
+            assert app.account_text.insert.call_count == 3  # 2 accounts + 1 newline between them
+            app.account_text.delete.assert_called_once_with(1.0, "end")
+            app.account_text.insert.assert_any_call("end", "test_account1")
+            app.account_text.insert.assert_any_call("end", "\n")
+            app.account_text.insert.assert_any_call("end", "test_account2")
 
     def test_get_accounts(self, mock_tkinter, mock_dependencies) -> None:
-        """Test getting accounts list."""
+        """Test getting accounts list from the text area."""
         with patch("gui_app.logging.getLogger"):
             app = InstagramHelperGUI()
 
-            # Mock the account listbox
-            app.account_listbox = MagicMock()
-            app.account_listbox.get.return_value = ["account1", "account2"]
+            # Mock the account text area
+            app.account_text = MagicMock()
+            app.account_text.get.return_value = "account1\naccount2\n\n"  # Empty lines should be filtered
 
             # Call the method
             result = app.get_accounts()
 
             # Verify result
             assert result == ["account1", "account2"]
-            app.account_listbox.get.assert_called_once_with(0, "end")
+            app.account_text.get.assert_called_once_with(1.0, "end")
 
     def test_get_settings_valid(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting valid settings from GUI."""
@@ -567,66 +472,3 @@ class TestInstagramHelperGUI:
 
             # Verify mainloop was called
             app.root.mainloop.assert_called_once()
-
-
-class TestAccountDialog:
-    """Test the account dialog class."""
-
-    @pytest.fixture
-    def mock_tkinter(self) -> None:
-        """Mock tkinter components."""
-        with patch("gui_app.tk") as mock_tk, patch("gui_app.ttk") as mock_ttk:
-            # Mock Toplevel
-            mock_dialog = MagicMock()
-            mock_tk.Toplevel.return_value = mock_dialog
-
-            # Mock ttk components
-            mock_ttk.Label.return_value = MagicMock()
-            mock_ttk.Entry.return_value = MagicMock()
-            mock_ttk.Frame.return_value = MagicMock()
-            mock_ttk.Button.return_value = MagicMock()
-
-            yield {"tk": mock_tk, "ttk": mock_ttk, "dialog": mock_dialog}
-
-    def test_dialog_initialization(self, mock_tkinter) -> None:
-        """Test dialog initialization."""
-        mock_parent = MagicMock()
-
-        # Create the dialog to trigger initialization
-        AccountDialog(mock_parent, "Test Dialog")
-
-        # Verify dialog was created
-        mock_tkinter["tk"].Toplevel.assert_called_once_with(mock_parent)
-        mock_tkinter["dialog"].title.assert_called_once_with("Test Dialog")
-        mock_tkinter["dialog"].geometry.assert_called()
-        mock_tkinter["dialog"].transient.assert_called_once_with(mock_parent)
-        mock_tkinter["dialog"].grab_set.assert_called_once()
-
-    def test_ok_clicked(self, mock_tkinter) -> None:
-        """Test OK button click."""
-        mock_parent = MagicMock()
-
-        dialog = AccountDialog(mock_parent, "Test Dialog")
-
-        # Mock the entry widget
-        dialog.entry = MagicMock()
-        dialog.entry.get.return_value = "test_account"
-
-        # Call the method
-        dialog.ok_clicked()
-
-        # Verify result was set and dialog destroyed
-        assert dialog.result == "test_account"
-        mock_tkinter["dialog"].destroy.assert_called_once()
-
-    def test_cancel_clicked(self, mock_tkinter) -> None:
-        """Test Cancel button click."""
-        mock_parent = MagicMock()
-
-        dialog = AccountDialog(mock_parent, "Test Dialog")
-
-        # Call the method
-        dialog.cancel_clicked()
-
-        # Verify dialog was destroyed
-        mock_tkinter["dialog"].destroy.assert_called_once()

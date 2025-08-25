@@ -14,22 +14,7 @@ load_dotenv()
 
 
 def _load_instagram_accounts() -> list[str]:
-    """Load Instagram accounts from a separate file or use defaults."""
-    accounts_file = Path(__file__).parent / "instagram_accounts.txt"
-
-    if accounts_file.exists():
-        try:
-            with open(accounts_file, encoding="utf-8") as f:
-                accounts = [
-                    line.strip()
-                    for line in f
-                    if line.strip() and not line.startswith("#")
-                ]
-            return accounts
-        except Exception:
-            pass
-
-    # Fallback to default accounts
+    """Default Instagram accounts to scrape."""
     return [
         "agendagijon",
         "allandestars",

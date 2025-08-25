@@ -90,7 +90,9 @@ def test_generate_html_report_no_posts() -> None:
     """Test HTML report generation with no posts."""
     report_data = ReportData(posts=[], cutoff_date=datetime.now(UTC))
 
-    result = generate_html_report(report_data, Path("/tmp/report.html"), "templates/template.html")
+    result = generate_html_report(
+        report_data, Path("/tmp/report.html"), "templates/template.html"
+    )
 
     assert result is None
 
@@ -116,7 +118,9 @@ def test_generate_html_report_success(tmp_path: Path, report_data: ReportData) -
         </html>
     """)
 
-    result = generate_html_report(report_data, tmp_path / "report.html", str(template_path))
+    result = generate_html_report(
+        report_data, tmp_path / "report.html", str(template_path)
+    )
 
     assert result is not None
     assert result.exists()
@@ -144,7 +148,9 @@ def test_generate_html_report_file_write_error(
     output_dir.mkdir()
     output_dir.chmod(0o444)  # Read-only
 
-    result = generate_html_report(report_data, output_dir / "report.html", str(template_path))
+    result = generate_html_report(
+        report_data, output_dir / "report.html", str(template_path)
+    )
 
     assert result is None
 
@@ -164,7 +170,9 @@ def test_generate_html_report_directory_creation(
     # Use non-existent output directory
     output_dir = tmp_path / "new_output"
 
-    result = generate_html_report(report_data, output_dir / "report.html", str(template_path))
+    result = generate_html_report(
+        report_data, output_dir / "report.html", str(template_path)
+    )
 
     assert result is not None
     assert output_dir.exists()
