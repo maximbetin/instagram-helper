@@ -16,26 +16,25 @@ on:
       - "pyproject.toml"
       - "templates/**"
 
-env:
-  BROWSER_PATH: "/usr/bin/chromium-browser"
-  BROWSER_USER_DATA_DIR: "/tmp/browser-data"
-  BROWSER_PROFILE_DIR: "Default"
-  BROWSER_DEBUG_PORT: "9222"
-  BROWSER_START_URL: "https://www.instagram.com/"
-  BROWSER_LOAD_DELAY: "5000"
-  BROWSER_CONNECT_SCHEME: "http"
-  BROWSER_REMOTE_HOST: "localhost"
-  OUTPUT_DIR: "/tmp/output"
-  LOG_DIR: "/tmp/logs"
-  TEMPLATE_PATH: "templates/template.html"
-  TIMEZONE_OFFSET: "2"
-  INSTAGRAM_URL: "https://www.instagram.com/"
-  INSTAGRAM_MAX_POSTS_PER_ACCOUNT: "5"
-  INSTAGRAM_POST_LOAD_TIMEOUT: "10000"
-
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      BROWSER_PATH: "/usr/bin/chromium-browser"
+      BROWSER_USER_DATA_DIR: "/tmp/browser-data"
+      BROWSER_PROFILE_DIR: "Default"
+      BROWSER_DEBUG_PORT: "9222"
+      BROWSER_START_URL: "https://www.instagram.com/"
+      BROWSER_LOAD_DELAY: "5000"
+      BROWSER_CONNECT_SCHEME: "http"
+      BROWSER_REMOTE_HOST: "localhost"
+      OUTPUT_DIR: "/tmp/output"
+      LOG_DIR: "/tmp/logs"
+      TEMPLATE_PATH: "templates/template.html"
+      TIMEZONE_OFFSET: "2"
+      INSTAGRAM_URL: "https://www.instagram.com/"
+      INSTAGRAM_MAX_POSTS_PER_ACCOUNT: "5"
+      INSTAGRAM_POST_LOAD_TIMEOUT: "10000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,7 +47,7 @@ jobs:
       - run: |
           ruff check . --fix
           mypy .
-          pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
+          python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
       - uses: codecov/codecov-action@v3
         with:
           file: ./coverage.xml
@@ -63,6 +62,22 @@ jobs:
     defaults:
       run:
         shell: pwsh
+    env:
+      BROWSER_PATH: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+      BROWSER_USER_DATA_DIR: "C:\\temp\\browser-data"
+      BROWSER_PROFILE_DIR: "Default"
+      BROWSER_DEBUG_PORT: "9222"
+      BROWSER_START_URL: "https://www.instagram.com/"
+      BROWSER_LOAD_DELAY: "5000"
+      BROWSER_CONNECT_SCHEME: "http"
+      BROWSER_REMOTE_HOST: "localhost"
+      OUTPUT_DIR: "C:\\temp\\output"
+      LOG_DIR: "C:\\temp\\logs"
+      TEMPLATE_PATH: "templates/template.html"
+      TIMEZONE_OFFSET: "2"
+      INSTAGRAM_URL: "https://www.instagram.com/"
+      INSTAGRAM_MAX_POSTS_PER_ACCOUNT: "5"
+      INSTAGRAM_POST_LOAD_TIMEOUT: "10000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,9 +85,11 @@ jobs:
           python-version: "3.12"
       - run: |
           python -m pip install --upgrade pip
-          pip install -e . pyinstaller
+          pip install -e ".[dev]"
       - run: |
           python -m pytest
+      - run: |
+          pip install pyinstaller
       - run: |
           pyinstaller --onefile --windowed run.py --name instagram-helper
           Compress-Archive -Path dist\instagram-helper.exe -DestinationPath dist\instagram-helper.zip

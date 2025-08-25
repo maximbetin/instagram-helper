@@ -307,7 +307,7 @@ class InstagramScraper:
             element = self.page.query_selector(f"xpath={xpath}")
 
             if element:
-                caption = element.text_content()
+                caption = element.inner_text()
                 if caption:
                     logger.debug(f"Found caption using XPath: {caption[:50]}...")
                     return caption

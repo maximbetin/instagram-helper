@@ -473,7 +473,7 @@
             <div class="post-content">
               <div class="post-account">👤 @{{ post.account }}</div>
               <div class="post-date">📅 {{ post.date_posted or 'Unknown date' }}</div>
-              <div class="post-caption">{{ post.caption }}</div>
+              <div class="post-caption">{{ post.caption|e }}</div>
               <div class="post-actions">
                 <a href="{{ post.url }}" target="_blank" class="post-link">View on Instagram →</a>
                 <button class="copy-link-btn" data-url="{{ post.url }}" title="Copy clean link for sharing">
@@ -483,7 +483,7 @@
                   class="copy-full-btn"
                   data-account="{{ post.account }}"
                   data-date="{{ post.date_posted }}"
-                  data-caption="{{ post.caption }}"
+                  data-caption="{{ post.caption|e }}"
                   data-url="{{ post.url }}"
                   title="Copy full post text + link for sharing"
                 >
