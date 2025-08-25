@@ -143,19 +143,24 @@ def test_generate_html_report_file_write_error(
     template_path = template_dir / "template.html"
     template_path.write_text("<html>{{ total_posts }}</html>")
 
-    # Make output directory read-only to cause write error
-    output_dir = tmp_path / "output"
-    output_dir.mkdir()
-    output_dir.chmod(0o444)  # Read-only
+    # Use a path that will definitely cause a write error
+    # Try to write to a system directory that requires elevated permissions
+    import os
+    import platform
 
+    if platform.system() == "Windows":
+        # On Windows, try to write to a system directory
+        output_file = Path("C:/Windows/System32/report.html")
+    else:
+        # On Unix, try to write to a system directory
+        output_file = Path("/usr/bin/report.html")
+
+    # This should cause a permission error when trying to write
     result = generate_html_report(
-        report_data, output_dir / "report.html", str(template_path)
+        report_data, output_file, str(template_path)
     )
 
     assert result is None
-
-    # Restore permissions
-    output_dir.chmod(0o755)
 
 
 def test_generate_html_report_directory_creation(
