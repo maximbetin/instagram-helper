@@ -24,13 +24,13 @@ CRITICAL IMPLEMENTATION DETAILS:
 
 - TEMPLATE ENGINE: Jinja2 provides powerful templating capabilities while
   maintaining security through automatic HTML escaping and sandboxed execution.
-  
+
 - DATA PROCESSING: The ReportData class acts as a data container and processor,
   computing derived properties like sorted posts and account counts on-demand.
-  
+
 - FILE HANDLING: Robust file operations with proper encoding (UTF-8) and
   directory creation to handle various deployment scenarios.
-  
+
 - ERROR HANDLING: Graceful degradation when report generation fails, with
   comprehensive logging for debugging purposes.
 
@@ -38,10 +38,10 @@ PERFORMANCE CONSIDERATIONS:
 
 - LAZY EVALUATION: Template data is computed only when accessed, avoiding
   unnecessary processing for unused properties.
-  
+
 - MEMORY EFFICIENCY: Large datasets are processed incrementally without
   accumulating excessive memory usage.
-  
+
 - RENDERING OPTIMIZATION: Jinja2 templates are compiled once and reused,
   improving rendering performance for multiple reports.
 
@@ -49,10 +49,10 @@ SECURITY CONSIDERATIONS:
 
 - HTML ESCAPING: All user-generated content is automatically escaped to
   prevent XSS attacks and ensure safe HTML output.
-  
+
 - TEMPLATE SANDBOXING: Jinja2 provides a secure execution environment
   that prevents arbitrary code execution from templates.
-  
+
 - INPUT VALIDATION: Data is validated before processing to ensure
   template safety and prevent rendering errors.
 
@@ -60,10 +60,10 @@ MAINTENANCE AND EXTENSIBILITY:
 
 - TEMPLATE SEPARATION: HTML templates are stored separately from Python code,
   making them easy to modify without code changes.
-  
+
 - CONFIGURABLE OUTPUT: Report generation parameters can be customized
   through the template system and configuration options.
-  
+
 - VERSIONING SUPPORT: Template changes can be versioned and tested
   independently of the core application logic.
 """

@@ -22,13 +22,13 @@ CRITICAL IMPLEMENTATION DETAILS:
 - LOGGING CONFIGURATION: The logging system automatically detects and uses
   environment variables for configuration, making it easy to adjust log levels
   without code changes.
-  
+
 - HANDLER MANAGEMENT: Existing handlers are cleared before adding new ones
   to prevent duplicate log entries and ensure clean logging setup.
-  
+
 - FILE LOGGING: Log files are automatically created with date-based naming
   (DD-MM-YYYY.log) for easy organization and cleanup.
-  
+
 - ERROR HANDLING: File logging failures are gracefully handled to prevent
   application crashes when log directories are inaccessible.
 
@@ -36,10 +36,10 @@ PERFORMANCE CONSIDERATIONS:
 
 - LAZY INITIALIZATION: Loggers are configured only when needed, avoiding
   unnecessary setup overhead during import.
-  
+
 - BUFFERED OUTPUT: File handlers use buffered I/O for better performance
   when writing large amounts of log data.
-  
+
 - MEMORY EFFICIENCY: Log messages are processed incrementally without
   accumulating large amounts of data in memory.
 
@@ -47,10 +47,10 @@ SECURITY AND RELIABILITY:
 
 - ENCODING SAFETY: All file operations use UTF-8 encoding to ensure
   proper handling of international characters and emojis.
-  
+
 - PATH VALIDATION: Directory creation includes proper error handling
   to prevent security issues and ensure robust operation.
-  
+
 - FALLBACK BEHAVIOR: When file logging fails, console logging continues
   to ensure critical information is still captured.
 

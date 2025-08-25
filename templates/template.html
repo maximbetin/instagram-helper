@@ -256,7 +256,7 @@
         const originalBg = window.getComputedStyle(button).backgroundColor;
 
         const clipboardSuccess = () => {
-          button.textContent = " Copied!";
+          button.textContent = "✅ Copied!";
           button.style.background = "#007bff";
           setTimeout(() => {
             button.textContent = originalText;
@@ -390,7 +390,7 @@
         const caption = button.getAttribute("data-caption");
         const url = button.getAttribute("data-url");
 
-        const formattedText = ` Instagram Post by @${account}\n ${date}\n\n${caption}\n\n ${url}`;
+        const formattedText = `📸 Instagram Post by @${account}\n📅 ${date}\n\n${caption}\n\n🔗 ${url}`;
         copyHandler(button, formattedText);
       }
 
@@ -444,7 +444,7 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>Instagram Posts Report</h1>
+        <h1>📸 Instagram Posts Report</h1>
         <p>Recent posts from the past {{ max_post_age }} days</p>
         <p>Date range: {{ date_range }}</p>
         <p>Generated on {{ generated_on }}</p>
@@ -464,20 +464,20 @@
       {% if posts %}
       <div class="account-section">
         <div class="account-header">
-          <div class="account-name">All Posts (Sorted by Date)</div>
+          <div class="account-name">🌍 All Posts (Sorted by Date)</div>
           <div class="post-count">{{ total_posts }} posts</div>
         </div>
         <div class="posts-grid">
           {% for post in posts %}
           <div class="post-card">
             <div class="post-content">
-              <div class="post-account">@{{ post.account }}</div>
-              <div class="post-date">{{ post.date_posted or 'Unknown date' }}</div>
+              <div class="post-account">👤 @{{ post.account }}</div>
+              <div class="post-date">📅 {{ post.date_posted or 'Unknown date' }}</div>
               <div class="post-caption">{{ post.caption|e }}</div>
               <div class="post-actions">
                 <a href="{{ post.url }}" target="_blank" class="post-link">View on Instagram →</a>
                 <button class="copy-link-btn" data-url="{{ post.url }}" title="Copy clean link for sharing">
-                  Copy Link
+                  📋 Copy Link
                 </button>
                 <button
                   class="copy-full-btn"
@@ -487,7 +487,7 @@
                   data-url="{{ post.url }}"
                   title="Copy full post text + link for sharing"
                 >
-                  Copy Full Post
+                  📝 Copy Full Post
                 </button>
               </div>
             </div>

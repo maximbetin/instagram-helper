@@ -120,7 +120,7 @@ def test_setup_logging_file_handler_encoding(tmp_path: Path) -> None:
     logger = setup_logging("test_encoding_logger", log_dir)
 
     # Log a message with special characters
-            logger.info("Test message with émojis")
+    logger.info("Test message with émojis")
 
     # Check log file content
     log_files = list(log_dir.glob("*.log"))
@@ -128,7 +128,6 @@ def test_setup_logging_file_handler_encoding(tmp_path: Path) -> None:
 
     content = log_files[0].read_text(encoding="utf-8")
     assert "émojis" in content
-            assert "émojis" in content
 
 
 def test_setup_logging_log_level_invalid_env(monkeypatch: pytest.MonkeyPatch) -> None:

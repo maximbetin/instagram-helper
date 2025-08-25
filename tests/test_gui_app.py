@@ -178,7 +178,9 @@ class TestInstagramHelperGUI:
 
             # Verify accounts were added to text area
             assert app.account_text.delete.call_count == 1
-            assert app.account_text.insert.call_count == 3  # 2 accounts + 1 newline between them
+            assert (
+                app.account_text.insert.call_count == 3
+            )  # 2 accounts + 1 newline between them
             app.account_text.delete.assert_called_once_with(1.0, "end")
             app.account_text.insert.assert_any_call("end", "test_account1")
             app.account_text.insert.assert_any_call("end", "\n")
@@ -191,7 +193,9 @@ class TestInstagramHelperGUI:
 
             # Mock the account text area
             app.account_text = MagicMock()
-            app.account_text.get.return_value = "account1\naccount2\n\n"  # Empty lines should be filtered
+            app.account_text.get.return_value = (
+                "account1\naccount2\n\n"  # Empty lines should be filtered
+            )
 
             # Call the method
             result = app.get_accounts()

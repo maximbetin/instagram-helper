@@ -179,7 +179,9 @@ class Settings:
         """
         # Check if we're in a testing environment
         # This prevents import-time errors when running tests without browser setup
-        is_testing = os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("CI") == "true"
+        is_testing = (
+            os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("CI") == "true"
+        )
 
         if browser_path := os.getenv("BROWSER_PATH"):
             object.__setattr__(self, "BROWSER_PATH", Path(browser_path))
