@@ -1,274 +1,98 @@
-# Instagram Helper - Continuous Integration Pipeline
-# This workflow ensures code quality, runs tests, and builds packages automatically
+name: Release Pipeline
 
-name: GitHub Actions
-
-# Trigger conditions for the workflow
 on:
-  # Run on pushes to main branch
   push:
     branches: [main]
     paths:
-      - "**.py" # Python source files
-      - ".github/workflows/**" # Workflow changes
-      - "pyproject.toml" # Project configuration changes
-      - "templates/**" # HTML templates
-  # Run on pull requests to main branch
+      - "**.py"
+      - ".github/workflows/**"
+      - "pyproject.toml"
+      - "templates/**"
   pull_request:
     branches: [main]
     paths:
-      - "**.py" # Python source files
-      - ".github/workflows/**" # Workflow changes
-      - "pyproject.toml" # Project configuration changes
-      - "templates/**" # HTML templates
+      - "**.py"
+      - ".github/workflows/**"
+      - "pyproject.toml"
+      - "templates/**"
 
-# Define the jobs that will run
+env:
+  BROWSER_PATH: "/usr/bin/chromium-browser"
+  BROWSER_USER_DATA_DIR: "/tmp/browser-data"
+  BROWSER_PROFILE_DIR: "Default"
+  BROWSER_DEBUG_PORT: "9222"
+  BROWSER_START_URL: "https://www.instagram.com/"
+  BROWSER_LOAD_DELAY: "5000"
+  BROWSER_CONNECT_SCHEME: "http"
+  BROWSER_REMOTE_HOST: "localhost"
+  OUTPUT_DIR: "/tmp/output"
+  LOG_DIR: "/tmp/logs"
+  TEMPLATE_PATH: "templates/template.html"
+  TIMEZONE_OFFSET: "2"
+  INSTAGRAM_URL: "https://www.instagram.com/"
+  INSTAGRAM_MAX_POSTS_PER_ACCOUNT: "5"
+  INSTAGRAM_POST_LOAD_TIMEOUT: "10000"
+
 jobs:
-  # CI Job: Quality checks, testing, and validation
-  ci:
-    runs-on: ubuntu-latest # Use Ubuntu for better Python support
-    env:
-      BROWSER_PATH: "/usr/bin/chromium-browser"
-      BROWSER_USER_DATA_DIR: "/tmp/browser-data"
-      BROWSER_PROFILE_DIR: "Default"
-      BROWSER_DEBUG_PORT: "9222"
-      BROWSER_START_URL: "https://www.instagram.com/"
-      BROWSER_LOAD_DELAY: "5000"
-      BROWSER_CONNECT_SCHEME: "http"
-      BROWSER_REMOTE_HOST: "localhost"
-      OUTPUT_DIR: "/tmp/output"
-      LOG_DIR: "/tmp/logs"
-      TEMPLATE_PATH: "templates/template.html"
-      TIMEZONE_OFFSET: "2"
-      INSTAGRAM_URL: "https://www.instagram.com/"
-      INSTAGRAM_MAX_POSTS_PER_ACCOUNT: "5"
-      INSTAGRAM_POST_LOAD_TIMEOUT: "10000"
-
+  test:
+    runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out the source code
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Step 2: Set up Python environment
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      # Step 3: Install Python dependencies
-      - name: Install Python dependencies
-        run: |
+      - run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-
-      # Step 4: Install Playwright browsers for testing
-      - name: Install Playwright browsers
-        run: |
           playwright install --with-deps
-
-      # Step 5: Run code quality checks
-      - name: Run linting and formatting checks
-        run: |
-          echo "Running Ruff linting..."
+      - run: |
           ruff check . --fix
-          echo "Running MyPy type checking..."
           mypy .
-
-      # Step 6: Run tests with coverage
-      - name: Run tests
-        run: |
           pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
-
-      # Step 7: Upload coverage to Codecov
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v3
         with:
-          file: ./coverage.xml # Coverage report file
-          fail_ci_if_error: false # Don't fail CI if coverage upload fails
+          file: ./coverage.xml
+          fail_ci_if_error: false
 
-  # Build Job: Package building and verification (only on main branch)
-  build:
-    needs: ci # Wait for CI job to complete successfully
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      # Step 1: Check out the source code
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Step 2: Set up Python environment
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12" # Use latest stable Python for building
-
-      # Step 3: Install build tools
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install build         # Modern Python build system
-
-      # Step 4: Build package distribution
-      - name: Build package
-        run: |
-          python -m build           # Build wheel and source distribution
-          ls -la dist/              # List built files
-
-      # Step 5: Test package installation and functionality
-      - name: Test package installation
-        run: |
-          # Create test virtual environment
-          python -m venv test_env
-          source test_env/bin/activate
-
-          # Install the built package
-          wheel_file=$(ls dist/*.whl | head -1)
-          if [ -n "$wheel_file" ]; then
-              pip install "$wheel_file"
-
-              # Test that the entry point script was created
-              which instagram-helper || echo "Entry point script not found in PATH"
-              ls -la test_env/bin/instagram-helper || echo "Entry point script not found in bin directory"
-
-              # Test module imports (without running GUI)
-              python -c "import run; import instagram_scraper; import report_generator; import browser_manager; print('All modules imported successfully')"
-
-              # Test entry point script creation (should not fail)
-              python -c "from run import main; print('Entry point function imported successfully')"
-          else
-              echo "No wheel file found in dist/ directory"
-              exit 1
-          fi
-
-      # Step 6: Upload build artifacts
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-package # Artifact name
-          path: dist/ # Path to built packages
-          retention-days: 30 # Keep artifacts for 30 days
-
-  # Build Executable Job: Create Windows executable (only on main branch)
-  build-executable:
-    needs: ci # Wait for CI job to complete successfully
-    permissions:
-      contents: write
+  release:
+    needs: test
     runs-on: windows-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     defaults:
       run:
         shell: pwsh
-    env:
-      BROWSER_PATH: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-      BROWSER_USER_DATA_DIR: "C:\\temp\\browser-data"
-      BROWSER_PROFILE_DIR: "Default"
-      BROWSER_DEBUG_PORT: "9222"
-      BROWSER_START_URL: "https://www.instagram.com/"
-      BROWSER_LOAD_DELAY: "5000"
-      BROWSER_CONNECT_SCHEME: "http"
-      BROWSER_REMOTE_HOST: "localhost"
-      OUTPUT_DIR: "C:\\temp\\output"
-      LOG_DIR: "C:\\temp\\logs"
-      TEMPLATE_PATH: "templates/template.html"
-      TIMEZONE_OFFSET: "2"
-      INSTAGRAM_URL: "https://www.instagram.com/"
-      INSTAGRAM_MAX_POSTS_PER_ACCOUNT: "5"
-      INSTAGRAM_POST_LOAD_TIMEOUT: "10000"
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set Up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install Dependencies
-        run: |
+      - run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest
-          pip install pyinstaller
-
-      - name: Run Tests
-        run: |
-          pytest
-
-      - name: Determine Next Version
-        id: semver
-        run: |
-          git fetch --tags
-
-          $latestTag = git tag --sort=-creatordate | Select-Object -First 1
-
-          if (-not $latestTag) {
-            $major = 1; $minor = 0; $patch = 0
-          } else {
-            $version = $latestTag.TrimStart('v')
-            $parts = $version -split '\.'
-            $major = [int]$parts[0]
-            $minor = [int]$parts[1]
-            $patch = [int]$parts[2]
-          }
-
-          $commitMessage = "${{ github.event.head_commit.message }}".Trim()
-
-          if ($commitMessage -like "BREAKING:*" -or ($commitMessage -contains "major")) {
-            $major++; $minor = 0; $patch = 0
-          } elseif ($commitMessage -like "feat:*" -or ($commitMessage -contains "minor") -or ($commitMessage -contains "feature")) {
-            $minor++; $patch = 0
-          } else {
-            $patch++
-          }
-
-          $newVersion = "$major.$minor.$patch"
-          $newTag = "v$newVersion"
-
-          Write-Host "New tag: $newTag"
-          "version=$newVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          "tag=$newTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-          exit 0
-
-      - name: Build Executable
-        run: |
+          pip install -e . pyinstaller
+      - run: pytest
+      - run: |
           pyinstaller --onefile --windowed run.py --name instagram-helper
-
-      - name: Package Executable
-        run: |
           Compress-Archive -Path dist\instagram-helper.exe -DestinationPath dist\instagram-helper.zip
-
-      - name: Configure Git
+      - name: Set Version
+        id: version
         run: |
+          $version = "v$(Get-Date -Format 'yyyy.MM.dd')"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+      - run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-
-      - name: Create Git Tag (if not exists)
-        run: |
-          $tag = "${{ steps.semver.outputs.tag }}"
-
-          $tagExists = git tag --list $tag
-          if (-not $tagExists) {
-            git tag -a $tag -m "Release $tag"
-            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-            git push origin $tag
-          } else {
-            Write-Host "Tag $tag already exists. Skipping tag creation."
-          }
-
-      - name: Create GitHub Release and Upload Asset
-        uses: softprops/action-gh-release@v1
+          git tag -a ${{ steps.version.outputs.version }} -m "Release ${{ steps.version.outputs.version }}"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push origin ${{ steps.version.outputs.version }}
+      - uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.semver.outputs.tag }}
-          name: Release ${{ steps.semver.outputs.tag }}
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
           body: |
-            Release from commit #${{ github.event.head_commit.id }}
+            Automated release from commit #${{ github.event.head_commit.id }}
             ${{ github.event.head_commit.message }}
-
-            This release includes:
-            - Windows Executable
           files: dist/instagram-helper.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
