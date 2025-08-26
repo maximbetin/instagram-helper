@@ -63,7 +63,7 @@ git clone https://github.com/maxim/instagram-helper.git
 cd instagram-helper
 
 # Setup development environment
-make setup-dev
+make init
 
 # Activate the virtual environment
 source venv/bin/activate
@@ -76,7 +76,7 @@ source venv/bin/activate
 
 ```bash
 # Run quality checks to ensure everything is working
-make check-all
+make test
 
 # Test the application
 python run.py
@@ -87,7 +87,7 @@ python run.py
 | Issue | Solution |
 |-------|----------|
 | **Python version error** | Ensure Python 3.12+ is installed and in PATH |
-| **Browser not found** | Verify BROWSER_PATH in .env points to valid executable |
+| **Browser not found** | Verify BROWSER_PATH in config.py points to valid executable |
 | **Permission denied** | Check file permissions and ensure directories are writable |
 | **WSL2 path issues** | Use Windows-style paths for browser directories, Linux-style for output |
 | **Port 9222 in use** | Close existing browser instances or change BROWSER_DEBUG_PORT |
@@ -97,8 +97,10 @@ python run.py
 # Activate your virtual environment
 source venv/bin/activate
 
-# Launch the application
+# Launch the application (choose one method)
 python run.py
+# OR
+make run
 ```
 
 ## Usage
@@ -142,8 +144,8 @@ The Instagram Helper provides a simple interface with these main sections:
 | Parameter | Description | Default | Recommended Range |
 |-----------|-------------|---------|-------------------|
 | **Post Age Limit** | Maximum age of posts to scrape | 7 days | 1-30 days |
-| **Posts Per Account** | Number of posts to process per account | 5 posts | 1-20 posts |
-| **Page Load Timeout** | Time to wait for page loading | 10 seconds | 5-30 seconds |
+| **Posts Per Account** | Number of posts to process per account | 3 posts | 1-20 posts |
+| **Page Load Timeout** | Time to wait for page loading | 20 seconds | 5-30 seconds |
 
 #### Performance Tuning
 
@@ -178,7 +180,7 @@ The Instagram Helper provides a simple interface with these main sections:
 #### Automatic Reports
 
 - **File Naming**: Reports use DD-MM-YYYY format (e.g., `15-01-2024.html`)
-- **Output Location**: Configurable via `OUTPUT_DIR` environment variable
+- **Output Location**: Configurable via `OUTPUT_DIR` in config.py
 - **Format**: Professional HTML with responsive design
 - **Content**: Post captions, dates, account information, and statistics
 
@@ -421,23 +423,44 @@ return [line.strip() for line in self.account_text.get(1.0, tk.END).splitlines()
 
 ### PyInstaller Build
 
-The application can be built into standalone executables using PyInstaller:
+The application can be built into standalone executables using PyInstaller. **Important**: Use the provided spec file to ensure all required files (including templates) are included.
 
 ```bash
 # Install PyInstaller
 pip install pyinstaller
 
-# Build executable
+# Build executable using the spec file (recommended)
+pyinstaller instagram_helper.spec
+
+# OR build manually (not recommended - may miss templates)
 pyinstaller --onefile --windowed run.py --name instagram-helper
 
 # The executable will be created in the dist/ directory
 ```
 
+### Using the Makefile
+
+The easiest way to build the executable:
+
+```bash
+# Build executable with proper template inclusion
+make build-exe
+```
+
 ### Build Options
 
+- **`instagram_helper.spec`**: **Recommended** - Includes all templates and dependencies
 - **`--onefile`**: Creates a single executable file
 - **`--windowed`**: Runs without console window (Windows)
 - **`--name`**: Sets the output filename
+
+### Template Inclusion
+
+The spec file ensures that the `templates/template.html` file is properly included in the executable bundle. This prevents the common error:
+
+```text
+jinja2.exceptions.TemplateNotFound: 'template.html' not found in search path: 'templates'
+```
 
 ### Deployment
 
@@ -445,8 +468,9 @@ The built executable:
 
 - **No Python installation required** on target machines
 - **No environment variables needed** - all configuration is hardcoded
-- **Self-contained** - includes all dependencies
+- **Self-contained** - includes all dependencies and templates
 - **Cross-platform** - build on Linux for Linux, Windows for Windows
+- **Template-ready** - HTML report generation works out of the box
 
 ### CI/CD Pipeline
 
@@ -466,7 +490,7 @@ This project uses `ruff` (linting/formatting), `mypy` (static type checking), an
 - **Run all checks**:
 
   ```bash
-  make check-all
+  make test
   ```
 
 - **Format code**:
@@ -475,38 +499,33 @@ This project uses `ruff` (linting/formatting), `mypy` (static type checking), an
   make format
   ```
 
-- **Run tests**:
-
-  ```bash
-  make test
-  ```
-
 Configurations live in `pyproject.toml` and are executed via the `Makefile`.
 
 ### Makefile Commands
 
 The `Makefile` provides commands to streamline development:
 
-- `make setup-dev`: Sets up the development environment
-- `make test`: Runs the test suite
+- `make init`: Sets up the development environment
+- `make test`: Runs the test suite and quality checks
 - `make format`: Formats code with `ruff`
-- `make lint`: Lints code with `ruff`
-- `make type-check`: Runs `mypy`
-- `make check-all`: Runs formatting, linting, type checking, and tests
+- `make run`: Runs the GUI application
+- `make build-exe`: Builds executable with PyInstaller (includes templates)
 - `make clean`: Removes build artifacts
 
 ### Common Development Workflows
 
 ```bash
 # Setup and activate environment
-make setup-dev
+make init
 source venv/bin/activate
 
 # Run quality checks before committing
-make check-all
+make test
 
 # Test with custom parameters
 python run.py
+# OR
+make run
 
 # Run specific test files
 ./venv/bin/pytest tests/test_instagram_scraper.py -v

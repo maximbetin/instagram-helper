@@ -133,7 +133,11 @@ class Settings:
     # --- Path Configuration ---
     OUTPUT_DIR: Path = field(default_factory=lambda: _get_platform_paths()[2])
     LOG_DIR: Path = field(default_factory=lambda: _get_platform_paths()[2])
-    TEMPLATE_PATH: str = "templates/template.html"
+    TEMPLATE_PATH: Path = field(
+        default_factory=lambda: Path(__file__).resolve().parent
+        / "templates"
+        / "template.html"
+    )
 
     # --- Timezone Configuration ---
     TIMEZONE: timezone = field(default_factory=lambda: timezone(timedelta(hours=2)))

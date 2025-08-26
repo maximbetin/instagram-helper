@@ -91,7 +91,7 @@ def test_generate_html_report_no_posts() -> None:
     report_data = ReportData(posts=[], cutoff_date=datetime.now(UTC))
 
     result = generate_html_report(
-        report_data, Path("/tmp/report.html"), "templates/template.html"
+        report_data, Path("/tmp/report.html"), Path("templates/template.html")
     )
 
     assert result is None
@@ -119,7 +119,7 @@ def test_generate_html_report_success(tmp_path: Path, report_data: ReportData) -
     """)
 
     result = generate_html_report(
-        report_data, tmp_path / "report.html", str(template_path)
+        report_data, tmp_path / "report.html", Path(template_path)
     )
 
     assert result is not None
@@ -156,7 +156,7 @@ def test_generate_html_report_file_write_error(
 
     try:
         # This should cause a permission error when trying to write
-        result = generate_html_report(report_data, output_file, str(template_path))
+        result = generate_html_report(report_data, output_file, Path(template_path))
         assert result is None
     finally:
         # Restore write permissions for cleanup
@@ -176,7 +176,7 @@ def test_generate_html_report_directory_creation(
     output_dir = tmp_path / "new_output"
 
     result = generate_html_report(
-        report_data, output_dir / "report.html", str(template_path)
+        report_data, output_dir / "report.html", Path(template_path)
     )
 
     assert result is not None

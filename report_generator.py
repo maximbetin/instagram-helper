@@ -132,7 +132,7 @@ class ReportData:
 
 
 def generate_html_report(
-    report_data: ReportData, output_path: Path, template_path: str
+    report_data: ReportData, output_path: Path, template_path: Path
 ) -> Path | None:
     """Generates a stylized HTML report from a list of Instagram posts."""
     if not report_data.posts:
@@ -140,9 +140,9 @@ def generate_html_report(
         return None
 
     try:
-        # Set up Jinja2 environment
-        template_dir = Path(template_path).parent
-        template_name = Path(template_path).name
+        # Set up Jinja2 environment using the template path directly
+        template_dir = template_path.parent
+        template_name = template_path.name
         env = Environment(
             loader=FileSystemLoader(template_dir), autoescape=True, enable_async=False
         )

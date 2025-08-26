@@ -1,6 +1,6 @@
 # Makefile for Instagram Helper
 
-.PHONY: help init test format clean run
+.PHONY: help init test format clean run build-exe
 
 # Default target
 help:
@@ -12,27 +12,34 @@ help:
 	@echo "  format         Format code with ruff"
 	@echo "  clean          Remove build artifacts, cache files, and virtual environment"
 	@echo "  run            Run the GUI application"
+	@echo "  build-exe      Build executable with PyInstaller (includes templates)"
 
 # --- Setup --------------------------------------------------------------------
 init:
 	@echo "Initializing development environment..."
-	@python -m venv venv
-	@./venv/bin/pip install -e ".[dev]"
-	@echo "Development environment ready. Activate with 'source venv/bin/activate'"
+	@python.exe -m venv venv
+	@venv/Scripts/pip.exe install -e ".[dev]"
+	@echo "Development environment ready. Activate with 'venv\\Scripts\\activate'"
 
 # --- Testing & Quality --------------------------------------------------------
 test:
 	@echo "Running tests and quality checks..."
-	@./venv/bin/pytest tests/
+	@venv/Scripts/pytest.exe tests/
 	@echo "Running code quality checks..."
-	@./venv/bin/ruff check .
-	@./venv/bin/ruff format --check .
-	@./venv/bin/mypy .
+	@venv/Scripts/ruff.exe check .
+	@venv/Scripts/ruff.exe format --check .
+	@venv/Scripts/mypy.exe .
 	@echo "All tests and quality checks passed."
 
 format:
 	@echo "Formatting code..."
-	@./venv/bin/ruff format .
+	@venv/Scripts/ruff.exe format .
+
+# --- Build --------------------------------------------------------------------
+build-exe:
+	@echo "Building executable with PyInstaller..."
+	@venv/Scripts/pyinstaller.exe instagram_helper.spec
+	@echo "Executable built successfully in dist/ directory"
 
 # --- Cleanup ------------------------------------------------------------------
 clean:
@@ -46,4 +53,4 @@ clean:
 # --- Run ----------------------------------------------------------------------
 run:
 	@echo "Running GUI application..."
-	@./venv/bin/python gui_app.py
+	@venv/Scripts/python.exe gui_app.py

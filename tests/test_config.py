@@ -131,7 +131,10 @@ def test_settings_custom_paths(monkeypatch: MonkeyPatch) -> None:
     # Settings now use hardcoded values regardless of environment
     assert settings.OUTPUT_DIR == expected_output_dir
     assert settings.LOG_DIR == expected_output_dir
-    assert settings.TEMPLATE_PATH == "templates/template.html"
+    assert (
+        settings.TEMPLATE_PATH
+        == Path(__file__).resolve().parent.parent / "templates" / "template.html"
+    )
 
 
 def test_settings_custom_browser_config(monkeypatch: MonkeyPatch) -> None:
