@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from browser_manager import (
-    _kill_existing_browser_processes,
     _launch_local_browser,
     _launch_playwright_chromium,
     setup_browser,
@@ -259,89 +258,6 @@ def test_launch_playwright_chromium_failure(mock_playwright: MagicMock) -> None:
 
         with pytest.raises(Exception, match="Launch failed"):
             _launch_playwright_chromium(mock_playwright, mock_settings)
-
-
-def test_kill_existing_browser_processes_brave_linux() -> None:
-    """Test killing existing Brave processes on Linux."""
-    with (
-        patch("browser_manager.settings") as mock_settings,
-        patch("browser_manager.subprocess.run") as mock_run,
-        patch("browser_manager.os.uname") as mock_uname,
-    ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
-        mock_uname.return_value.release = "5.10.0-microsoft-standard-WSL2"
-
-        _kill_existing_browser_processes()
-
-        # Should call pkill for Linux/WSL2
-        mock_run.assert_called_once_with(
-            ["pkill", "-f", "brave"], capture_output=True, check=False, text=True
-        )
-
-
-def test_kill_existing_browser_processes_not_brave() -> None:
-    """Test killing existing browser processes when not using Brave."""
-    with (
-        patch("browser_manager.settings") as mock_settings,
-        patch("browser_manager.subprocess.run") as mock_run,
-        patch("browser_manager.os.uname") as mock_uname,
-    ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/chrome")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
-        mock_uname.return_value.release = "5.10.0-microsoft-standard-WSL2"
-
-        _kill_existing_browser_processes()
-
-        # Function only handles brave browsers, so no calls for chrome
-        mock_run.assert_not_called()
-
-
-def test_kill_existing_browser_processes_no_browser_path() -> None:
-    """Test killing existing browser processes when no browser path is configured."""
-    with (
-        patch("browser_manager.settings") as mock_settings,
-        patch("browser_manager.subprocess.run") as mock_run,
-    ):
-        mock_settings.BROWSER_PATH = None
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
-
-        _kill_existing_browser_processes()
-
-        # Should not call any subprocess commands
-        mock_run.assert_not_called()
-
-
-def test_kill_existing_browser_processes_taskkill_not_found() -> None:
-    """Test killing existing browser processes when taskkill is not found."""
-    with (
-        patch("browser_manager.settings") as mock_settings,
-        patch("browser_manager.subprocess.run") as mock_run,
-        patch("browser_manager.os.uname") as mock_uname,
-    ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
-        mock_uname.return_value.release = "5.10.0-microsoft-standard-WSL2"
-        mock_run.side_effect = FileNotFoundError("taskkill not found")
-
-        # Should not raise an error
-        _kill_existing_browser_processes()
-
-
-def test_kill_existing_browser_processes_other_error() -> None:
-    """Test killing existing browser processes when other errors occur."""
-    with (
-        patch("browser_manager.settings") as mock_settings,
-        patch("browser_manager.subprocess.run") as mock_run,
-        patch("browser_manager.os.uname") as mock_uname,
-    ):
-        mock_settings.BROWSER_PATH = Path("/usr/bin/brave")
-        mock_settings.BROWSER_USER_DATA_DIR = Path("/tmp/user-data")
-        mock_uname.return_value.release = "5.10.0-microsoft-standard-WSL2"
-        mock_run.side_effect = Exception("Other error")
-
-        # Should not raise an error
-        _kill_existing_browser_processes()
 
 
 def test_browser_launch_arguments() -> None:
