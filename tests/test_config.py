@@ -1,30 +1,47 @@
 """Tests for configuration management."""
 
+import platform
 from pathlib import Path
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
+from pytest import MonkeyPatch
 
 from config import Settings
 
 
 @pytest.fixture(autouse=True)
-def set_env_variables(monkeypatch: MonkeyPatch) -> None:
-    """Set environment variables required for testing."""
-    monkeypatch.setenv("BROWSER_PATH", "/usr/bin/mock-browser")
+def setup_test_environment(monkeypatch: MonkeyPatch) -> None:
+    """Set up test environment variables."""
     monkeypatch.setenv("BROWSER_USER_DATA_DIR", "/tmp/mock-user-data")
 
 
 def test_settings_initialization() -> None:
     """Test that settings are properly initialized."""
     settings = Settings()
-    # Settings now use hardcoded values
-    assert settings.BROWSER_PATH == Path(
-        "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-    )
-    assert settings.BROWSER_USER_DATA_DIR == Path(
-        "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
-    )
+
+    # Get expected paths based on platform
+    if platform.system() == "Windows":
+        expected_browser_path = Path(
+            "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+        )
+        expected_user_data_dir = Path(
+            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
+        )
+    elif (
+        platform.system() == "Linux" and "microsoft" in platform.uname().release.lower()
+    ):
+        expected_browser_path = Path(
+            "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+        )
+        expected_user_data_dir = Path(
+            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
+        )
+    else:
+        expected_browser_path = Path("/usr/bin/brave-browser")
+        expected_user_data_dir = Path.home() / ".config/BraveSoftware/Brave-Browser"
+
+    assert settings.BROWSER_PATH == expected_browser_path
+    assert settings.BROWSER_USER_DATA_DIR == expected_user_data_dir
     assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 3
     assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 20000
 
@@ -100,9 +117,20 @@ def test_settings_custom_paths(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("TEMPLATE_PATH", "custom/template.html")
 
     settings = Settings()
+
+    # Get expected paths based on platform
+    if platform.system() == "Windows":
+        expected_output_dir = Path("C:\\Users\\Maxim\\Desktop\\ig_helper")
+    elif (
+        platform.system() == "Linux" and "microsoft" in platform.uname().release.lower()
+    ):
+        expected_output_dir = Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
+    else:
+        expected_output_dir = Path.home() / "Desktop/ig_helper"
+
     # Settings now use hardcoded values regardless of environment
-    assert settings.OUTPUT_DIR == Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
-    assert settings.LOG_DIR == Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
+    assert settings.OUTPUT_DIR == expected_output_dir
+    assert settings.LOG_DIR == expected_output_dir
     assert settings.TEMPLATE_PATH == "templates/template.html"
 
 
