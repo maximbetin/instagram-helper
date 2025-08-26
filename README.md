@@ -248,6 +248,7 @@ The application now uses **hardcoded configuration values** optimized for WSL2 e
 The application is pre-configured with these optimized settings:
 
 #### Browser Configuration
+
 - **Browser Path**: `/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe`
 - **User Data Directory**: `C:\Users\Maxim\AppData\Local\BraveSoftware\Brave-Browser\User Data`
 - **Profile Directory**: `Default`
@@ -256,16 +257,19 @@ The application is pre-configured with these optimized settings:
 - **Start URL**: `https://www.instagram.com/`
 
 #### Instagram Configuration
+
 - **Max Posts Per Account**: `3`
 - **Post Load Timeout**: `20000ms`
 - **Base URL**: `https://www.instagram.com/`
 
 #### Output Configuration
+
 - **Output Directory**: `/mnt/c/Users/Maxim/Desktop/ig_helper`
 - **Log Directory**: `/mnt/c/Users/Maxim/Desktop/ig_helper`
 - **Template Path**: `templates/template.html`
 
 #### Timezone Configuration
+
 - **Timezone Offset**: `+2 hours` (Central European Time)
 
 ### Customizing Configuration
@@ -280,16 +284,6 @@ INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 10
 OUTPUT_DIR: Path = field(
     default_factory=lambda: Path("/mnt/c/Users/YourUsername/Desktop/ig_reports")
 )
-```
-
-# Instagram Configuration
-INSTAGRAM_MAX_POSTS_PER_ACCOUNT=5
-INSTAGRAM_POST_LOAD_TIMEOUT=10000
-
-# Output Configuration
-OUTPUT_DIR="/Users/username/Documents/Instagram-Reports"
-LOG_DIR="/Users/username/Documents/Instagram-Logs"
-TIMEZONE_OFFSET=-5
 ```
 
 ## Important Notes
@@ -448,6 +442,7 @@ pyinstaller --onefile --windowed run.py --name instagram-helper
 ### Deployment
 
 The built executable:
+
 - **No Python installation required** on target machines
 - **No environment variables needed** - all configuration is hardcoded
 - **Self-contained** - includes all dependencies
@@ -456,6 +451,7 @@ The built executable:
 ### CI/CD Pipeline
 
 The GitHub Actions workflow automatically:
+
 - Runs tests on Ubuntu and Windows
 - Builds executables using PyInstaller
 - Creates releases with downloadable executables
