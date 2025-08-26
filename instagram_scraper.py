@@ -114,8 +114,22 @@ class InstagramScraper:
             return []
 
         posts: list[InstagramPost] = []
-        for i, post_url in enumerate(post_urls):
-            logger.debug(f"@{account}: Processing post {i + 1}/{len(post_urls)}")
+
+        # Check the first post first - if it's too old, skip the entire account
+        if post_urls:
+            first_post_data = self._extract_post_data(
+                post_urls[0], account, cutoff_date
+            )
+            if not first_post_data:
+                logger.info(
+                    f"@{account}: First post is too old, skipping entire account"
+                )
+                return []
+            posts.append(first_post_data)
+
+        # Process remaining posts
+        for i, post_url in enumerate(post_urls[1:], start=2):
+            logger.debug(f"@{account}: Processing post {i}/{len(post_urls)}")
 
             post_data = self._extract_post_data(post_url, account, cutoff_date)
             if post_data:
@@ -162,33 +176,6 @@ class InstagramScraper:
         except Exception as e:
             logger.error(f"@{account}: Failed to query for post URLs: {e}")
             return []
-
-    def _get_post_date_from_url(self, post_url: str) -> datetime | None:
-        """Quickly extracts the post date without full navigation."""
-        try:
-            # Navigate to the post
-            if not self._navigate_to_url(post_url, "post date check"):
-                return None
-
-            # Get the date
-            post_date = self._get_post_date()
-
-            # Go back to the account page - extract account name from post URL
-            if "/p/" in post_url:
-                account_part = post_url.split("/p/")[0]
-            elif "/reel/" in post_url:
-                account_part = post_url.split("/reel/")[0]
-            else:
-                return post_date  # Can't determine account, just return the date
-
-            account_name = account_part.split("/")[-1]
-            account_url = f"{self.settings.INSTAGRAM_URL}{account_name}/"
-            self._navigate_to_url(account_url, "account page return")
-
-            return post_date
-        except Exception as e:
-            logger.debug(f"Failed to get date for {post_url}: {e}")
-            return None
 
     def _extract_post_data(
         self, post_url: str, account: str, cutoff_date: datetime
