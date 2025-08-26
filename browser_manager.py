@@ -34,7 +34,7 @@ WSL2 DETECTION LOGIC:
 
 WSL2 environments are detected using multiple criteria:
 - os.name == "posix": Confirms Linux shell environment
-- "microsoft" in os.uname().release.lower(): Identifies WSL2 kernel
+- "microsoft" in platform.uname().release.lower(): Identifies WSL2 kernel
 - Windows browser path indicators: Checks for .exe extensions or Windows paths
 
 This detection enables appropriate process management and browser launching
@@ -59,6 +59,7 @@ PERFORMANCE CONSIDERATIONS:
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
 import time
 from typing import TYPE_CHECKING
@@ -97,7 +98,7 @@ def _kill_existing_browser_processes() -> None:
 
     WSL2 DETECTION LOGIC:
     - os.name == "posix": Confirms we're in a Linux shell
-    - "microsoft" in os.uname().release.lower(): Identifies WSL2 kernel
+    - "microsoft" in platform.uname().release.lower(): Identifies WSL2 kernel
     - Windows browser path: Checks if browser path contains Windows indicators
 
     This detection allows the tool to use appropriate process management
@@ -115,7 +116,7 @@ def _kill_existing_browser_processes() -> None:
             # This detection is crucial for proper process management
             is_wsl2 = (
                 os.name == "posix"
-                and "microsoft" in os.uname().release.lower()
+                and "microsoft" in platform.uname().release.lower()
                 and (
                     "win" in str(settings.BROWSER_PATH).lower()
                     or ".exe" in str(settings.BROWSER_PATH).lower()
@@ -169,7 +170,7 @@ def _launch_local_browser(
     # Check if we're in WSL2 with Windows browser
     is_wsl2 = (
         os.name == "posix"
-        and "microsoft" in os.uname().release.lower()
+        and "microsoft" in platform.uname().release.lower()
         and (
             "win" in str(app_settings.BROWSER_PATH).lower()
             or ".exe" in str(app_settings.BROWSER_PATH).lower()
