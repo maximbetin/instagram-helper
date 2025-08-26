@@ -165,6 +165,10 @@ def _launch_local_browser(
         return None
 
     logger.info("Attempting to launch local browser...")
+    logger.info(f"Platform: {platform.system()}, OS name: {os.name}")
+    logger.info(f"Browser path: {app_settings.BROWSER_PATH}")
+    logger.info(f"Browser path exists: {app_settings.BROWSER_PATH.exists()}")
+
     _kill_existing_browser_processes()
 
     # Check if we're in WSL2 with Windows browser
@@ -176,6 +180,9 @@ def _launch_local_browser(
             or ".exe" in str(app_settings.BROWSER_PATH).lower()
         )
     )
+
+    logger.info(f"WSL2 detection: {is_wsl2}")
+    logger.info(f"Platform system: {platform.system()}")
 
     # Add platform-specific arguments
     browser_args = [
@@ -192,8 +199,9 @@ def _launch_local_browser(
     ]
 
     try:
-        # Use different subprocess approach for WSL2 vs native
+        # Use different subprocess approach for WSL2 vs native Windows vs Linux/macOS
         if is_wsl2:
+            logger.info("Using WSL2 launch method")
             # In WSL2, we need to launch the Windows browser from Windows
             try:
                 # Try using wsl.exe to launch Windows browser
@@ -212,7 +220,17 @@ def _launch_local_browser(
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
                 )
+        elif platform.system() == "Windows":
+            logger.info("Using native Windows launch method")
+            # Native Windows launch
+            process = subprocess.Popen(
+                browser_args,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
         else:
+            logger.info("Using native Linux/macOS launch method")
             # Native Linux/macOS launch
             process = subprocess.Popen(
                 browser_args,

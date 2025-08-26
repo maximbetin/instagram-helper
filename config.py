@@ -8,6 +8,39 @@ from pathlib import Path
 from typing import ClassVar
 
 
+def _get_platform_paths() -> tuple[Path, Path, Path]:
+    """Get platform-specific paths for browser and output directories."""
+    import platform
+
+    if platform.system() == "Windows":
+        # Windows paths
+        browser_path = Path(
+            "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+        )
+        user_data_dir = Path(
+            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
+        )
+        output_dir = Path("C:\\Users\\Maxim\\Desktop\\ig_helper")
+    elif (
+        platform.system() == "Linux" and "microsoft" in platform.uname().release.lower()
+    ):
+        # WSL2 paths
+        browser_path = Path(
+            "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+        )
+        user_data_dir = Path(
+            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
+        )
+        output_dir = Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
+    else:
+        # Linux/macOS paths
+        browser_path = Path("/usr/bin/brave-browser")
+        user_data_dir = Path.home() / ".config/BraveSoftware/Brave-Browser"
+        output_dir = Path.home() / "Desktop/ig_helper"
+
+    return browser_path, user_data_dir, output_dir
+
+
 def _load_instagram_accounts() -> list[str]:
     """Default Instagram accounts to scrape."""
     return [
@@ -98,27 +131,17 @@ class Settings:
     BASE_DIR: ClassVar[Path] = Path(__file__).resolve().parent
 
     # --- Path Configuration ---
-    OUTPUT_DIR: Path = field(
-        default_factory=lambda: Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
-    )
-    LOG_DIR: Path = field(
-        default_factory=lambda: Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
-    )
+    OUTPUT_DIR: Path = field(default_factory=lambda: _get_platform_paths()[2])
+    LOG_DIR: Path = field(default_factory=lambda: _get_platform_paths()[2])
     TEMPLATE_PATH: str = "templates/template.html"
 
     # --- Timezone Configuration ---
     TIMEZONE: timezone = field(default_factory=lambda: timezone(timedelta(hours=2)))
 
     # --- Browser Configuration ---
-    BROWSER_PATH: Path = field(
-        default_factory=lambda: Path(
-            "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-        )
-    )
+    BROWSER_PATH: Path = field(default_factory=lambda: _get_platform_paths()[0])
     BROWSER_USER_DATA_DIR: Path = field(
-        default_factory=lambda: Path(
-            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
-        )
+        default_factory=lambda: _get_platform_paths()[1]
     )
     BROWSER_PROFILE_DIR: str = "Default"
     BROWSER_DEBUG_PORT: int = 9222
