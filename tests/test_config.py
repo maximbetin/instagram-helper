@@ -1,6 +1,5 @@
 """Tests for configuration management."""
 
-import platform
 from pathlib import Path
 
 import pytest
@@ -22,11 +21,11 @@ def test_settings_initialization() -> None:
     # Test that browser path exists and is valid
     assert settings.BROWSER_PATH is not None
     assert isinstance(settings.BROWSER_PATH, Path)
-    
+
     # Test that user data directory path exists and is valid
     assert settings.BROWSER_USER_DATA_DIR is not None
     assert isinstance(settings.BROWSER_USER_DATA_DIR, Path)
-    
+
     # Test other settings
     assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 3
     assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 20000
@@ -108,7 +107,7 @@ def test_settings_custom_paths(monkeypatch: MonkeyPatch) -> None:
     assert isinstance(settings.OUTPUT_DIR, Path)
     assert settings.LOG_DIR is not None
     assert isinstance(settings.LOG_DIR, Path)
-    
+
     # Test that both directories point to the same location
     assert settings.OUTPUT_DIR == settings.LOG_DIR
 
