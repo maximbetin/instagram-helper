@@ -102,17 +102,13 @@ class Settings:
 
     DESIGN DECISIONS & IMPLEMENTATION QUIRKS:
 
-    1. FROZEN DATACLASS: The class is frozen to prevent runtime modification,
-       ensuring configuration consistency throughout the application lifecycle.
+    1. FROZEN DATACLASS: The class is frozen to prevent runtime modification, ensuring configuration consistency throughout the application lifecycle.
 
-    2. HARDCODED VALUES: All settings are predefined and don't require
-       environment variables or external configuration files.
+    2. HARDCODED VALUES: All settings are predefined and don't require environment variables or external configuration files.
 
-    3. SIMPLIFIED INITIALIZATION: No complex validation or environment
-       variable loading, making the configuration reliable and predictable.
+    3. SIMPLIFIED INITIALIZATION: No complex validation or environment variable loading, making the configuration reliable and predictable.
 
-    4. PYINSTALLER COMPATIBLE: No import-time dependencies that could
-       cause build issues with PyInstaller.
+    4. PYINSTALLER COMPATIBLE: No import-time dependencies that could cause build issues with PyInstaller.
 
     Attributes:
         BASE_DIR (ClassVar[Path]): The project's root directory.

@@ -16,18 +16,13 @@ ARCHITECTURE OVERVIEW:
 
 CRITICAL IMPLEMENTATION DETAILS:
 
-- IMPORT VALIDATION: The application checks for required dependencies before
-  attempting to launch the GUI, providing clear error messages if modules
-  are missing or corrupted.
+- IMPORT VALIDATION: The application checks for required dependencies before attempting to launch the GUI, providing clear error messages if modules are missing or corrupted.
 
-- ERROR CATEGORIZATION: Different types of errors (ImportError vs general
-  exceptions) are handled separately to provide appropriate user guidance.
+- ERROR CATEGORIZATION: Different types of errors (ImportError vs general exceptions) are handled separately to provide appropriate user guidance.
 
-- EXIT CODE MANAGEMENT: Proper exit codes (1 for errors) enable integration
-  with other tools and scripts that may launch the application.
+- EXIT CODE MANAGEMENT: Proper exit codes (1 for errors) enable integration with other tools and scripts that may launch the application.
 
-- USER FEEDBACK: Clear error messages guide users to resolve common issues
-  like missing dependencies or installation problems.
+- USER FEEDBACK: Clear error messages guide users to resolve common issues like missing dependencies or installation problems.
 
 STARTUP SEQUENCE:
 

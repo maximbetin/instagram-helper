@@ -1,18 +1,22 @@
 name: Release Pipeline
 
+# Trigger when a push is made to the main branch
 on:
   push:
     branches: [main]
+    # Only run if the changes are in the following files
     paths:
       - "**.py"
       - ".github/workflows/**"
       - "pyproject.toml"
       - "templates/**"
 
+# Allow only one job to run at a time
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Lint, Test, Build, Version, and Release the application
 jobs:
   test-build-release:
     runs-on: windows-latest
@@ -22,46 +26,56 @@ jobs:
       run:
         shell: pwsh
     steps:
+      # Checkout the repository
       - uses: actions/checkout@v4
 
+      # Setup Python environment
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          # Cache pip packages
           cache: pip
 
-      - name: Install Dependencies
+      # Install dependencies
+      - name: Install
         run: |
           python -m pip install -U pip
           pip install -e ".[dev]" pyinstaller
           playwright install
 
-      - name: Lint and Type-Check
+      # Lint and type-check the code
+      - name: Lint
         run: |
           ruff check . --fix
           mypy .
 
-      - name: Tests with Coverage
+      # Run tests with coverage
+      - name: Test
         run: |
           python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
 
-      - name: Upload Coverage
+      # Upload coverage to Codecov
+      - name: Codecov
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
 
-      - name: Build Artifact
+      # Build the application
+      - name: Build
         run: |
           pyinstaller --onefile --windowed run.py --name instagram-helper
           Compress-Archive -Path dist\instagram-helper.exe -DestinationPath dist\instagram-helper.zip
 
-      - name: Determine Version
+      # Determine version
+      - name: Version
         id: ver
         run: |
           $v = "v$(Get-Date -Format 'yyyy.MM.dd')-${{ github.run_number }}"
           echo "version=$v" >> $env:GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      # Create GitHub Release
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.version }}
@@ -70,5 +84,6 @@ jobs:
             Automated release from ${{ github.sha }}
             ${{ github.event.head_commit.message }}
           files: dist/instagram-helper.zip
+        # Set the GitHub token to create the release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

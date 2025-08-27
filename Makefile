@@ -1,56 +1,49 @@
 # Makefile for Instagram Helper
+.PHONY: help setup test clean build
 
-.PHONY: help init test format clean run build-exe
-
-# Default target
+# --- Help ---------------------------------------------------------------------
 help:
-	@echo "Usage: make [target]"
-	@echo ""
-	@echo "Targets:"
-	@echo "  init           Initialize development environment (create venv, install deps)"
-	@echo "  test           Run tests and all quality checks"
-	@echo "  format         Format code with ruff"
-	@echo "  clean          Remove build artifacts, cache files, and virtual environment"
-	@echo "  run            Run the GUI application"
-	@echo "  build-exe      Build executable with PyInstaller (includes templates)"
+	@echo Usage: make [target]
+	@echo Targets:
+	@echo    setup          Initialize development environment (create venv, install deps)
+	@echo    test           Run tests and all quality checks
+	@echo    clean          Remove build artifacts, cache files, and virtual environment
+	@echo    build          Build executable with PyInstaller (includes templates)
 
 # --- Setup --------------------------------------------------------------------
-init:
-	@echo "Initializing development environment..."
+setup:
+	@echo Initializing development environment...
 	@python.exe -m venv venv
 	@venv/Scripts/pip.exe install -e ".[dev]"
-	@echo "Development environment ready. Activate with 'venv\\Scripts\\activate'"
+	@echo Development environment ready! Activate with '. .\venv\Scripts\Activate.ps1'
 
-# --- Testing & Quality --------------------------------------------------------
+# --- Test ---------------------------------------------------------------------
 test:
-	@echo "Running tests and quality checks..."
-	@venv/Scripts/pytest.exe tests/
-	@echo "Running code quality checks..."
-	@venv/Scripts/ruff.exe check .
-	@venv/Scripts/ruff.exe format --check .
-	@venv/Scripts/mypy.exe .
-	@echo "All tests and quality checks passed."
-
-format:
-	@echo "Formatting code..."
-	@venv/Scripts/ruff.exe format .
+	@venv\Scripts\pytest.exe tests/
+	@venv\Scripts\ruff.exe check .
+	@venv\Scripts\ruff.exe format --check .
+	@venv\Scripts\mypy.exe .
+	@echo Tests and quality checks passed!
 
 # --- Build --------------------------------------------------------------------
-build-exe:
-	@echo "Building executable with PyInstaller..."
-	@venv/Scripts/pyinstaller.exe instagram_helper.spec
-	@echo "Executable built successfully in dist/ directory"
+build:
+	@echo Building executable with PyInstaller...
+	@venv\Scripts\pyinstaller.exe instagram_helper.spec
+	@echo Executable built successfully in dist/ directory!
 
-# --- Cleanup ------------------------------------------------------------------
+# --- Clean --------------------------------------------------------------------
 clean:
-	@echo "Cleaning up..."
-	@rm -rf build dist .coverage .pytest_cache .mypy_cache .ruff_cache htmlcov coverage.xml venv
-	@find . -type d -name "__pycache__" -exec rm -rf {} +
-	@find . -type d -name "*.egg-info" -exec rm -rf {} +
-	@find . -type f -name "*.pyc" -delete
-	@echo "Complete cleanup finished. Run 'make init' to recreate the environment."
-
-# --- Run ----------------------------------------------------------------------
-run:
-	@echo "Running GUI application..."
-	@venv/Scripts/python.exe gui_app.py
+	@echo Cleaning up...
+	@if exist build rmdir /s /q build
+	@if exist dist rmdir /s /q dist
+	@if exist .coverage del .coverage
+	@if exist .pytest_cache rmdir /s /q .pytest_cache
+	@if exist .mypy_cache rmdir /s /q .mypy_cache
+	@if exist .ruff_cache rmdir /s /q .ruff_cache
+	@if exist htmlcov rmdir /s /q htmlcov
+	@if exist coverage.xml del coverage.xml
+	@if exist venv rmdir /s /q venv
+	@for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+	@for /d /r . %%d in (*.egg-info) do @if exist "%%d" rmdir /s /q "%%d"
+	@for /r . %%f in (*.pyc) do @if exist "%%f" del "%%f"
+	@echo Complete cleanup finished! Run 'make setup' to recreate the environment!

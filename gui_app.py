@@ -44,21 +44,15 @@ class InstagramHelperGUI:
 
     CRITICAL IMPLEMENTATION DETAILS:
 
-    - THREADING MODEL: The scraping runs in a daemon thread to ensure it terminates
-      when the main application exits, preventing zombie processes.
+    - THREADING MODEL: The scraping runs in a daemon thread to ensure it terminates when the main application exits, preventing zombie processes.
 
-    - GUI UPDATE PATTERN: All GUI updates from the worker thread are scheduled using
-      root.after(0, callback, args) to ensure they execute on the main thread.
-      This prevents threading issues and maintains GUI responsiveness.
+    - GUI UPDATE PATTERN: All GUI updates from the worker thread are scheduled using root.after(0, callback, args) to ensure they execute on the main thread. This prevents threading issues and maintains GUI responsiveness.
 
-    - STATE MANAGEMENT: The application uses threading.Event objects for thread-safe
-      communication between the main thread and worker thread.
+    - STATE MANAGEMENT: The application uses threading.Event objects for thread-safe communication between the main thread and worker thread.
 
-    - RESOURCE CLEANUP: Browser and Playwright resources are properly cleaned up
-      in the finally block to prevent resource leaks.
+    - RESOURCE CLEANUP: Browser and Playwright resources are properly cleaned up in the finally block to prevent resource leaks.
 
-    - ERROR HANDLING: Exceptions in the worker thread are caught and communicated
-      back to the main thread for user display.
+    - ERROR HANDLING: Exceptions in the worker thread are caught and communicated back to the main thread for user display.
 
     THREAD SAFETY CONSIDERATIONS:
 
@@ -381,23 +375,15 @@ class InstagramHelperGUI:
         long-running scraping operations. The threading implementation follows
         these critical patterns:
 
-        1. GUI UPDATE SCHEDULING: All GUI updates use root.after(0, callback, args)
-           to ensure they execute on the main thread. Never update GUI elements
-           directly from this worker thread.
+        1. GUI UPDATE SCHEDULING: All GUI updates use root.after(0, callback, args) to ensure they execute on the main thread. Never update GUI elements directly from this worker thread.
 
-        2. RESOURCE MANAGEMENT: Browser and Playwright resources are properly
-           cleaned up in the finally block to prevent resource leaks and ensure
-           proper cleanup even when errors occur.
+        2. RESOURCE MANAGEMENT: Browser and Playwright resources are properly cleaned up in the finally block to prevent resource leaks and ensure proper cleanup even when errors occur.
 
-        3. THREAD SAFETY: The stop_scraping Event object provides thread-safe
-           communication between the main thread and this worker thread.
+        3. THREAD SAFETY: The stop_scraping Event object provides thread-safe communication between the main thread and this worker thread.
 
-        4. PROGRESS TRACKING: Progress updates are sent to the main thread
-           for real-time user feedback without blocking the scraping process.
+        4. PROGRESS TRACKING: Progress updates are sent to the main thread for real-time user feedback without blocking the scraping process.
 
-        5. ERROR HANDLING: Exceptions are caught and communicated back to the
-           main thread for user display, ensuring the application remains
-           responsive even when scraping fails.
+        5. ERROR HANDLING: Exceptions are caught and communicated back to the main thread for user display, ensuring the application remains responsive even when scraping fails.
 
         THREADING PATTERNS:
 

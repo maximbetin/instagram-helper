@@ -6,29 +6,23 @@ This module implements a sophisticated browser management system that handles
 cross-platform compatibility, WSL2 integration, and fallback strategies. The
 design addresses several critical challenges:
 
-1. CROSS-PLATFORM COMPATIBILITY: Supports Windows, Linux, and macOS with
-   appropriate process management and path handling for each platform.
+1. CROSS-PLATFORM COMPATIBILITY: Supports Windows, Linux, and macOS with appropriate process management and path handling for each platform.
 
-2. WSL2 INTEGRATION: Windows Subsystem for Linux 2 presents unique challenges
-   because it runs a Linux kernel but often needs to launch Windows applications.
-   This requires special detection and handling logic.
+2. WSL2 INTEGRATION: Windows Subsystem for Linux 2 presents unique challenges because it runs a Linux kernel but often needs to launch Windows applications. This requires special detection and handling logic.
 
-3. REMOTE DEBUGGING: The tool requires browser remote debugging capabilities
-   to control the browser programmatically via the Chrome DevTools Protocol.
+3. REMOTE DEBUGGING: The tool requires browser remote debugging capabilities to control the browser programmatically via the Chrome DevTools Protocol.
 
-4. PROCESS MANAGEMENT: Existing browser instances must be terminated to
-   prevent port conflicts and ensure clean debugging sessions.
+4. PROCESS MANAGEMENT: Existing browser instances must be terminated to prevent port conflicts and ensure clean debugging sessions.
 
-5. FALLBACK STRATEGIES: Multiple fallback approaches ensure the tool works
-   even when the preferred browser setup fails.
+5. FALLBACK STRATEGIES: Multiple fallback approaches ensure the tool works even when the preferred browser setup fails.
 
 ARCHITECTURE OVERVIEW:
 
 The browser management follows a layered approach:
 
-1. LOCAL BROWSER DETECTION: Attempts to connect to existing browser instances
-2. LOCAL BROWSER LAUNCH: Launches new browser instances with debugging enabled
-3. PLAYWRIGHT FALLBACK: Uses Playwright as a last resort for browser automation
+1. LOCAL BROWSER DETECTION: Attempts to connect to existing browser instances.
+2. LOCAL BROWSER LAUNCH: Launches new browser instances with debugging enabled.
+3. PLAYWRIGHT FALLBACK: Uses Playwright as a last resort for browser automation.
 
 WSL2 DETECTION LOGIC:
 

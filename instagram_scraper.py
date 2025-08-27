@@ -48,49 +48,36 @@ class InstagramScraper:
 
     CRITICAL IMPLEMENTATION DETAILS:
 
-    - NAVIGATION PATTERN: The scraper navigates between account pages and individual posts,
-      returning to the account page after each post to maintain context. This approach
-      is more reliable than trying to extract all data from the account page directly.
+    - NAVIGATION PATTERN: The scraper navigates between account pages and individual posts, returning to the account page after each post to maintain context. This approach is more reliable than trying to extract all data from the account page directly.
 
     - SELECTOR STRATEGY:
-      * POST LINKS: Uses CSS selectors (a[href*='/p/'], a[href*='/reel/']) which are
-        more stable than XPath for link extraction
+      * POST LINKS: Uses CSS selectors (a[href*='/p/'], a[href*='/reel/']) which are more stable than XPath for link extraction
       * POST DATES: Uses CSS selector (time[datetime]) for date extraction
       * POST CAPTIONS: Uses hardcoded XPath due to Instagram's fragile HTML structure
 
-    - TIMEOUT HANDLING: Each navigation operation has a configurable timeout to prevent
-      the scraper from hanging indefinitely on slow-loading pages.
+    - TIMEOUT HANDLING: Each navigation operation has a configurable timeout to prevent the scraper from hanging indefinitely on slow-loading pages.
 
-    - RATE LIMITING CONSIDERATIONS: The scraper includes intentional delays (3 seconds)
-      after each navigation to avoid triggering Instagram's rate limiting mechanisms.
+    - RATE LIMITING CONSIDERATIONS: The scraper includes intentional delays (3 seconds) after each navigation to avoid triggering Instagram's rate limiting mechanisms.
 
-    - ERROR RECOVERY: If a post fails to process, the scraper logs the error and
-      continues with the next post, ensuring partial results are still obtained.
+    - ERROR RECOVERY: If a post fails to process, the scraper logs the error and continues with the next post, ensuring partial results are still obtained.
 
     INSTAGRAM-SPECIFIC CHALLENGES:
 
-    - HTML STRUCTURE VOLATILITY: Instagram frequently changes their DOM structure,
-      requiring careful selector management and fallback strategies.
+    - HTML STRUCTURE VOLATILITY: Instagram frequently changes their DOM structure, requiring careful selector management and fallback strategies.
 
-    - LAZY LOADING: Instagram uses lazy loading for content, requiring explicit
-      waits and delays to ensure content is fully loaded before extraction.
+    - LAZY LOADING: Instagram uses lazy loading for content, requiring explicit waits and delays to ensure content is fully loaded before extraction.
 
-    - SESSION DEPENDENCY: The scraper relies on browser session cookies for
-      authentication, making it vulnerable to session expiration.
+    - SESSION DEPENDENCY: The scraper relies on browser session cookies for authentication, making it vulnerable to session expiration.
 
-    - CAPTION EXTRACTION: Caption text is deeply nested in Instagram's DOM,
-      requiring precise XPath selectors that must be updated when Instagram changes
-      their structure.
+    - CAPTION EXTRACTION: Caption text is deeply nested in Instagram's DOM, requiring precise XPath selectors that must be updated when Instagram changes their structure.
 
     PERFORMANCE CONSIDERATIONS:
 
-    - POST LIMITING: Respects INSTAGRAM_MAX_POSTS_PER_ACCOUNT to prevent excessive
-      processing and potential rate limiting.
+    - POST LIMITING: Respects INSTAGRAM_MAX_POSTS_PER_ACCOUNT to prevent excessive processing and potential rate limiting.
 
     - DATE FILTERING: Early date filtering prevents unnecessary processing of old posts.
 
-    - MEMORY MANAGEMENT: Post data is collected incrementally and doesn't accumulate
-      large amounts of data in memory.
+    - MEMORY MANAGEMENT: Post data is collected incrementally and doesn't accumulate large amounts of data in memory.
     """
 
     def __init__(self, page: Page, app_settings: Settings):

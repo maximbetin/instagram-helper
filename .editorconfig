@@ -32,34 +32,7 @@ max_line_length = 120
 [*.md]
 indent_style = space
 indent_size = 2
-max_line_length = 100
 trim_trailing_whitespace = false
-
-# Shell scripts (Makefile, shell scripts)
-[Makefile]
-indent_style = tab
-
-[*.sh]
-indent_style = space
-indent_size = 2
-
-# Configuration files
-[*.toml]
-indent_style = space
-indent_size = 2
-
-[*.ini]
-indent_style = space
-indent_size = 2
-
-[*.cfg]
-indent_style = space
-indent_size = 2
-
-# Environment files
-[*.env]
-indent_style = space
-indent_size = 2
 
 # YAML files
 [*.yml]
@@ -67,44 +40,7 @@ indent_size = 2
 indent_style = space
 indent_size = 2
 
-# JSON files
-[*.json]
-indent_style = space
-indent_size = 2
-
-# CSS files
-[*.css]
-indent_style = space
-indent_size = 2
-
-# JavaScript files
-[*.js]
-indent_style = space
-indent_size = 2
-
-# TypeScript files
-[*.ts]
-indent_style = space
-indent_size = 2
-
-# XML files
-[*.xml]
-indent_style = space
-indent_size = 2
-
 # Git configuration
 [.gitignore]
 indent_style = space
 indent_size = 2
-
-# Documentation
-[*.txt]
-indent_style = space
-indent_size = 2
-max_line_length = 80
-
-# License files
-[LICENSE*]
-indent_style = space
-indent_size = 2
-max_line_length = 80

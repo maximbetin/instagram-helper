@@ -1,22 +1,19 @@
-# Instagram Helper - Python Project Configuration
-# This file configures the project, its dependencies, and development tools
+# This file configures the project, its dependencies, and development tools.
 
+# Build system requirements. Specifies how to build the package.
 [build-system]
-# Build system requirements - specifies how to build the package
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=69.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# Project metadata and basic information.
 [project]
-# Project metadata and basic information
 name = "instagram-helper"
 version = "1.0.0"
 description = "A modern GUI-based tool that automatically fetches recent posts from Instagram accounts and generates HTML reports with real-time monitoring"
 readme = "README.md"
 license = "MIT"
-authors = [
-    {name = "Maxim"}
-]
-keywords = ["instagram", "scraper", "browser", "automation", "reports", "gui", "tkinter", "monitoring"]
+authors = [{name = "Maxim Betin", email = "betinmaxim@gmail.com"}]
+keywords = ["instagram", "scraper", "browser", "automation", "reports", "monitoring"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
@@ -30,73 +27,69 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 
-# Runtime dependencies - required for the application to function
+# Runtime dependencies. Required for the application to function.
 dependencies = [
-    "playwright>=1.40.0",  # Browser automation and web scraping
-    "jinja2>=3.1.0",       # HTML template rendering
-    "python-dotenv>=1.0.0", # Load .env automatically if present
-    "fake-useragent>=1.5.1", # Fake User-Agent generator
+    "playwright>=1.54.0",
+    "jinja2>=3.1.6",
 ]
 
-# Optional dependency groups
+# Optional dependency groups.
 [project.optional-dependencies]
-# Development dependencies - for development, testing, and code quality
+# Development dependencies. For development, testing, and code quality.
 dev = [
-    "pytest>=7.4.0",           # Testing framework
-    "pytest-cov>=4.1.0",       # Coverage reporting for pytest
-    "freezegun>=1.4.0",        # Time-freezing utility used in tests
-    "ruff>=0.1.0",             # Code formatting and linting
-    "mypy>=1.5.0",             # Static type checking
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.10",
+    "mypy>=1.17.1",
 ]
 
-# Testing dependencies - for running tests only
+# Testing dependencies. For running tests only.
 test = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",       # Coverage reporting for pytest
-    "freezegun>=1.4.0",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
 ]
 
-# GUI entry point - makes the tool available as a Python module
+# GUI entry point. Makes the tool available as a Python module.
 [project.scripts]
 instagram-helper = "run:main"
 
-# Project URLs for documentation and source
+# Project URLs for documentation and source.
 [project.urls]
 Homepage = "https://github.com/maximbetin/instagram-helper"
 Repository = "https://github.com/maximbetin/instagram-helper"
 Issues = "https://github.com/maximbetin/instagram-helper/issues"
 
-# Package discovery and inclusion configuration
+# Package discovery and inclusion configuration.
 [tool.setuptools]
-# Specify Python modules to include (not traditional packages)
+# Specify Python modules to include (not traditional packages).
 packages = []
 py-modules = [
-    "run",                  # Main entry point
-    "instagram_scraper",    # Main scraping functionality
-    "utils",                # Utility functions and logging
-    "gui_app",              # GUI application
-    "config",               # Configuration settings
-    "browser_manager",      # Browser management
-    "report_generator",     # HTML report generation
+    "run",
+    "instagram_scraper",
+    "utils",
+    "gui_app",
+    "config",
+    "browser_manager",
+    "report_generator",
 ]
 
-# Include non-Python files in the package
+# Include non-Python files in the package.
 [tool.setuptools.package-data]
-"*" = ["templates/*.html"]  # Include HTML templates
+"*" = ["templates/*.html"]
 
-# Pytest configuration for testing
+# Pytest configuration for testing.
 [tool.pytest.ini_options]
-testpaths = ["tests"]                    # Directory containing tests
-python_files = ["test_*.py"]            # Test file naming pattern
-python_classes = ["Test*"]              # Test class naming pattern
-python_functions = ["test_*"]           # Test function naming pattern
-addopts = "-v --tb=short --strict-markers"  # Default pytest options
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
 ]
 
-# Coverage configuration for pytest-cov
+# Coverage configuration for pytest-cov.
 [tool.coverage.run]
 source = ["."]
 omit = [
@@ -107,6 +100,7 @@ omit = [
     ".pytest_cache/*",
 ]
 
+# Coverage report configuration.
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
@@ -121,12 +115,12 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
-# Ruff configuration for code formatting and linting
+# Ruff configuration for code formatting and linting.
 [tool.ruff]
-target-version = "py312"     # Target Python version
-line-length = 88             # Maximum line length (Black-compatible)
+target-version = "py312"
+line-length = 88
 
-# Ruff linting rules
+# Ruff linting rules.
 [tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
@@ -143,41 +137,40 @@ ignore = [
     "C901",  # too complex
 ]
 
-# Ruff formatting options
+# Ruff formatting options.
 [tool.ruff.format]
-quote-style = "double"                    # Use double quotes
-indent-style = "space"                    # Use spaces for indentation
-skip-magic-trailing-comma = false         # Always add trailing commas
-line-ending = "auto"                      # Automatic line ending detection
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
-# MyPy configuration for static type checking
+# MyPy configuration for static type checking.
 [tool.mypy]
-python_version = "3.12"                   # Target Python version
-warn_return_any = true                    # Warn about returning Any
-warn_unused_configs = true                # Warn about unused config options
-disallow_untyped_defs = true             # Require type annotations for functions
-disallow_incomplete_defs = true          # Require complete type annotations
-check_untyped_defs = true                # Check untyped function definitions
-disallow_untyped_decorators = true       # Require typed decorators
-no_implicit_optional = true              # No implicit Optional types
-warn_redundant_casts = true              # Warn about redundant type casts
-warn_unused_ignores = true               # Warn about unused type ignore comments
-warn_no_return = true                    # Warn about functions that don't return
-warn_unreachable = true                  # Warn about unreachable code
-strict_equality = true                   # Strict equality checking
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+# Exclude directories from type checking.
 exclude = [
-    "build",                             # Exclude build directory
-    "venv",                              # Exclude virtual environments
-    "__pycache__",                       # Exclude Python cache
-    ".pytest_cache",                     # Exclude pytest cache
-    "tests",                             # Exclude test files from type checking
+    "build",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    "tests",
 ]
 
-# MyPy module overrides for external libraries
+# MyPy module overrides for external libraries.
 [[tool.mypy.overrides]]
 module = [
-    "playwright.*",  # Browser automation library
-    "jinja2.*",      # Template engine
-    "fake_useragent.*", # Fake User-Agent generator
+    "playwright.*",
+    "jinja2.*",
 ]
-ignore_missing_imports = true            # Ignore missing imports for these modules
