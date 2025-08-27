@@ -32,7 +32,7 @@ jobs:
       # Setup Python environment
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           # Cache pip packages
           cache: pip
 
@@ -40,7 +40,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install -U pip
-          pip install -e ".[dev]" pyinstaller
+          pip install -e ".[dev]"
           playwright install
 
       # Lint and type-check the code
@@ -64,8 +64,16 @@ jobs:
       # Build the application
       - name: Build
         run: |
-          pyinstaller --onefile --windowed run.py --name instagram-helper
+          pyinstaller --noconfirm --clean instagram_helper.spec
           Compress-Archive -Path dist\instagram-helper.exe -DestinationPath dist\instagram-helper.zip
+
+      # Verify the build
+      - name: Test Build
+        run: |
+          echo "Testing executable..."
+          # Test that the executable runs without errors
+          .\dist\instagram-helper.exe --help
+          echo "Build test successful!"
 
       # Determine version
       - name: Version

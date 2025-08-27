@@ -428,19 +428,13 @@ class TestInstagramHelperGUI:
 
             # Mock the browser with no contexts
             mock_browser = MagicMock()
-            mock_context = MagicMock()
-            mock_page = MagicMock()
-
             mock_browser.contexts = []
-            mock_browser.new_context.return_value = mock_context
-            mock_context.pages = [mock_page]
 
-            # Call the method
-            result = app._get_browser_page(mock_browser)
-
-            # Verify result
-            assert result == mock_page
-            mock_browser.new_context.assert_called_once()
+            # Call the method - should raise RuntimeError now
+            with pytest.raises(
+                RuntimeError, match="No persistent context available via CDP"
+            ):
+                app._get_browser_page(mock_browser)
 
     def test_get_browser_page_new_page(self, mock_tkinter, mock_dependencies) -> None:
         """Test getting browser page when no pages exist."""

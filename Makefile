@@ -1,49 +1,98 @@
-# Makefile for Instagram Helper
-.PHONY: help setup test clean build
+.SILENT:
+.DEFAULT_GOAL := help
+.PHONY: help setup venv-ok lint lint-fix format format-check test coverage build rebuild run playwright-install clean clean-caches clean-venv
+
+# --- Config -------------------------------------------------------------------
+VENV    := venv
+BIN     := $(VENV)\Scripts
+PY      := "$(BIN)\python.exe"
+PIP     := $(PY) -m pip
+PYTEST  := $(PY) -m pytest
+RUFF    := $(PY) -m ruff
+MYPY    := $(PY) -m mypy
+PYI     := $(PY) -m PyInstaller
+STAMP   := $(VENV)\.ok
+SPEC    := instagram_helper.spec
+PYI_FLAGS := --noconfirm --clean
 
 # --- Help ---------------------------------------------------------------------
 help:
-	@echo Usage: make [target]
-	@echo Targets:
-	@echo    setup          Initialize development environment (create venv, install deps)
-	@echo    test           Run tests and all quality checks
-	@echo    clean          Remove build artifacts, cache files, and virtual environment
-	@echo    build          Build executable with PyInstaller (includes templates)
+	echo Usage: make [target]
+	echo Targets: setup | run | test | lint | lint-fix | format | format-check | coverage | build | rebuild | playwright-install | clean
 
-# --- Setup --------------------------------------------------------------------
-setup:
-	@echo Initializing development environment...
-	@python.exe -m venv venv
-	@venv/Scripts/pip.exe install -e ".[dev]"
-	@echo Development environment ready! Activate with '. .\venv\Scripts\Activate.ps1'
+# --- Environment ---------------------------------------------------------------
+setup: $(STAMP)
 
-# --- Test ---------------------------------------------------------------------
-test:
-	@venv\Scripts\pytest.exe tests/
-	@venv\Scripts\ruff.exe check .
-	@venv\Scripts\ruff.exe format --check .
-	@venv\Scripts\mypy.exe .
-	@echo Tests and quality checks passed!
+# Recreate env when pyproject changes
+$(STAMP): pyproject.toml
+	echo Initializing development environment...
+	python -m venv "$(VENV)"
+	$(PIP) -q install -U pip
+	$(PIP) -q install -e ".[dev]"
+	$(PY) -m playwright install
+	echo ok> $(STAMP)
+	echo Development environment ready. Activate with:  . .\venv\Scripts\Activate.ps1
 
-# --- Build --------------------------------------------------------------------
-build:
-	@echo Building executable with PyInstaller...
-	@venv\Scripts\pyinstaller.exe instagram_helper.spec
-	@echo Executable built successfully in dist/ directory!
+venv-ok: $(STAMP)
 
-# --- Clean --------------------------------------------------------------------
-clean:
-	@echo Cleaning up...
-	@if exist build rmdir /s /q build
-	@if exist dist rmdir /s /q dist
-	@if exist .coverage del .coverage
-	@if exist .pytest_cache rmdir /s /q .pytest_cache
-	@if exist .mypy_cache rmdir /s /q .mypy_cache
-	@if exist .ruff_cache rmdir /s /q .ruff_cache
-	@if exist htmlcov rmdir /s /q htmlcov
-	@if exist coverage.xml del coverage.xml
-	@if exist venv rmdir /s /q venv
-	@for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-	@for /d /r . %%d in (*.egg-info) do @if exist "%%d" rmdir /s /q "%%d"
-	@for /r . %%f in (*.pyc) do @if exist "%%f" del "%%f"
-	@echo Complete cleanup finished! Run 'make setup' to recreate the environment!
+playwright-install: venv-ok
+	$(PY) -m playwright install
+
+# --- Quality / Test ------------------------------------------------------------
+lint: venv-ok
+	$(RUFF) check .
+	$(MYPY) .
+
+lint-fix: venv-ok
+	$(RUFF) check . --fix
+
+format: venv-ok
+	$(RUFF) format .
+
+format-check: venv-ok
+	$(RUFF) format --check .
+
+test: venv-ok
+	$(PYTEST) tests/
+	$(RUFF) check .
+	$(RUFF) format --check .
+	$(MYPY) .
+	echo Tests and quality checks passed!
+
+coverage: venv-ok
+	$(PYTEST) --cov --cov-report=term-missing --cov-report=xml
+
+# --- Build ---------------------------------------------------------------------
+build: venv-ok
+	echo Building executable with PyInstaller...
+	if exist "$(SPEC)" ( $(PYI) $(PYI_FLAGS) "$(SPEC)" ) else ( $(PYI) $(PYI_FLAGS) -n InstagramHelper run.py )
+	echo Executable built in dist\
+
+rebuild: clean build
+
+# --- Run -----------------------------------------------------------------------
+run: venv-ok
+	$(PY) run.py
+
+# --- Clean ---------------------------------------------------------------------
+clean: clean-caches clean-venv
+	echo Complete cleanup finished! Run 'make setup' to recreate the environment.
+
+clean-caches:
+	echo Cleaning caches and build artifacts...
+	if exist build rd /s /q build
+	if exist dist rd /s /q dist
+	if exist .coverage del /q .coverage
+	if exist .pytest_cache rd /s /q .pytest_cache
+	if exist .mypy_cache rd /s /q .mypy_cache
+	if exist .ruff_cache rd /s /q .ruff_cache
+	if exist htmlcov rd /s /q htmlcov
+	if exist coverage.xml del /q coverage.xml
+	for /d /r . %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d"
+	for /d /r . %%d in (*.egg-info) do @if exist "%%d" rd /s /q "%%d"
+	for /r . %%f in (*.pyc) do @if exist "%%f" del /q "%%f"
+
+clean-venv:
+	if exist "$(STAMP)" del /q "$(STAMP)"
+	if exist "$(VENV)\Scripts\deactivate.bat" call "$(VENV)\Scripts\deactivate.bat"
+	if exist "$(VENV)" rd /s /q "$(VENV)"

@@ -1,332 +1,185 @@
-"""Browser management and integration functionality.
-
-BROWSER INTEGRATION STRATEGY:
-
-This module implements a sophisticated browser management system that handles
-cross-platform compatibility, WSL2 integration, and fallback strategies. The
-design addresses several critical challenges:
-
-1. CROSS-PLATFORM COMPATIBILITY: Supports Windows, Linux, and macOS with appropriate process management and path handling for each platform.
-
-2. WSL2 INTEGRATION: Windows Subsystem for Linux 2 presents unique challenges because it runs a Linux kernel but often needs to launch Windows applications. This requires special detection and handling logic.
-
-3. REMOTE DEBUGGING: The tool requires browser remote debugging capabilities to control the browser programmatically via the Chrome DevTools Protocol.
-
-4. PROCESS MANAGEMENT: Existing browser instances must be terminated to prevent port conflicts and ensure clean debugging sessions.
-
-5. FALLBACK STRATEGIES: Multiple fallback approaches ensure the tool works even when the preferred browser setup fails.
-
-ARCHITECTURE OVERVIEW:
-
-The browser management follows a layered approach:
-
-1. LOCAL BROWSER DETECTION: Attempts to connect to existing browser instances.
-2. LOCAL BROWSER LAUNCH: Launches new browser instances with debugging enabled.
-3. PLAYWRIGHT FALLBACK: Uses Playwright as a last resort for browser automation.
-
-WSL2 DETECTION LOGIC:
-
-WSL2 environments are detected using multiple criteria:
-- os.name == "posix": Confirms Linux shell environment
-- "microsoft" in platform.uname().release.lower(): Identifies WSL2 kernel
-- Windows browser path indicators: Checks for .exe extensions or Windows paths
-
-This detection enables appropriate process management and browser launching
-strategies for each environment.
-
-CRITICAL IMPLEMENTATION DETAILS:
-
-- PROCESS KILLING: Different strategies for Windows (taskkill.exe) vs Linux (pkill)
-- PATH TRANSLATION: WSL2 requires special handling for Windows paths
-- PORT CONFLICTS: Only one browser can use port 9222 for remote debugging
-- SESSION MANAGEMENT: Browser user data directories preserve login sessions
-- ERROR HANDLING: Graceful degradation when browser operations fail
-
-PERFORMANCE CONSIDERATIONS:
-
-- CONNECTION POOLING: Reuses browser connections when possible
-- TIMEOUT HANDLING: Prevents indefinite waits for browser operations
-- RESOURCE CLEANUP: Ensures browser processes are properly terminated
-- MEMORY MANAGEMENT: Avoids memory leaks from abandoned browser instances
-"""
+"""Browser management: connect to a real user profile via CDP."""
 
 from __future__ import annotations
 
 import os
 import platform
+import socket
 import subprocess
 import time
-from typing import TYPE_CHECKING
 
-from playwright.sync_api import Browser, Playwright
+from playwright.sync_api import Browser, BrowserContext, Page, Playwright
 
-from config import settings
+from config import Settings, settings
 from utils import setup_logging
-
-if TYPE_CHECKING:
-    from config import Settings
 
 logger = setup_logging(__name__)
 
 
-def _kill_existing_browser_processes() -> None:
-    """Kills existing browser processes to prevent conflicts.
+def _is_wsl2() -> bool:
+    return os.name == "posix" and "microsoft" in platform.uname().release.lower()
 
-    IMPLEMENTATION DETAILS:
 
-    This function handles browser process management across different environments,
-    with special handling for WSL2 (Windows Subsystem for Linux 2). The complexity
-    is necessary because:
+def _is_port_open(host: str, port: int, timeout: float = 0.3) -> bool:
+    """Best-effort check for an open TCP port (IPv4/IPv6)."""
+    try:
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False
 
-    1. CROSS-PLATFORM COMPATIBILITY: Different operating systems use different
-    process management commands (taskkill.exe vs pkill).
-
-    2. WSL2 INTEGRATION: WSL2 runs a Linux kernel but often needs to manage
-    Windows processes, requiring special detection and handling.
-
-    3. PORT CONFLICTS: Only one browser can use port 9222 for remote debugging,
-    so existing processes must be terminated before launching new ones.
-
-    4. SESSION CONFLICTS: Existing browser instances may have different
-    debugging configurations that could interfere with the tool.
-
-    WSL2 DETECTION LOGIC:
-    - os.name == "posix": Confirms we're in a Linux shell
-    - "microsoft" in platform.uname().release.lower(): Identifies WSL2 kernel
-    - Windows browser path: Checks if browser path contains Windows indicators
-
-    This detection allows the tool to use appropriate process management
-    strategies for each environment.
-    """
-    if not settings.BROWSER_PATH:
-        return
-
-    browser_name = settings.BROWSER_PATH.name.lower()
-
-    # Handle different operating systems and WSL2 scenarios
-    if "brave" in browser_name:
+    for family, socktype, proto, _, addr in infos:
         try:
-            # Check if we're in WSL2 (Linux shell but Windows browser path)
-            # This detection is crucial for proper process management
-            is_wsl2 = (
-                os.name == "posix"
-                and "microsoft" in platform.uname().release.lower()
-                and (
-                    "win" in str(settings.BROWSER_PATH).lower()
-                    or ".exe" in str(settings.BROWSER_PATH).lower()
-                )
-            )
-
-            if is_wsl2 or "win" in os.name.lower():
-                # Windows or WSL2 with Windows browser
-                try:
-                    # Try using wsl.exe to run Windows commands
-                    subprocess.run(
-                        ["wsl.exe", "taskkill.exe", "/f", "/im", "brave.exe"],
-                        capture_output=True,
-                        check=False,
-                        text=True,
-                    )
-                except FileNotFoundError:
-                    # Fallback to direct Windows command if wsl.exe not available
-                    subprocess.run(
-                        ["taskkill.exe", "/f", "/im", "brave.exe"],
-                        capture_output=True,
-                        check=False,
-                        text=True,
-                    )
-            else:
-                # Native Linux/macOS
-                subprocess.run(
-                    ["pkill", "-f", "brave"],
-                    capture_output=True,
-                    check=False,
-                    text=True,
-                )
-            logger.info("Attempted to stop existing Brave browser processes.")
-        except FileNotFoundError:
-            logger.debug("Process killing command not found, skipping cleanup")
-        except Exception as e:
-            logger.warning(f"Error while trying to kill Brave processes: {e}")
+            with socket.socket(family, socktype, proto) as s:
+                s.settimeout(timeout)
+                s.connect(addr)
+                return True
+        except OSError:
+            continue
+    return False
 
 
-def _launch_local_browser(
-    playwright: Playwright, app_settings: Settings
-) -> Browser | None:
-    """Launches a local browser with remote debugging enabled."""
-    if not app_settings.BROWSER_PATH or not app_settings.BROWSER_PATH.exists():
-        logger.debug("Browser path not configured or not found.")
+def _cdp_url(scheme: str, host: str, port: int) -> str:
+    return f"{scheme}://{host}:{port}"
+
+
+def _launch_user_profile_browser(app: Settings) -> subprocess.Popen | None:
+    """Launch system browser pointing at the user's profile with a debug port."""
+    if not app.BROWSER_PATH or not app.BROWSER_PATH.exists():
+        logger.error("BROWSER_PATH is not configured or does not exist.")
         return None
 
-    logger.info("Attempting to launch local browser...")
-    logger.info(f"Platform: {platform.system()}, OS name: {os.name}")
-    logger.info(f"Browser path: {app_settings.BROWSER_PATH}")
-    logger.info(f"Browser path exists: {app_settings.BROWSER_PATH.exists()}")
-
-    _kill_existing_browser_processes()
-
-    # Check if we're in WSL2 with Windows browser
-    is_wsl2 = (
-        os.name == "posix"
-        and "microsoft" in platform.uname().release.lower()
-        and (
-            "win" in str(app_settings.BROWSER_PATH).lower()
-            or ".exe" in str(app_settings.BROWSER_PATH).lower()
+    # Warn if the profile root doesn't exist (to avoid "why am I logged out?" surprises).
+    if not app.BROWSER_USER_DATA_DIR or not app.BROWSER_USER_DATA_DIR.exists():
+        logger.warning(
+            f"User data dir not found: {app.BROWSER_USER_DATA_DIR!s}. "
+            "Browser will create a fresh profile (no saved session)."
         )
-    )
 
-    logger.info(f"WSL2 detection: {is_wsl2}")
-    logger.info(f"Platform system: {platform.system()}")
-
-    # Add platform-specific arguments
-    browser_args = [
-        str(app_settings.BROWSER_PATH),
-        f"--remote-debugging-port={app_settings.BROWSER_DEBUG_PORT}",
-        f"--user-data-dir={app_settings.BROWSER_USER_DATA_DIR}",
-        f"--profile-directory={app_settings.BROWSER_PROFILE_DIR}",
+    args = [
+        str(app.BROWSER_PATH),
+        f"--remote-debugging-port={app.BROWSER_DEBUG_PORT}",
+        f"--user-data-dir={app.BROWSER_USER_DATA_DIR}",
+        f"--profile-directory={app.BROWSER_PROFILE_DIR}",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-background-timer-throttling",
         "--disable-backgrounding-occluded-windows",
         "--disable-renderer-backgrounding",
-        app_settings.BROWSER_START_URL,
     ]
+    if app.BROWSER_START_URL:
+        args.append(app.BROWSER_START_URL)
 
     try:
-        # Use different subprocess approach for WSL2 vs native Windows vs Linux/macOS
-        if is_wsl2:
-            logger.info("Using WSL2 launch method")
-            # In WSL2, we need to launch the Windows browser from Windows
-            try:
-                # Try using wsl.exe to launch Windows browser
-                wsl_args = ["wsl.exe"] + browser_args
-                process = subprocess.Popen(
-                    wsl_args,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-            except FileNotFoundError:
-                # Fallback to direct launch
-                process = subprocess.Popen(
-                    browser_args,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-        elif platform.system() == "Windows":
-            logger.info("Using native Windows launch method")
-            # Native Windows launch
-            process = subprocess.Popen(
-                browser_args,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-        else:
-            logger.info("Using native Linux/macOS launch method")
-            # Native Linux/macOS launch
-            process = subprocess.Popen(
-                browser_args,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-
-        logger.debug(
-            f"Waiting {app_settings.BROWSER_LOAD_DELAY / 1000:.1f}s for browser..."
+        # In WSL2 you can generally call the Windows .exe directly if the path points to it.
+        proc = subprocess.Popen(
+            args,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
-        time.sleep(app_settings.BROWSER_LOAD_DELAY / 1000)
+        logger.info("Launched system browser with user profile.")
+        return proc
+    except FileNotFoundError:
+        logger.error("Browser binary not found.")
+    except Exception as e:
+        logger.error(f"Failed to launch browser: {e}")
+    return None
 
-        # Try to connect to the newly launched browser
-        connect_url = (
-            f"{app_settings.BROWSER_CONNECT_SCHEME}://"
-            f"{app_settings.BROWSER_REMOTE_HOST}:{app_settings.BROWSER_DEBUG_PORT}"
-        )
 
+def _connect_over_cdp_with_retry(
+    playwright: Playwright, url: str, attempts: int = 12, first_delay: float = 0.4
+) -> Browser | None:
+    delay = first_delay
+    for i in range(1, attempts + 1):
         try:
-            browser = playwright.chromium.connect_over_cdp(connect_url)
-            logger.info(f"Successfully connected to browser at {connect_url}")
-            return browser
+            return playwright.chromium.connect_over_cdp(url)
         except Exception as e:
-            if "ECONNREFUSED" in str(e):
-                logger.error(
-                    f"Connection refused to browser at {connect_url}. "
-                    "Please close any existing browser instances and try again."
-                )
-            else:
-                logger.error(f"Failed to connect to browser: {e}")
+            if i == attempts:
+                logger.error(f"CDP connect failed ({i}/{attempts}) to {url}: {e}")
+                return None
+            time.sleep(delay)
+            delay = min(delay * 1.6, 3.0)
+    return None
 
-            # Try to clean up the process if connection failed
+
+def setup_browser(playwright: Playwright, app: Settings | None = None) -> Browser:
+    """Connect to an existing profile-enabled browser (preferred) or launch it, then connect."""
+    app_settings: Settings = app or settings
+    url = _cdp_url(
+        app_settings.BROWSER_CONNECT_SCHEME,
+        app_settings.BROWSER_REMOTE_HOST,
+        app_settings.BROWSER_DEBUG_PORT,
+    )
+
+    # 1) If a browser is already listening, connect to it
+    if _is_port_open(app_settings.BROWSER_REMOTE_HOST, app_settings.BROWSER_DEBUG_PORT):
+        logger.info(
+            f"Debug port {app_settings.BROWSER_DEBUG_PORT} is open; connecting to existing browser…"
+        )
+        br = _connect_over_cdp_with_retry(playwright, url)
+        if br:
             try:
-                process.terminate()
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
+                v = getattr(br, "version", None)
+                version_str = v() if callable(v) else str(v)
+                logger.info(f"Connected to browser: {version_str}")
             except Exception:
                 pass
-            return None
+            return br
+        # If connect failed despite the port being open, fall through and try launching ourselves.
 
-    except Exception as e:
-        logger.error(f"Failed to launch local browser: {e}")
-        return None
-
-
-def _launch_playwright_chromium(
-    playwright: Playwright, app_settings: Settings
-) -> Browser:
-    """Launches a managed Playwright Chromium instance as a fallback."""
-    logger.info("Falling back to Playwright-managed Chromium browser.")
-    try:
-        return playwright.chromium.launch(
-            headless=False,
-            args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-background-timer-throttling",
-                "--disable-backgrounding-occluded-windows",
-                "--disable-renderer-backgrounding",
-                "--no-first-run",
-                "--no-default-browser-check",
-                f"--remote-debugging-port={app_settings.BROWSER_DEBUG_PORT}",
-            ],
+    # 2) Launch the system browser with the configured profile, then connect
+    _launch_user_profile_browser(app_settings)
+    br = _connect_over_cdp_with_retry(playwright, url)
+    if not br:
+        raise ConnectionError(
+            f"Could not connect to the browser at {url}. "
+            "Ensure the debug port is free, the path is correct, and the profile directory is accessible."
         )
-    except Exception as e:
-        logger.critical(f"Failed to launch Playwright Chromium: {e}")
-        raise
+    try:
+        v = getattr(br, "version", None)
+        version_str = v() if callable(v) else str(v)
+        logger.info(f"Connected to browser: {version_str}")
+    except Exception:
+        pass
+    return br
 
 
-def setup_browser(playwright: Playwright) -> Browser:
-    """Sets up and returns a browser instance.
+def setup_profile_context_and_page(
+    playwright: Playwright, app: Settings | None = None
+) -> tuple[Browser, BrowserContext, Page]:
+    """Return (browser, persistent_context, page) using the user's real profile.
 
-    This function follows a specific strategy to establish a browser connection:
-    1. Attempts to launch a local browser instance (e.g., Brave) if configured.
-    2. If local launch fails, falls back to launching a Playwright-managed
-       Chromium instance.
-    3. Provides clear error messages for connection issues.
-
-    Returns:
-        A Playwright `Browser` instance.
-
-    Raises:
-        ConnectionError: If no browser connection can be established.
+    With CDP+persistent profiles, Playwright exposes an existing context.
+    Creating new incognito contexts is usually unsupported; reuse the first.
     """
-    logger.info("Setting up browser instance...")
+    app_settings: Settings = app or settings
+    browser = setup_browser(playwright, app_settings)
 
-    # Try to launch a local browser if configured
-    try:
-        if browser := _launch_local_browser(playwright, settings):
-            logger.info("Successfully launched and connected to local browser.")
-            return browser
-    except Exception as e:
-        logger.warning(f"Local browser launch failed: {e}")
+    # Contexts can appear with a small delay right after connect.
+    if not browser.contexts:
+        time.sleep(0.3)
 
-    # Fallback to Playwright-managed Chromium
-    logger.info("Falling back to Playwright-managed Chromium browser.")
-    try:
-        browser = _launch_playwright_chromium(playwright, settings)
-        logger.info("Successfully launched Playwright-managed Chromium browser.")
-        return browser
-    except Exception as e:
-        logger.critical(f"Failed to launch Playwright-managed Chromium: {e}")
-        raise ConnectionError("Could not launch any browser.") from None
+    if not browser.contexts:
+        raise RuntimeError(
+            "No browser contexts available after CDP connect. Is the profile locked?"
+        )
+
+    context = browser.contexts[0]  # persistent profile context
+
+    # Reuse an existing page if present; otherwise open one.
+    page = context.pages[0] if context.pages else context.new_page()
+
+    # Optional: default timeouts aligned with app settings
+    if getattr(app_settings, "INSTAGRAM_POST_LOAD_TIMEOUT", None):
+        page.set_default_timeout(app_settings.INSTAGRAM_POST_LOAD_TIMEOUT)
+
+    # If we created a fresh page and you configured a start URL, open it to ensure cookies/session load.
+    if app_settings.BROWSER_START_URL and (
+        len(context.pages) == 1 and page.url in ("about:blank", "")
+    ):
+        try:
+            page.goto(app_settings.BROWSER_START_URL, wait_until="domcontentloaded")
+        except Exception:
+            pass
+
+    return browser, context, page
