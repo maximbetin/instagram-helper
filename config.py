@@ -1,176 +1,221 @@
-"""Configuration settings for Instagram Helper."""
+"""Configuration settings for Instagram Helper (CDP + real profile)."""
 
 from __future__ import annotations
 
+import os
+import platform
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import timedelta, timezone
 from pathlib import Path
 from typing import ClassVar
+from zoneinfo import ZoneInfo
+
+# -------------------------- platform helpers ----------------------------------
 
 
-def _get_platform_paths() -> tuple[Path, Path, Path]:
-    """Get platform-specific paths for browser and output directories."""
-    import platform
+def _is_wsl2() -> bool:
+    return os.name == "posix" and "microsoft" in platform.uname().release.lower()
 
-    if platform.system() == "Windows":
-        # Windows paths
-        browser_path = Path(
-            "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+
+def _windows_userprofile_from_env() -> Path | None:
+    up = os.environ.get("USERPROFILE") or os.environ.get("HOMEPATH")
+    return Path(up) if up else None
+
+
+def _wsl_windows_home() -> Path | None:
+    # Best effort: /mnt/c/Users/<Name> based on $USERPROFILE if present
+    up = _windows_userprofile_from_env()
+    if up:
+        drive = up.drive.rstrip(":") or "C"
+        return (
+            Path(f"/mnt/{drive.lower()}") / up.relative_to(up.drive + "\\").as_posix()
         )
-        user_data_dir = Path(
-            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
-        )
-        output_dir = Path("C:\\Users\\Maxim\\Desktop\\ig_helper")
-    elif (
-        platform.system() == "Linux" and "microsoft" in platform.uname().release.lower()
-    ):
-        # WSL2 paths
-        browser_path = Path(
-            "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-        )
-        user_data_dir = Path(
-            "C:\\Users\\Maxim\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"
-        )
-        output_dir = Path("/mnt/c/Users/Maxim/Desktop/ig_helper")
+    # Fallback: guess common shape
+    user = os.environ.get("USERNAME") or os.environ.get("USER")
+    return Path(f"/mnt/c/Users/{user}") if user else None
+
+
+def _first_existing(paths: Iterable[Path]) -> Path | None:
+    for p in paths:
+        if p and p.exists():
+            return p
+    return None
+
+
+# -------------------------- defaults discovery --------------------------------
+
+
+def _discover_browser_path() -> Path | None:
+    """Try Brave → Chrome → Edge."""
+    if platform.system() == "Windows" or _is_wsl2():
+        candidates = [
+            Path(r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"),
+            Path(
+                r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe"
+            ),
+            Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
+            Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
+            Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"),
+            Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"),
+        ]
+        # If running inside WSL2, the Windows paths are still correct for launching.
+        return _first_existing(candidates)
     else:
-        # Linux/macOS paths
-        browser_path = Path("/usr/bin/brave-browser")
-        user_data_dir = Path.home() / ".config/BraveSoftware/Brave-Browser"
-        output_dir = Path.home() / "Desktop/ig_helper"
+        candidates = [
+            Path("/usr/bin/brave-browser"),
+            Path("/usr/bin/google-chrome"),
+            Path("/usr/bin/microsoft-edge"),
+            Path("/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
+            Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+            Path("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
+        ]
+        return _first_existing(candidates)
 
-    return browser_path, user_data_dir, output_dir
+
+def _default_user_data_dir(browser_path: Path | None) -> Path | None:
+    """Return the profile root dir for the chosen browser."""
+    if platform.system() == "Windows" or _is_wsl2():
+        home = _windows_userprofile_from_env()
+        if not home:
+            return None
+        if browser_path and "brave" in browser_path.name.lower():
+            return home / r"AppData\Local\BraveSoftware\Brave-Browser\User Data"
+        if browser_path and "chrome" in browser_path.name.lower():
+            return home / r"AppData\Local\Google\Chrome\User Data"
+        if browser_path and "msedge" in browser_path.name.lower():
+            return home / r"AppData\Local\Microsoft\Edge\User Data"
+        # Default to Chrome layout
+        return home / r"AppData\Local\Google\Chrome\User Data"
+    else:
+        home = Path.home()
+        if browser_path and "brave" in browser_path.name.lower():
+            return home / ".config/BraveSoftware/Brave-Browser"
+        if browser_path and "chrome" in browser_path.name.lower():
+            return home / ".config/google-chrome"
+        if browser_path and "edge" in browser_path.name.lower():
+            return home / ".config/microsoft-edge"
+        return home / ".config/google-chrome"
 
 
-def _load_instagram_accounts() -> list[str]:
-    """Default Instagram accounts to scrape."""
-    return [
-        "agendagijon",
-        "asociacionelviescu",
-        "asturiasacoge",
-        "asturiesculturaenrede",
-        "aytocastrillon",
-        "aytoviedo",
-        "ayuntamientocabranes",
-        "bandinalagarrapiella",
-        "biodevas",
-        "centroniemeyer",
-        "centros_sociales_oviedo",
-        "chigreculturallatadezinc",
-        "cinesfoncalada",
-        "conocerasturias",
-        "conseyu_cmx",
-        "crjasturias",
-        "cuentosdemaleta",
-        "cultura.gijon",
-        "cultura.grau",
-        "culturacolunga",
-        "culturallanes",
-        "deportesayov",
-        "exprime.gijon",
-        "ferialibroxixon",
-        "gijon",
-        "gonggalaxyclub",
-        "juventudgijon",
-        "juventudoviedo",
-        "kbunsgijon",
-        "kuivi_almacenes",
-        "laboralciudadcultura",
-        "lacompaniadelalba",
-        "lasalvaje.oviedo",
-        "mierescultura",
-        "museosgijonxixon",
-        "museudelpuebludasturies",
-        "nortes.me",
-        "oviedo.turismo",
-        "paramo_bar",
-        "patioh_laboral",
-        "prestosofest",
-        "prial_asociacion",
-        "traslapuertatiteres",
-        "trivilorioyeimpro",
-        "youropia_asociacion",
-    ]
+def _default_output_dir() -> Path:
+    if platform.system() == "Windows":
+        home = _windows_userprofile_from_env() or Path.home()
+        return home / "Desktop" / "ig_helper"
+    if _is_wsl2():
+        home = _wsl_windows_home() or Path.home()
+        return home / "Desktop" / "ig_helper"
+    return Path.home() / "Desktop" / "ig_helper"
+
+
+# ------------------------------- settings -------------------------------------
 
 
 @dataclass(frozen=True, kw_only=True)
 class Settings:
-    """Manages all application settings with hardcoded values.
+    """Central app configuration (immutable)."""
 
-    This class centralizes configuration management with predefined values
-    for all settings. Using a frozen dataclass ensures that settings are
-    immutable at runtime, preventing unintended modifications.
-
-    DESIGN DECISIONS & IMPLEMENTATION QUIRKS:
-
-    1. FROZEN DATACLASS: The class is frozen to prevent runtime modification, ensuring configuration consistency throughout the application lifecycle.
-
-    2. HARDCODED VALUES: All settings are predefined and don't require environment variables or external configuration files.
-
-    3. SIMPLIFIED INITIALIZATION: No complex validation or environment variable loading, making the configuration reliable and predictable.
-
-    4. PYINSTALLER COMPATIBLE: No import-time dependencies that could cause build issues with PyInstaller.
-
-    Attributes:
-        BASE_DIR (ClassVar[Path]): The project's root directory.
-        BROWSER_PATH (Path): The absolute path to the browser executable.
-        BROWSER_USER_DATA_DIR (Path): Path to the browser's user data directory.
-        BROWSER_PROFILE_DIR (str): The profile directory to use.
-        BROWSER_DEBUG_PORT (int): The remote debugging port.
-        BROWSER_START_URL (str): The URL to start the browser at.
-        BROWSER_LOAD_DELAY (int): The delay in milliseconds between page loads.
-        BROWSER_CONNECT_SCHEME (str): The scheme to use for remote debugging.
-        BROWSER_REMOTE_HOST (str): The host for remote debugging.
-        INSTAGRAM_ACCOUNTS (list[str]): Default list of Instagram accounts.
-    """
-
-    # --- Class-level Constants ---
+    # Project root
     BASE_DIR: ClassVar[Path] = Path(__file__).resolve().parent
 
-    # --- Path Configuration ---
-    OUTPUT_DIR: Path = field(default_factory=lambda: _get_platform_paths()[2])
-    LOG_DIR: Path = field(default_factory=lambda: _get_platform_paths()[2])
-    TEMPLATE_PATH: Path = field(
-        default_factory=lambda: Path(__file__).resolve().parent
-        / "templates"
-        / "template.html"
-    )
+    # Paths
+    OUTPUT_DIR: Path = field(default_factory=_default_output_dir)
+    LOG_DIR: Path = field(default_factory=_default_output_dir)
 
-    # --- Timezone Configuration ---
-    TIMEZONE: timezone = field(default_factory=lambda: timezone(timedelta(hours=2)))
+    # Timezone (IANA)
+    TIMEZONE: ZoneInfo = field(default_factory=lambda: ZoneInfo("Europe/Madrid"))
 
-    # --- Browser Configuration ---
-    BROWSER_PATH: Path = field(default_factory=lambda: _get_platform_paths()[0])
-    BROWSER_USER_DATA_DIR: Path = field(
-        default_factory=lambda: _get_platform_paths()[1]
+    # Browser (real profile via CDP)
+    BROWSER_PATH: Path | None = field(default_factory=_discover_browser_path)
+    BROWSER_USER_DATA_DIR: Path | None = field(
+        default_factory=lambda: _default_user_data_dir(_discover_browser_path())
     )
-    BROWSER_PROFILE_DIR: str = "Default"
+    BROWSER_PROFILE_DIR: str = "Default"  # e.g. "Default", "Profile 1"
     BROWSER_DEBUG_PORT: int = 9222
-    BROWSER_START_URL: str = "https://www.instagram.com/"
-    BROWSER_LOAD_DELAY: int = 5000  # In milliseconds
-    BROWSER_CONNECT_SCHEME: str = "http"
     BROWSER_REMOTE_HOST: str = "localhost"
+    BROWSER_CONNECT_SCHEME: str = "http"
+    BROWSER_START_URL: str = "https://www.instagram.com/"
 
-    # --- Instagram Scraper Configuration ---
-    INSTAGRAM_ACCOUNTS: list[str] = field(default_factory=_load_instagram_accounts)
+    # Instagram scraping
     INSTAGRAM_URL: str = "https://www.instagram.com/"
-    INSTAGRAM_POST_LOAD_TIMEOUT: int = 20000
+    INSTAGRAM_POST_LOAD_TIMEOUT: int = 20_000  # ms
     INSTAGRAM_MAX_POSTS_PER_ACCOUNT: int = 3
 
+    # Default accounts (edit as needed)
+    INSTAGRAM_ACCOUNTS: list[str] = field(
+        default_factory=lambda: [
+            "agendagijon",
+            "asociacionelviescu",
+            "asturiasacoge",
+            "asturiesculturaenrede",
+            "aytocastrillon",
+            "aytoviedo",
+            "ayuntamientocabranes",
+            "bandinalagarrapiella",
+            "biodevas",
+            "centroniemeyer",
+            "centros_sociales_oviedo",
+            "chigreculturallatadezinc",
+            "cinesfoncalada",
+            "conocerasturias",
+            "conseyu_cmx",
+            "crjasturias",
+            "cuentosdemaleta",
+            "cultura.gijon",
+            "cultura.grau",
+            "culturacolunga",
+            "culturallanes",
+            "deportesayov",
+            "exprime.gijon",
+            "ferialibroxixon",
+            "gijon",
+            "gonggalaxyclub",
+            "juventudgijon",
+            "juventudoviedo",
+            "kbunsgijon",
+            "kuivi_almacenes",
+            "laboralciudadcultura",
+            "lacompaniadelalba",
+            "lasalvaje.oviedo",
+            "mierescultura",
+            "museosgijonxixon",
+            "museudelpuebludasturies",
+            "nortes.me",
+            "oviedo.turismo",
+            "paramo_bar",
+            "patioh_laboral",
+            "prestosofest",
+            "prial_asociacion",
+            "traslapuertatiteres",
+            "trivilorioyeimpro",
+            "youropia_asociacion",
+        ]
+    )
+
+    # Mutable updates on a frozen dataclass (explicit)
+    def update_instagram_settings(self, max_posts: int, timeout_ms: int) -> None:
+        object.__setattr__(
+            self, "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", max(1, int(max_posts))
+        )
+        object.__setattr__(
+            self, "INSTAGRAM_POST_LOAD_TIMEOUT", max(1_000, int(timeout_ms))
+        )
+
     def __post_init__(self) -> None:
-        """Performs validation after the object has been initialized."""
-        # All settings are now hardcoded - no environment variable loading needed
-        pass
+        # Ensure dirs exist
+        self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        self.LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    def update_instagram_settings(self, max_posts: int, timeout: int) -> None:
-        """Update Instagram settings dynamically.
+        # Warn if browser/profile cannot be resolved
+        if self.BROWSER_PATH is None or not Path(self.BROWSER_PATH).exists():
+            # Keep running; browser_manager will fall back or raise with a clear error
+            pass
+        if (
+            self.BROWSER_USER_DATA_DIR is None
+            or not Path(self.BROWSER_USER_DATA_DIR).exists()
+        ):
+            # Still acceptable; browser can create the dir, but login may not be present
+            pass
 
-        Args:
-            max_posts: New maximum posts per account value
-            timeout: New post load timeout value in milliseconds
-        """
-        object.__setattr__(self, "INSTAGRAM_MAX_POSTS_PER_ACCOUNT", max_posts)
-        object.__setattr__(self, "INSTAGRAM_POST_LOAD_TIMEOUT", timeout)
 
-
-# Create a single, immutable instance of the settings
+# Singleton
 settings = Settings()

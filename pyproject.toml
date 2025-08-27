@@ -11,26 +11,26 @@ name = "instagram-helper"
 version = "1.0.0"
 description = "A modern GUI-based tool that automatically fetches recent posts from Instagram accounts and generates HTML reports with real-time monitoring"
 readme = "README.md"
-license = "MIT"
+license = { file = "LICENSE" }
 authors = [{name = "Maxim Betin", email = "betinmaxim@gmail.com"}]
 keywords = ["instagram", "scraper", "browser", "automation", "reports", "monitoring"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Desktop Environment :: Desktop Environment :: GTK",
-    "Topic :: Internet :: WWW/HTTP :: Browsers",
-    "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: User Interfaces",
+    "Topic :: Internet",
 ]
 requires-python = ">=3.12"
 
 # Runtime dependencies. Required for the application to function.
 dependencies = [
-    "playwright>=1.54.0",
-    "jinja2>=3.1.6",
+    "playwright>=1.54,<2.0",
+    "jinja2>=3.1,<4.0",
 ]
 
 # Optional dependency groups.
@@ -39,8 +39,8 @@ dependencies = [
 dev = [
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
-    "ruff>=0.12.10",
-    "mypy>=1.17.1",
+    "ruff>=0.5",
+    "mypy>=1.10",
 ]
 
 # Testing dependencies. For running tests only.
@@ -52,6 +52,10 @@ test = [
 # GUI entry point. Makes the tool available as a Python module.
 [project.scripts]
 instagram-helper = "run:main"
+
+# Optional: hide console window for Tkinter on Windows
+[project.gui-scripts]
+instagram-helper-gui = "run:main"
 
 # Project URLs for documentation and source.
 [project.urls]
@@ -73,9 +77,9 @@ py-modules = [
     "report_generator",
 ]
 
-# Include non-Python files in the package.
-[tool.setuptools.package-data]
-"*" = ["templates/*.html"]
+# Include non-Python files in the package using data-files for py-modules.
+[tool.setuptools.data-files]
+"share/instagram_helper/templates" = ["templates/*.html"]
 
 # Pytest configuration for testing.
 [tool.pytest.ini_options]
@@ -91,7 +95,7 @@ markers = [
 
 # Coverage configuration for pytest-cov.
 [tool.coverage.run]
-source = ["."]
+source = ["run", "instagram_scraper", "utils", "gui_app", "config", "browser_manager", "report_generator"]
 omit = [
     "tests/*",
     "venv/*",
@@ -119,6 +123,7 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+extend-exclude = ["venv", "build", ".ruff_cache", ".mypy_cache", ".pytest_cache", "dist"]
 
 # Ruff linting rules.
 [tool.ruff.lint]
@@ -136,6 +141,10 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
 ]
+
+# Ruff import sorting configuration.
+[tool.ruff.lint.isort]
+known-first-party = ["run", "instagram_scraper", "utils", "gui_app", "config", "browser_manager", "report_generator"]
 
 # Ruff formatting options.
 [tool.ruff.format]

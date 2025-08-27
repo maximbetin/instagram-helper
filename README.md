@@ -1,117 +1,110 @@
 # Instagram Helper
 
-Instagram Helper is a simple tool that scrapes recent Instagram posts and saves them as HTML reports.
+Instagram Helper is a desktop tool that scrapes recent Instagram posts and saves them as searchable HTML reports.
 
 ## Features
 
-* Scrapes post content, captions, and timestamps.
-* Provides a Tkinter-based interface with live progress.
-* Generates HTML reports with summaries and search functions.
-* Works with Chrome, Brave, or Edge using remote debugging.
+* Scrape post content, captions, and timestamps.
+* Tkinter-based interface with live progress.
+* Responsive HTML reports with summaries and search.
 * Supports multiple accounts in a single run.
+* Works with Chrome, Brave, or Edge (via remote debugging).
 * Keeps the browser session so the Instagram login remains active.
+* Uses your existing browser profile with Instagram login.
 
 ## Requirements
 
 * Python 3.12 or newer.
-* Windows 10/11, Linux (Ubuntu 20.04 or later), or macOS 10.15 or later.
-* At least 4 GB of RAM (8 GB recommended for larger runs).
-* A Chromium-based browser (Chrome, Brave, or Edge) with remote debugging enabled.
-* WSL2 is recommended on Windows for smoother operation.
+* Windows 10/11 (Linux/macOS supported but Windows is the focus).
+* At least 4 GB RAM (8 GB recommended).
+* A Chromium-based browser (Chrome, Brave, Edge).
+* Playwright browser binaries (`python -m playwright install`).
 
 ## Setup
 
 Clone the repository and create the environment:
 
 ```bash
-git clone https://github.com/maxim/instagram-helper.git
+git clone https://github.com/maximbetin/instagram-helper.git
 cd instagram-helper
 make setup
+python -m playwright install
 ```
 
 Activate the virtual environment:
 
 ```bash
-. .\venv\Scripts\Activate.ps1   # On Windows
-# source venv/bin/activate      # On Linux/macOS
+. .\venv\Scripts\Activate.ps1   # Windows PowerShell
+# source venv/bin/activate      # Linux/macOS
 ```
 
-Run the tests and start the application:
+## Usage
+
+**Important**: The app requires a browser with an active Instagram login session. Close all Chromium browsers or start one with remote debugging enabled.
+
+### Manual browser startup (Windows PowerShell)
+
+```powershell
+& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" `
+  --remote-debugging-port=9222 `
+  --user-data-dir="$env:USERPROFILE\AppData\Local\BraveSoftware\Brave-Browser\User Data" `
+  --profile-directory="Default"
+```
+
+### Run the app
 
 ```bash
-make test
-python run.py
+instagram-helper        # console version
+instagram-helper-gui    # Windows GUI, hides console window
+```
+
+Or with Makefile:
+
+```bash
+make run
 ```
 
 ## Development
 
-Run all quality checks:
+Quality checks and tests:
 
 ```bash
 make test
 ```
 
-Build an executable using either PyInstaller:
+Build an executable:
 
 ```bash
-pyinstaller instagram_helper.spec
+make build        # or make rebuild for clean + build
 ```
 
-or the provided Makefile:
+Clean up all caches and venv:
 
 ```bash
-make build
+make clean
 ```
-
-The Makefile also provides:
-
-* `make setup` to create the environment.
-* `make test` to run tests.
-* `make build` to build an executable.
-* `make clean` to remove build files.
 
 ## Configuration
 
-The tool comes preconfigured with defaults optimized for Windows.
-It was originally developed on WSL2, but development is now focused on Windows (see [Notes](#notes) below).
-
-To change the settings, edit the `config.py` file directly.
-
-For example:
+Edit `config.py` to change defaults:
 
 ```python
 INSTAGRAM_MAX_POSTS_PER_ACCOUNT = 10
 OUTPUT_DIR = Path("C:/Users/YourUsername/Desktop/ig_reports")
 ```
 
-### Common issues
+## Common Issues
 
-| Problem              | Solution                                                    |
-| -------------------- | ----------------------------------------------------------- |
-| Python version error | Install Python 3.12+ and check PATH                         |
-| Browser not found    | Update the executable path in `config.py`                   |
-| Port 9222 in use     | Close existing browser sessions or change the debug port    |
-| Import errors        | Activate the virtual environment and reinstall dependencies |
-
-## Usage
-
-The interface has four parts:
-
-* **Configuration panel**: set the post age limit, the number of posts per account, and the page load timeout.
-* **Account list**: enter one Instagram username per line, with support for bulk pasting.
-* **Progress display**: view the progress bar, log output, and current status.
-* **Control buttons**: start or stop the scraper, clear logs, or reset progress.
-
-### Settings
-
-* The tool processes **three posts per account**, limits posts to **seven days old**, and waits up to **20 seconds** for each page to load.
-* Reports are created automatically in **HTML format** and named by date, for example `15-01-2024.html`.
-* They are responsive and include **summaries**, **account grouping**, and a **search function**.
+| Problem              | Solution                                                  |
+| -------------------- | --------------------------------------------------------- |
+| Python version error | Install Python 3.12+ and check PATH                       |
+| Browser not found    | Run `python -m playwright install` and update `config.py` |
+| Port 9222 in use     | Close existing browser sessions or change debug port      |
+| Import errors        | Activate venv and reinstall dependencies                  |
 
 ## Notes
 
-* The codebase was originally developed on WSL2, but browser automation was unreliable. Since the pipeline uses a Windows image and the GUI is built as an `.exe`, development is now focused on Windows for consistency.
-* Do not change the caption selectors in `instagram_scraper.py`, since they are fragile and will likely break the tool.
-* The tool depends on the HTML structure of Instagram, so it may stop working if Instagram changes their pages.
-* The default settings are conservative to avoid hitting Instagram's rate limits.
-* Each run starts a new browser instance. If you get connection errors, close any running browsers first.
+* Developed initially on WSL2; focus is now Windows for stability.
+* The tool depends on Instagram's HTML structure — breakage is possible if pages change.
+* Default settings are conservative to avoid rate limits.
+* Do not edit selectors in `instagram_scraper.py` unless you know what you're doing.

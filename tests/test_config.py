@@ -52,7 +52,6 @@ def test_settings_with_custom_values(monkeypatch: MonkeyPatch) -> None:
     # They use their hardcoded values
     settings = Settings()
     assert settings.BROWSER_DEBUG_PORT == 9222  # Hardcoded value
-    assert settings.BROWSER_LOAD_DELAY == 5000  # Hardcoded value
     assert settings.INSTAGRAM_MAX_POSTS_PER_ACCOUNT == 3  # Hardcoded value
     assert settings.INSTAGRAM_POST_LOAD_TIMEOUT == 20000  # Hardcoded value
 
@@ -131,10 +130,6 @@ def test_settings_custom_paths(monkeypatch: MonkeyPatch) -> None:
     # Settings now use hardcoded values regardless of environment
     assert settings.OUTPUT_DIR == expected_output_dir
     assert settings.LOG_DIR == expected_output_dir
-    assert (
-        settings.TEMPLATE_PATH
-        == Path(__file__).resolve().parent.parent / "templates" / "template.html"
-    )
 
 
 def test_settings_custom_browser_config(monkeypatch: MonkeyPatch) -> None:
@@ -163,11 +158,11 @@ def test_settings_timezone_config(monkeypatch: MonkeyPatch) -> None:
 
     settings = Settings()
     # Settings now use hardcoded values regardless of environment
-    assert settings.TIMEZONE.utcoffset(None).total_seconds() == 2 * 3600
+    assert str(settings.TIMEZONE) == "Europe/Madrid"
 
 
 def test_settings_default_timezone() -> None:
     """Test default timezone configuration."""
     settings = Settings()
-    # Default should be +2 hours (hardcoded)
-    assert settings.TIMEZONE.utcoffset(None).total_seconds() == 2 * 3600
+    # Default should be Europe/Madrid (hardcoded)
+    assert str(settings.TIMEZONE) == "Europe/Madrid"

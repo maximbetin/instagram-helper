@@ -15,6 +15,7 @@ from browser_manager import setup_browser
 from config import settings
 from instagram_scraper import InstagramScraper
 from report_generator import ReportData, generate_html_report
+from utils import templates_dir
 
 
 class LogHandler(logging.Handler):
@@ -452,7 +453,8 @@ class InstagramHelperGUI:
                 report_data = ReportData(posts=all_posts, cutoff_date=cutoff_date)
                 date_str = datetime.now(UTC).strftime("%d-%m-%Y")
                 output_path = Path(settings.OUTPUT_DIR) / f"{date_str}.html"
-                generate_html_report(report_data, output_path, settings.TEMPLATE_PATH)
+                template_path = templates_dir() / "template.html"
+                generate_html_report(report_data, output_path, template_path)
 
                 self.logger.info(f"Report generated: {output_path}")
 
@@ -479,8 +481,8 @@ class InstagramHelperGUI:
                 self.playwright_instance.stop()
 
             # Re-enable start button, disable stop button
-            self.root.after(0, self.start_button.config, "normal")
-            self.root.after(0, self.stop_button.config, "disabled")
+            self.root.after(0, lambda: self.start_button.config(state="normal"))
+            self.root.after(0, lambda: self.stop_button.config(state="disabled"))
 
     def poll_logs(self) -> None:
         """Poll the log queue and update the log display."""
@@ -497,7 +499,9 @@ class InstagramHelperGUI:
 
     def _get_browser_page(self, browser: Browser) -> Page:
         """Retrieves or creates a browser page."""
-        context = browser.contexts[0] if browser.contexts else browser.new_context()
+        context = browser.contexts[0] if browser.contexts else None
+        if context is None:
+            raise RuntimeError("No persistent context available via CDP.")
         return context.pages[0] if context.pages else context.new_page()
 
     def _update_progress(self, value: float) -> None:
