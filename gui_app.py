@@ -2,6 +2,7 @@
 
 import logging
 import queue
+import subprocess
 import threading
 import tkinter as tk
 from datetime import UTC, datetime, timedelta
@@ -455,7 +456,7 @@ class InstagramHelperGUI:
                 output_path = Path(settings.OUTPUT_DIR) / f"{date_str}.html"
                 template_path = templates_dir() / "template.html"
                 generate_html_report(report_data, output_path, template_path)
-
+                self._open_in_chrome(output_path)
                 self.logger.info(f"Report generated: {output_path}")
 
             # Update final status
@@ -496,6 +497,42 @@ class InstagramHelperGUI:
         finally:
             # Schedule next poll
             self.root.after(100, self.poll_logs)
+
+    def _open_in_chrome(self, file_path: Path) -> None:
+        """Open the specified file in Chrome browser and close it after a delay.
+
+        Args:
+            file_path: Path to the HTML file to open
+        """
+        try:
+            chrome_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            process = subprocess.Popen(
+                [chrome_path, str(file_path.absolute())],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            # Schedule browser to close after 5 seconds
+            self.root.after(5000, lambda: self._close_browser(process))
+        except Exception as e:
+            self.logger.error(f"Failed to open Chrome: {e}")
+            messagebox.showerror("Error", f"Failed to open Chrome browser: {e}")
+
+    def _close_browser(self, process: subprocess.Popen) -> None:
+        """Close the browser process.
+
+        Args:
+            process: The browser process to close
+        """
+        try:
+            # Close Brave using taskkill
+            subprocess.run(
+                ["taskkill", "/F", "/IM", "brave.exe"], capture_output=True, text=True
+            )
+            # Terminate the process if it's still running
+            if process.poll() is None:
+                process.terminate()
+        except Exception as e:
+            self.logger.error(f"Failed to close browser: {e}")
 
     def _get_browser_page(self, browser: Browser) -> Page:
         """Retrieves or creates a browser page."""
